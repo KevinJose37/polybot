@@ -261,7 +261,15 @@ def _run_single_cycle_profiled(
         if profile.signal_source == "technical_v2":
             signals = compute_all_signals_v2(assets)
         elif profile.signal_source == "chainlink_delta" and chainlink_monitor:
-            # V3: get technical signals for confirmation, then delta
+            # V3: burst-poll delta readings (5 readings over ~10s)
+            # to build up enough data for sustained signal detection
+            import time as _t
+            for _burst in range(4):
+                chainlink_monitor.update_all(list(assets.keys()))
+                _t.sleep(2)
+            chainlink_monitor.update_all(list(assets.keys()))
+
+            # Get technical signals for confirmation
             tech_signals = compute_all_signals(assets)
             signals = compute_all_signals_chainlink(
                 monitor=chainlink_monitor,

@@ -177,6 +177,7 @@ def mode_scalp(
     assets_filter: str | None = None,
     stake_override: float | None = None,
     strategy: str = "v1",
+    capital_override: float | None = None,
 ):
     """
     Modo scalp: HFT scalper para mercados de 5 minutos.
@@ -204,6 +205,11 @@ def mode_scalp(
     if stake_override:
         import scalper.config as scalper_cfg
         scalper_cfg.HFT_STAKE = stake_override
+
+    # Override capital if specified
+    if capital_override:
+        import scalper.config as scalper_cfg
+        scalper_cfg.HFT_CAPITAL = capital_override
 
     run_scalper(target_assets=target_assets, strategy=strategy)
 
@@ -285,6 +291,7 @@ Ejemplos de uso:
                 assets_filter=args.assets,
                 stake_override=args.stake,
                 strategy=args.strategy,
+                capital_override=args.capital,
             )
         except KeyboardInterrupt:
             print("\n\n  ⛔ Interrumpido por el usuario.\n")

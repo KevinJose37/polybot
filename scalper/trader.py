@@ -15,13 +15,12 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+import scalper.config as _cfg
 from scalper.config import (
-    HFT_CAPITAL,
     HFT_EARLY_EXIT_PROFIT,
     HFT_EARLY_EXIT_REVERSAL,
     HFT_MAX_CONCURRENT,
     HFT_SESSION_STOP_LOSS,
-    HFT_STAKE,
     HFT_STOP_LOSS,
     HFT_TRADES_FILE,
 )
@@ -117,10 +116,10 @@ def get_session_stats(trades: list[dict] | None = None) -> dict:
     open_positions = [t for t in trades if t.get("status") == "open"]
 
     return {
-        "capital": HFT_CAPITAL + total_pnl,
-        "starting_capital": HFT_CAPITAL,
+        "capital": _cfg.HFT_CAPITAL + total_pnl,
+        "starting_capital": _cfg.HFT_CAPITAL,
         "total_pnl": total_pnl,
-        "pnl_pct": (total_pnl / HFT_CAPITAL * 100) if HFT_CAPITAL > 0 else 0,
+        "pnl_pct": (total_pnl / _cfg.HFT_CAPITAL * 100) if _cfg.HFT_CAPITAL > 0 else 0,
         "wins": wins,
         "losses": losses,
         "total_resolved": total_resolved,
@@ -138,7 +137,7 @@ def can_open_trade(trades: list[dict] | None = None) -> tuple[bool, str]:
     stats = get_session_stats(trades)
 
     # Check session stop-loss
-    loss_pct = abs(stats["total_pnl"]) / HFT_CAPITAL if HFT_CAPITAL > 0 else 0
+    loss_pct = abs(stats["total_pnl"]) / _cfg.HFT_CAPITAL if _cfg.HFT_CAPITAL > 0 else 0
     if stats["total_pnl"] < 0 and loss_pct >= HFT_SESSION_STOP_LOSS:
         return False, f"Session stop-loss hit ({loss_pct:.1%} loss)"
 
@@ -147,7 +146,7 @@ def can_open_trade(trades: list[dict] | None = None) -> tuple[bool, str]:
         return False, f"Max concurrent positions reached ({HFT_MAX_CONCURRENT})"
 
     # Check capital
-    if stats["capital"] < HFT_STAKE:
+    if stats["capital"] < _cfg.HFT_STAKE:
         return False, f"Insufficient capital (${stats['capital']:.2f})"
 
     return True, "OK"

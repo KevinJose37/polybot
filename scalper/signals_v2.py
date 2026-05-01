@@ -84,8 +84,8 @@ def compute_signal_v2(asset: str, binance_symbol: str) -> SignalResult | None:
     atr_value = _atr(highs, lows, closes, period=10)
     atr_pct = (atr_value / current_price) * 100 if current_price > 0 else 0
 
-    # If ATR < 0.03% → market is too flat, signal is unreliable
-    if atr_pct < 0.03:
+    # If ATR < 0.01% → market is dead flat, signal is unreliable
+    if atr_pct < 0.01:
         logger.debug("V2 %s: ATR %.4f%% too low (ranging), returning NEUTRAL", asset, atr_pct)
         return SignalResult(
             asset=asset, direction="NEUTRAL", score=0.0,

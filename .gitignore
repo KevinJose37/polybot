@@ -14,7 +14,12 @@ venv/
 
 # Trade data (regenerable)
 hft_trades.json
+hft_trades_v2.json
+hft_trades_v3.json
 paper_trades.json
+
+# Credential scripts (sensitive)
+polybot.py
 
 # Debug scripts
 debug_*.py
