@@ -221,27 +221,220 @@ def _run_single_cycle(
     return True
 
 
+def _run_single_cycle_profiled(
+    cycle_num: int,
+    target_assets: dict,
+    profile,
+    chainlink_monitor=None,
+) -> bool:
+    """
+    Execute a single polling cycle with strategy profile (V2/V3).
+
+    Routes signal computation, entry window, sizing, and exit logic
+    based on the active StrategyProfile.
+    """
+    from scalper.chainlink_delta import compute_all_signals_chainlink
+    from scalper.signals_v2 import compute_all_signals_v2
+    from scalper.trader import (
+        calculate_kelly_stake,
+        check_open_positions_profiled,
+        set_active_trades_file,
+    )
+
+    assets = target_assets or HFT_ASSETS
+    trades = load_trades()
+
+    print_cycle_separator(cycle_num)
+
+    # ── 1. SCAN ──────────────────────────────────────────────
+    try:
+        markets = scan_active_markets(assets)
+    except Exception as exc:
+        logger.error("Market scan failed: %s", exc)
+        markets = {}
+
+    if not markets:
+        print("  📡 No se encontraron mercados activos. Esperando...\n")
+
+    # ── 2. SIGNAL: Route by profile ──────────────────────────
+    try:
+        if profile.signal_source == "technical_v2":
+            signals = compute_all_signals_v2(assets)
+        elif profile.signal_source == "chainlink_delta" and chainlink_monitor:
+            # V3: get technical signals for confirmation, then delta
+            tech_signals = compute_all_signals(assets)
+            signals = compute_all_signals_chainlink(
+                monitor=chainlink_monitor,
+                assets=assets,
+                threshold=profile.chainlink_delta_threshold,
+                technical_signals=tech_signals if profile.use_technical_confirmation else None,
+                require_confirmation=profile.use_technical_confirmation,
+            )
+        else:
+            signals = compute_all_signals(assets)
+    except Exception as exc:
+        logger.error("Signal computation failed: %s", exc)
+        signals = {}
+
+    # ── 3. Display ───────────────────────────────────────────
+    print_market_status(markets, signals)
+
+    stats = get_session_stats(trades)
+    print_session_header(stats)
+
+    can_trade_ok, reason = can_open_trade(trades)
+    if not can_trade_ok and "stop-loss" in reason.lower():
+        print_session_stop()
+        return False
+
+    # ── 4. MONITOR with profile ──────────────────────────────
+    signal_scores = {k: s.score for k, s in signals.items()}
+    actions = check_open_positions_profiled(signal_scores, profile=profile)
+    for action in actions:
+        print_trade_action(action["type"], action["trade"])
+
+    # ── 5. ENTRY with profile rules ──────────────────────────
+    entries_made = 0
+
+    for asset_key in assets:
+        if asset_key not in markets or asset_key not in signals:
+            continue
+
+        market = markets[asset_key]
+        signal = signals[asset_key]
+
+        # Signal threshold
+        if abs(signal.score) < profile.signal_threshold:
+            continue
+
+        # Entry window: v3 "late" mode only enters in last 90 seconds
+        if profile.entry_mode == "late":
+            event_start = market.get("event_start")
+            if event_start:
+                now = datetime.now(timezone.utc)
+                elapsed = (now - event_start).total_seconds()
+                if elapsed < profile.entry_window_start or elapsed > profile.entry_window_end:
+                    continue
+            else:
+                continue
+        else:
+            if not _is_in_entry_window(market):
+                continue
+
+        ok, reason = can_open_trade()
+        if not ok:
+            continue
+
+        side = signal.direction
+        if side == "NEUTRAL":
+            continue
+
+        # Entry price
+        if side == "UP":
+            entry_price = market.get("up_best_ask", market.get("up_price", 0.5))
+            if entry_price <= 0:
+                entry_price = market.get("up_price", 0.5) + 0.01
+        else:
+            entry_price = market.get("down_best_ask", market.get("down_price", 0.5))
+            if entry_price <= 0:
+                entry_price = market.get("down_price", 0.5) + 0.01
+
+        if entry_price >= 0.95 or entry_price <= 0.05:
+            continue
+
+        # Sizing
+        if profile.sizing == "kelly":
+            stake = calculate_kelly_stake(
+                profile.base_stake, signal.score,
+                stats.get("capital", 1000),
+                profile.max_position_pct,
+            )
+        elif profile.sizing == "delta_scaled":
+            delta_magnitude = abs(signal.score)
+            if delta_magnitude >= 0.10:
+                stake = profile.base_stake * 1.5
+            else:
+                stake = profile.base_stake
+            stake = min(stake, stats.get("capital", 1000) * profile.max_position_pct)
+            stake = round(stake, 2)
+        else:
+            stake = profile.base_stake
+
+        trade = open_trade(
+            asset=asset_key,
+            side=side,
+            entry_price=entry_price,
+            signal_score=signal.score,
+            market_slug=market["slug"],
+            gamma_id=market["gamma_id"],
+            event_start=market["event_start"],
+            event_end=market["event_end"],
+            stake=stake,
+        )
+
+        if trade:
+            print_trade_action("entry", trade)
+            entries_made += 1
+
+    if entries_made == 0 and not actions:
+        print_no_signal_msg()
+
+    # ── 6. Display ───────────────────────────────────────────
+    open_pos = get_open_positions()
+    print_open_positions(open_pos, markets)
+
+    recent = get_recent_resolved(limit=5)
+    print_recent_trades(recent)
+
+    hindsight_results = review_sold_trades()
+    print_hindsight(hindsight_results)
+
+    hs_summary = get_hindsight_summary()
+    print_hindsight_summary(hs_summary)
+
+    return True
+
+
 def run_scalper(
     target_assets: dict | None = None,
     max_cycles: int | None = None,
+    strategy: str = "v1",
 ):
     """
     Main entry point for the HFT scalper bot.
 
-    Runs continuously, polling every HFT_POLL_INTERVAL seconds.
-    Press Ctrl+C to stop gracefully.
-
     Args:
         target_assets: Dict of assets to trade (default: all from config)
         max_cycles: Maximum cycles to run (None = infinite)
+        strategy: Strategy version — "v1", "v2", or "v3"
     """
+    from scalper.strategy_profiles import get_profile
+    from scalper.trader import set_active_trades_file
+
+    profile = get_profile(strategy)
+
+    # Set isolated trades file for this strategy
+    set_active_trades_file(profile.trades_file)
+
+    # Initialize Chainlink monitor for V3
+    chainlink_monitor = None
+    if profile.signal_source == "chainlink_delta":
+        from scalper.chainlink_delta import ChainlinkDeltaMonitor
+        chainlink_monitor = ChainlinkDeltaMonitor()
+
     print_scalper_banner()
 
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"  ⏰ Started: {now_str}")
-    print(f"  🎯 Signal Threshold: {HFT_SIGNAL_THRESHOLD}")
-    print(f"  💵 Stake per trade: ${HFT_STAKE:.2f}")
+    print(f"  🏷️  Strategy: {profile.label}")
+    print(f"  🎯 Signal Threshold: {profile.signal_threshold}")
+    print(f"  💵 Base Stake: ${profile.base_stake:.2f} ({profile.sizing} sizing)")
     print(f"  🔄 Poll interval: {HFT_POLL_INTERVAL}s")
+    print(f"  📁 Trades file: {profile.trades_file}")
+
+    if profile.trailing_stop:
+        print(f"  📈 Trailing stop: ON (trigger at +{profile.trailing_trigger:.0%})")
+    print(f"  🎯 TP: {profile.take_profit:.0%} | SL: {profile.stop_loss:.0%}")
 
     assets_str = ", ".join((target_assets or HFT_ASSETS).keys())
     print(f"  📊 Assets: {assets_str}")
@@ -257,11 +450,17 @@ def run_scalper(
                 print(f"\n  ⏹️  Máximo de ciclos ({max_cycles}) alcanzado.\n")
                 break
 
-            should_continue = _run_single_cycle(cycle, target_assets)
+            if strategy == "v1":
+                should_continue = _run_single_cycle(cycle, target_assets)
+            else:
+                should_continue = _run_single_cycle_profiled(
+                    cycle, target_assets or HFT_ASSETS,
+                    profile, chainlink_monitor,
+                )
+
             if not should_continue:
                 break
 
-            # Sleep between cycles
             print(f"\n  💤 Próximo ciclo en {HFT_POLL_INTERVAL}s...")
             time.sleep(HFT_POLL_INTERVAL)
 
@@ -270,7 +469,7 @@ def run_scalper(
 
     # Final report
     print(f"\n{'═' * 80}")
-    print("  📊 REPORTE FINAL DE SESIÓN")
+    print(f"  📊 REPORTE FINAL DE SESIÓN — {profile.label}")
     print(f"{'═' * 80}")
 
     stats = get_session_stats()
@@ -279,5 +478,6 @@ def run_scalper(
     recent = get_recent_resolved(limit=20)
     print_recent_trades(recent, limit=20)
 
-    print(f"\n  Trades guardados en: {__import__('scalper.config', fromlist=['HFT_TRADES_FILE']).HFT_TRADES_FILE}")
+    print(f"\n  Trades guardados en: {profile.trades_file}")
     print(f"  Total ciclos ejecutados: {cycle}\n")
+

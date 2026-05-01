@@ -29,6 +29,18 @@ from scalper.market_scanner import get_market_current_price
 
 logger = logging.getLogger("polybot.scalper.trader")
 
+# Active trades file — can be overridden per strategy version.
+# Default is HFT_TRADES_FILE (v1). V2/V3 call set_active_trades_file()
+# at startup to isolate their data.
+_active_trades_file: str = HFT_TRADES_FILE
+
+
+def set_active_trades_file(filename: str) -> None:
+    """Override the trades file for this process (used by v2/v3 strategies)."""
+    global _active_trades_file
+    _active_trades_file = filename
+    logger.info("Trades file set to: %s", filename)
+
 
 # ═══════════════════════════════════════════════════════════════
 # Trade Storage
@@ -37,7 +49,7 @@ logger = logging.getLogger("polybot.scalper.trader")
 
 def _trades_path() -> Path:
     """Get the absolute path to the trades file."""
-    return Path(__file__).parent.parent / HFT_TRADES_FILE
+    return Path(__file__).parent.parent / _active_trades_file
 
 
 def load_trades() -> list[dict]:
@@ -403,6 +415,141 @@ def check_open_positions(signal_scores: dict[str, float] | None = None) -> list[
                     })
 
     return actions
+
+
+def check_open_positions_profiled(
+    signal_scores: dict[str, float] | None = None,
+    profile=None,
+) -> list[dict]:
+    """
+    Strategy-aware position monitoring (V2/V3).
+
+    Supports:
+    - Per-profile take_profit and stop_loss thresholds
+    - Trailing stop: moves SL to break-even when position is up 20%+
+    - Profile-specific signal reversal threshold
+    """
+    if profile is None:
+        return check_open_positions(signal_scores)
+
+    trades = load_trades()
+    actions = []
+    now = datetime.now(timezone.utc)
+
+    tp = profile.take_profit
+    sl = profile.stop_loss
+    reversal_thresh = profile.signal_reversal
+    trailing = profile.trailing_stop
+    trailing_trigger = profile.trailing_trigger
+
+    open_trades = [t for t in trades if t.get("status") == "open"]
+
+    for trade in open_trades:
+        gamma_id = trade.get("gamma_id", "")
+        asset = trade["asset"]
+        side = trade["side"]
+
+        market_data = get_market_current_price(gamma_id)
+        if not market_data:
+            continue
+
+        # ── Resolution check ─────────────────────────────────
+        if market_data.get("closed", False):
+            up_price = market_data.get("up_price", 0.5)
+            down_price = market_data.get("down_price", 0.5)
+            won = (up_price > 0.9) if side == "UP" else (down_price > 0.9)
+
+            result = resolve_trade(trade["id"], won)
+            if result:
+                actions.append({"type": "resolved", "trade": result, "won": won})
+            continue
+
+        # ── Price calculation ────────────────────────────────
+        if side == "UP":
+            current_price = market_data.get("up_price", 0.5)
+            sell_price = market_data.get("up_best_bid", current_price)
+        else:
+            current_price = market_data.get("down_price", 0.5)
+            sell_price = market_data.get("down_best_bid", current_price)
+
+        entry_price = trade["entry_price"]
+        price_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+
+        # ── Stop-loss ────────────────────────────────────────
+        effective_sl = sl
+
+        # Trailing stop: if position was up 20%+, move SL to break-even
+        if trailing and price_change >= trailing_trigger:
+            effective_sl = 0.0  # break-even = 0% loss
+            # Track the high watermark for future trailing
+            trade_high = trade.get("_high_watermark", entry_price)
+            if current_price > trade_high:
+                trade["_high_watermark"] = current_price
+                save_trades(trades)
+
+        if price_change <= -effective_sl:
+            reason_str = "trailing_stop" if effective_sl < sl else "stop_loss"
+            result = sell_trade(trade["id"], sell_price, reason=reason_str)
+            if result:
+                actions.append({
+                    "type": "sold", "trade": result,
+                    "reason": f"{reason_str} ({price_change:.1%})",
+                })
+            continue
+
+        # ── Take profit ──────────────────────────────────────
+        if price_change >= tp:
+            result = sell_trade(trade["id"], sell_price, reason="take_profit")
+            if result:
+                actions.append({
+                    "type": "sold", "trade": result,
+                    "reason": f"Take profit ({price_change:.1%})",
+                })
+            continue
+
+        # ── Signal reversal ──────────────────────────────────
+        if signal_scores and asset in signal_scores:
+            new_signal = signal_scores[asset]
+            should_exit = (
+                (side == "UP" and new_signal < -reversal_thresh)
+                or (side == "DOWN" and new_signal > reversal_thresh)
+            )
+            if should_exit:
+                result = sell_trade(trade["id"], sell_price, reason="signal_reversal")
+                if result:
+                    actions.append({
+                        "type": "sold", "trade": result,
+                        "reason": f"Signal reversal ({new_signal:.3f})",
+                    })
+
+    return actions
+
+
+def calculate_kelly_stake(
+    base_stake: float,
+    signal_score: float,
+    capital: float,
+    max_pct: float = 0.05,
+) -> float:
+    """
+    Calculate position size using simplified Kelly Criterion.
+
+    Higher signal confidence → larger stake (up to 5% of capital).
+    """
+    abs_score = abs(signal_score)
+
+    # Confidence multiplier based on signal strength
+    if abs_score >= 0.80:
+        multiplier = 1.5
+    elif abs_score >= 0.60:
+        multiplier = 1.2
+    else:
+        multiplier = 1.0
+
+    stake = base_stake * multiplier
+    max_stake = capital * max_pct
+
+    return round(min(stake, max_stake), 2)
 
 
 def review_sold_trades() -> list[dict]:

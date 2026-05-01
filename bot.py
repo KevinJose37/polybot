@@ -173,10 +173,19 @@ def mode_report():
     print_report(report)
 
 
-def mode_scalp(assets_filter: str | None = None, stake_override: float | None = None):
+def mode_scalp(
+    assets_filter: str | None = None,
+    stake_override: float | None = None,
+    strategy: str = "v1",
+):
     """
     Modo scalp: HFT scalper para mercados de 5 minutos.
     Opera en loop continuo escaneando BTC/ETH/SOL/XRP.
+
+    Strategies:
+      v1 — Original technical scalper (EMA+RSI+MOM+VOL+VWAP)
+      v2 — Enhanced technical + trailing stop + Kelly sizing
+      v3 — Chainlink delta signal + late entry + confirmation
     """
     from scalper.config import HFT_ASSETS, HFT_STAKE
     from scalper.runner import run_scalper
@@ -196,7 +205,7 @@ def mode_scalp(assets_filter: str | None = None, stake_override: float | None = 
         import scalper.config as scalper_cfg
         scalper_cfg.HFT_STAKE = stake_override
 
-    run_scalper(target_assets=target_assets)
+    run_scalper(target_assets=target_assets, strategy=strategy)
 
 
 def mode_live():
@@ -256,6 +265,12 @@ Ejemplos de uso:
         default=None,
         help="Stake override por trade en scalp mode (default: $10)",
     )
+    parser.add_argument(
+        "--strategy",
+        choices=["v1", "v2", "v3"],
+        default="v1",
+        help="Strategy version for scalp mode: v1=original, v2=enhanced, v3=chainlink (default: v1)",
+    )
 
     args = parser.parse_args()
 
@@ -269,6 +284,7 @@ Ejemplos de uso:
             mode_scalp(
                 assets_filter=args.assets,
                 stake_override=args.stake,
+                strategy=args.strategy,
             )
         except KeyboardInterrupt:
             print("\n\n  ⛔ Interrumpido por el usuario.\n")
