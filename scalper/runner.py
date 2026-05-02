@@ -183,6 +183,9 @@ def _run_single_cycle(
             logger.debug("Skipping %s: entry price %.4f too extreme", asset_key, entry_price)
             continue
 
+        # Get the correct CLOB token ID for this side
+        token_id = market.get(f"{side.lower()}_token_id", "")
+
         # Open the trade
         trade = open_trade(
             asset=asset_key,
@@ -193,6 +196,7 @@ def _run_single_cycle(
             gamma_id=market["gamma_id"],
             event_start=market["event_start"],
             event_end=market["event_end"],
+            token_id=token_id,
         )
 
         if trade:
@@ -367,6 +371,9 @@ def _run_single_cycle_profiled(
         else:
             stake = profile.base_stake
 
+        # Get the correct CLOB token ID for this side
+        token_id = market.get(f"{side.lower()}_token_id", "")
+
         trade = open_trade(
             asset=asset_key,
             side=side,
@@ -377,6 +384,7 @@ def _run_single_cycle_profiled(
             event_start=market["event_start"],
             event_end=market["event_end"],
             stake=stake,
+            token_id=token_id,
         )
 
         if trade:
@@ -469,6 +477,28 @@ def run_scalper(
                 )
 
             if not should_continue:
+                break
+
+            # ── Gain protection check ──────────────────────────
+            from scalper.trader import (
+                check_gain_protection,
+                get_gain_protection_stop,
+                get_session_stats,
+                update_peak_capital,
+            )
+            stats = get_session_stats()
+            current_capital = stats["capital"]
+            starting_capital = stats["starting_capital"]
+
+            peak = update_peak_capital(current_capital)
+            stop_level = get_gain_protection_stop(starting_capital)
+
+            if stop_level:
+                print(f"  🛡️ Peak: ${peak:.2f} | Stop: ${stop_level:.2f} | Current: ${current_capital:.2f}")
+
+            should_stop, reason = check_gain_protection(current_capital, starting_capital)
+            if should_stop:
+                print(f"\n  {reason}\n")
                 break
 
             print(f"\n  💤 Próximo ciclo en {_cfg.HFT_POLL_INTERVAL}s...")

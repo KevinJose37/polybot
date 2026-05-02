@@ -141,6 +141,19 @@ def _extract_market_data(event: dict, asset: str) -> dict | None:
     down_best_bid = round(1.0 - up_best_ask, 4) if up_best_ask > 0 else down_price
     down_best_ask = round(1.0 - up_best_bid, 4) if up_best_bid > 0 else down_price
 
+    # Extract CLOB token IDs for live trading (UP=0, DOWN=1)
+    clob_token_ids_raw = market.get("clobTokenIds", "[]")
+    if isinstance(clob_token_ids_raw, str):
+        try:
+            clob_token_ids = json.loads(clob_token_ids_raw)
+        except json.JSONDecodeError:
+            clob_token_ids = []
+    else:
+        clob_token_ids = clob_token_ids_raw or []
+
+    up_token_id = clob_token_ids[0] if len(clob_token_ids) > 0 else ""
+    down_token_id = clob_token_ids[1] if len(clob_token_ids) > 1 else ""
+
     return {
         "asset": asset,
         "gamma_id": market.get("id", ""),
@@ -156,6 +169,9 @@ def _extract_market_data(event: dict, asset: str) -> dict | None:
         "up_best_ask": up_best_ask,
         "down_best_bid": down_best_bid,
         "down_best_ask": down_best_ask,
+        # CLOB token IDs for live trading
+        "up_token_id": up_token_id,
+        "down_token_id": down_token_id,
         # Legacy (UP side) — kept for backward compat
         "best_bid": up_best_bid,
         "best_ask": up_best_ask,

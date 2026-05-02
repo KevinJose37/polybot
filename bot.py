@@ -179,6 +179,8 @@ def mode_scalp(
     strategy: str = "v1",
     capital_override: float | None = None,
     interval_override: int | None = None,
+    live: bool = False,
+    dry_run: bool = False,
 ):
     """
     Modo scalp: HFT scalper para mercados de 5 minutos.
@@ -216,6 +218,23 @@ def mode_scalp(
     if interval_override:
         import scalper.config as scalper_cfg
         scalper_cfg.HFT_POLL_INTERVAL = interval_override
+
+    # Initialize live trading if requested
+    if live:
+        from scalper.live_client import init_live_client
+        print("\n  🟢 LIVE TRADING MODE")
+        if dry_run:
+            print("  🏷️  Dry-run: orders will be LOGGED but NOT sent")
+        else:
+            print("  ⚠️  REAL ORDERS will be placed on Polymarket!")
+            print("  💰 Make sure your wallet has USDC on Polygon.")
+
+        ok = init_live_client(dry_run=dry_run)
+        if not ok:
+            print("\n  ❌ Cannot start live mode: missing credentials in .env")
+            print("  ℹ️  Required: POLY_PRIVATE_KEY, POLY_API_KEY, POLY_API_SECRET, POLY_API_PASSPHRASE")
+            sys.exit(1)
+        print()
 
     run_scalper(target_assets=target_assets, strategy=strategy)
 
@@ -289,6 +308,18 @@ Ejemplos de uso:
         default=None,
         help="Poll interval in seconds for scalp mode (default: 10)",
     )
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        default=False,
+        help="Enable LIVE trading (sends real orders to Polymarket CLOB)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Log orders without sending them (use with --live for testing)",
+    )
 
     args = parser.parse_args()
 
@@ -305,6 +336,8 @@ Ejemplos de uso:
                 strategy=args.strategy,
                 capital_override=args.capital,
                 interval_override=args.interval,
+                live=args.live,
+                dry_run=args.dry_run,
             )
         except KeyboardInterrupt:
             print("\n\n  ⛔ Interrumpido por el usuario.\n")

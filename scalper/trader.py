@@ -153,6 +153,67 @@ def can_open_trade(trades: list[dict] | None = None) -> tuple[bool, str]:
 
 
 # ═══════════════════════════════════════════════════════════════
+# High Watermark Gain Protection
+# ═══════════════════════════════════════════════════════════════
+
+_peak_capital: float = 0.0
+_gain_protection_pct: float = 0.80  # Protect 80% of gains
+
+
+def update_peak_capital(current_capital: float) -> float:
+    """Update and return the peak capital (high watermark)."""
+    global _peak_capital
+    if current_capital > _peak_capital:
+        _peak_capital = current_capital
+    return _peak_capital
+
+
+def get_gain_protection_stop(starting_capital: float) -> float | None:
+    """
+    Calculate the dynamic stop level based on high watermark.
+
+    Returns None if no meaningful gains to protect yet.
+    Logic: protect 80% of gains above starting capital.
+
+    Example:
+      start=$68.65, peak=$170 → gains=$101.35
+      protected = 80% × $101.35 = $81.08
+      stop_at = $68.65 + $81.08 = $149.73
+    """
+    if _peak_capital <= starting_capital:
+        return None  # No gains to protect yet
+
+    gains = _peak_capital - starting_capital
+    protected_gains = gains * _gain_protection_pct
+    stop_level = starting_capital + protected_gains
+
+    return stop_level
+
+
+def check_gain_protection(current_capital: float, starting_capital: float) -> tuple[bool, str]:
+    """
+    Check if the bot should stop due to gain protection trigger.
+
+    Returns (should_stop, reason).
+    """
+    stop_level = get_gain_protection_stop(starting_capital)
+    if stop_level is None:
+        return False, ""
+
+    if current_capital < stop_level:
+        lost = _peak_capital - current_capital
+        return True, (
+            f"🛡️ GAIN PROTECTION TRIGGERED\n"
+            f"  Peak capital:    ${_peak_capital:.2f}\n"
+            f"  Current capital: ${current_capital:.2f}\n"
+            f"  Drawdown:        -${lost:.2f}\n"
+            f"  Stop level:      ${stop_level:.2f} (protecting 80% of gains)"
+        )
+
+    return False, ""
+
+
+# ═══════════════════════════════════════════════════════════════
 # Trade Operations
 # ═══════════════════════════════════════════════════════════════
 
@@ -167,11 +228,13 @@ def open_trade(
     event_start: datetime,
     event_end: datetime,
     stake: float | None = None,
+    token_id: str = "",
 ) -> dict | None:
     """
-    Open a new paper trade.
+    Open a new trade (paper + optional live).
 
     Simulates buying shares of the UP or DOWN outcome at the current bestAsk.
+    If live mode is active, also sends a real BUY order to the CLOB.
     """
     trades = load_trades()
 
@@ -212,6 +275,7 @@ def open_trade(
         "gamma_id": gamma_id,
         "event_start": event_start.isoformat(),
         "event_end": event_end.isoformat(),
+        "token_id": token_id,
     }
 
     trades.append(trade)
@@ -222,6 +286,21 @@ def open_trade(
         trade["id"], asset, side, entry_price, actual_stake, shares, signal_score,
     )
 
+    # ── Live order (if enabled) ───────────────────────────────
+    if token_id:
+        try:
+            from scalper.live_client import buy_outcome, is_live
+            if is_live():
+                buy_outcome(
+                    token_id=token_id,
+                    price=entry_price,
+                    size=actual_stake,
+                    asset=asset,
+                    side=side,
+                )
+        except Exception as exc:
+            logger.error("Live BUY failed (paper trade still recorded): %s", exc)
+
     return trade
 
 
@@ -231,6 +310,7 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
 
     Simulates selling outcome tokens at the current bestBid.
     P&L = (exit_price - entry_price) × shares
+    If live mode is active, also sends a real SELL order to the CLOB.
     """
     trades = load_trades()
 
@@ -257,6 +337,23 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
             trade["id"], trade["asset"], trade["side"],
             entry_price, exit_price, pnl, reason,
         )
+
+        # ── Live order (if enabled) ───────────────────────
+        token_id = trade.get("token_id", "")
+        if token_id:
+            try:
+                from scalper.live_client import sell_outcome, is_live
+                if is_live():
+                    sell_outcome(
+                        token_id=token_id,
+                        price=exit_price,
+                        size=shares,
+                        asset=trade["asset"],
+                        side=trade["side"],
+                    )
+            except Exception as exc:
+                logger.error("Live SELL failed (paper trade still recorded): %s", exc)
+
         return trade
 
     return None
