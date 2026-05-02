@@ -178,6 +178,7 @@ def mode_scalp(
     stake_override: float | None = None,
     strategy: str = "v1",
     capital_override: float | None = None,
+    interval_override: int | None = None,
 ):
     """
     Modo scalp: HFT scalper para mercados de 5 minutos.
@@ -188,7 +189,7 @@ def mode_scalp(
       v2 — Enhanced technical + trailing stop + Kelly sizing
       v3 — Chainlink delta signal + late entry + confirmation
     """
-    from scalper.config import HFT_ASSETS, HFT_STAKE
+    from scalper.config import HFT_ASSETS
     from scalper.runner import run_scalper
 
     # Filter assets if specified
@@ -210,6 +211,11 @@ def mode_scalp(
     if capital_override:
         import scalper.config as scalper_cfg
         scalper_cfg.HFT_CAPITAL = capital_override
+
+    # Override poll interval if specified
+    if interval_override:
+        import scalper.config as scalper_cfg
+        scalper_cfg.HFT_POLL_INTERVAL = interval_override
 
     run_scalper(target_assets=target_assets, strategy=strategy)
 
@@ -277,6 +283,12 @@ Ejemplos de uso:
         default="v1",
         help="Strategy version for scalp mode: v1=original, v2=enhanced, v3=chainlink (default: v1)",
     )
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=None,
+        help="Poll interval in seconds for scalp mode (default: 10)",
+    )
 
     args = parser.parse_args()
 
@@ -292,6 +304,7 @@ Ejemplos de uso:
                 stake_override=args.stake,
                 strategy=args.strategy,
                 capital_override=args.capital,
+                interval_override=args.interval,
             )
         except KeyboardInterrupt:
             print("\n\n  ⛔ Interrumpido por el usuario.\n")

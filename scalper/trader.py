@@ -186,7 +186,7 @@ def open_trade(
             logger.debug("Already have position in %s", market_slug)
             return None
 
-    actual_stake = stake or HFT_STAKE
+    actual_stake = stake or _cfg.HFT_STAKE
 
     # Calculate shares (how many outcome tokens we buy)
     if entry_price <= 0 or entry_price >= 1:

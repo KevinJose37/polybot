@@ -16,7 +16,7 @@ HFT_MAX_CONCURRENT = int(os.getenv("HFT_MAX_CONCURRENT", "4"))  # Max positions
 HFT_SIGNAL_THRESHOLD = float(os.getenv("HFT_SIGNAL_THRESHOLD", "0.40"))
 
 # ── Timing (seconds) ──────────────────────────────────────────
-HFT_POLL_INTERVAL = int(os.getenv("HFT_POLL_INTERVAL", "30"))
+HFT_POLL_INTERVAL = int(os.getenv("HFT_POLL_INTERVAL", "10"))
 HFT_ENTRY_WINDOW_MIN = 60      # Enter at least 60s before eventStartTime
 HFT_ENTRY_WINDOW_MAX = 180     # Enter at most 180s before eventStartTime
 

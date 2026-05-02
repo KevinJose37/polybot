@@ -22,11 +22,10 @@ if sys.stdout.encoding != "utf-8":
 if sys.stderr.encoding != "utf-8":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
+import scalper.config as _cfg
 from scalper.config import (
     HFT_ASSETS,
-    HFT_POLL_INTERVAL,
     HFT_SIGNAL_THRESHOLD,
-    HFT_STAKE,
 )
 from scalper.display import (
     print_cycle_separator,
@@ -436,8 +435,11 @@ def run_scalper(
     print(f"  ⏰ Started: {now_str}")
     print(f"  🏷️  Strategy: {profile.label}")
     print(f"  🎯 Signal Threshold: {profile.signal_threshold}")
-    print(f"  💵 Base Stake: ${profile.base_stake:.2f} ({profile.sizing} sizing)")
-    print(f"  🔄 Poll interval: {HFT_POLL_INTERVAL}s")
+    # Sync profile base_stake with any CLI override
+    import scalper.config as _cfg
+    profile.base_stake = _cfg.HFT_STAKE
+    print(f"  💵 Base Stake: ${_cfg.HFT_STAKE:.2f} ({profile.sizing} sizing)")
+    print(f"  🔄 Poll interval: {_cfg.HFT_POLL_INTERVAL}s")
     print(f"  📁 Trades file: {profile.trades_file}")
 
     if profile.trailing_stop:
@@ -469,8 +471,8 @@ def run_scalper(
             if not should_continue:
                 break
 
-            print(f"\n  💤 Próximo ciclo en {HFT_POLL_INTERVAL}s...")
-            time.sleep(HFT_POLL_INTERVAL)
+            print(f"\n  💤 Próximo ciclo en {_cfg.HFT_POLL_INTERVAL}s...")
+            time.sleep(_cfg.HFT_POLL_INTERVAL)
 
     except KeyboardInterrupt:
         print("\n\n  ⛔ Bot detenido por el usuario.\n")
