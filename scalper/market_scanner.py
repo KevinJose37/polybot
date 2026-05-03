@@ -195,9 +195,11 @@ def scan_active_markets(
     Scan all configured assets and find the best active/upcoming
     5-minute market for each.
 
-    Strategy: Calculate expected slug for current + next few 5-minute
-    slots and query directly. This avoids searching through thousands
-    of open events.
+    Hybrid strategy:
+    1. REST discovery: find active markets by slug (needed for metadata)
+    2. WS subscription: subscribe token_ids for real-time price updates
+    3. WS price overlay: on subsequent calls, use WS prices instead of
+       stale REST outcomePrices (eliminates ~24 API calls per cycle)
 
     Returns dict keyed by asset symbol with market data.
     """
@@ -205,6 +207,9 @@ def scan_active_markets(
     now = datetime.now(timezone.utc)
     slots = _compute_5m_slots(now, count=6)
     results = {}
+
+    # Collect token_ids for WS subscription
+    ws_token_ids = []
 
     for asset_key, asset_cfg in target_assets.items():
         best_market = None
@@ -247,12 +252,53 @@ def scan_active_markets(
                 best_market["is_in_progress"] = is_in_progress
 
         if best_market:
+            # Collect token IDs for WS subscription
+            up_tid = best_market.get("up_token_id", "")
+            dn_tid = best_market.get("down_token_id", "")
+            if up_tid:
+                ws_token_ids.append(up_tid)
+            if dn_tid:
+                ws_token_ids.append(dn_tid)
+
+            # Overlay WS prices if available (fresher than REST)
+            try:
+                from scalper.orderbook_ws import get_price, is_running as ws_running
+                if ws_running() and up_tid and dn_tid:
+                    ws_up = get_price(up_tid)
+                    ws_dn = get_price(dn_tid)
+                    if ws_up is not None:
+                        best_market["up_price"] = ws_up
+                        best_market["down_price"] = 1.0 - ws_up
+                        best_market["_price_source"] = "ws"
+                    elif ws_dn is not None:
+                        best_market["down_price"] = ws_dn
+                        best_market["up_price"] = 1.0 - ws_dn
+                        best_market["_price_source"] = "ws"
+                    if ws_up is not None and ws_dn is not None:
+                        best_market["up_price"] = ws_up
+                        best_market["down_price"] = ws_dn
+                        best_market["_price_source"] = "ws"
+            except ImportError:
+                pass
+
             results[asset_key] = best_market
+            source = best_market.get("_price_source", "rest")
             state = "IN PROGRESS" if best_market["is_in_progress"] else f"in {best_market['time_to_start_sec']:.0f}s"
             logger.debug(
-                "Found market for %s: %s (%s)",
-                asset_key, best_market["slug"], state,
+                "Found market for %s: %s (%s) [prices: %s]",
+                asset_key, best_market["slug"], state, source,
             )
+
+    # Subscribe all discovered tokens to WS (idempotent)
+    if ws_token_ids:
+        try:
+            from scalper.orderbook_ws import start as ws_start, subscribe as ws_subscribe, is_running as ws_running
+            if not ws_running():
+                ws_start(ws_token_ids)
+            else:
+                ws_subscribe(ws_token_ids)
+        except ImportError:
+            pass
 
     return results
 

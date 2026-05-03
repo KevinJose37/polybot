@@ -21,6 +21,12 @@ logger = logging.getLogger("polybot.scalper.live_client")
 # Polymarket minimum order size for BUY market orders
 MIN_ORDER_AMOUNT = 1.0
 
+# Sell 99% of shares to work around CLOB server-side balance cache bug.
+# After a status=matched buy, the CLOB's cached balance is slightly stale,
+# causing 100% sells to fail with "not enough balance/allowance".
+# The ~1% dust auto-settles at market resolution.
+_SELL_SIZE_FACTOR = 0.99
+
 
 def _retry_call(fn, *args, retries=3, delay=2.0, **kwargs):
     """Retry a CLOB API call on 401 (rate limit masquerading as auth error)."""
@@ -58,6 +64,8 @@ def init_live_client(dry_run: bool = False) -> bool:
     api_secret = os.getenv("POLY_API_SECRET", "")
     api_passphrase = os.getenv("POLY_API_PASSPHRASE", "")
     funder = os.getenv("POLY_FUNDER_ADDRESS", "")
+    # 0=EOA direct, 1=proxy (email/magic), 2=proxy (browser wallet/MetaMask)
+    sig_type = int(os.getenv("POLY_SIGNATURE_TYPE", "2"))
 
     if not all([private_key, api_key, api_secret, api_passphrase]):
         logger.error("Missing Polymarket credentials in .env")
@@ -82,8 +90,11 @@ def init_live_client(dry_run: bool = False) -> bool:
 
         if funder:
             client_kwargs["funder"] = funder
-            client_kwargs["signature_type"] = 1
-            logger.info("Using proxy wallet with funder: %s", funder[:10])
+            client_kwargs["signature_type"] = sig_type
+            logger.info(
+                "Using proxy wallet (sig_type=%d) with funder: %s",
+                sig_type, funder[:10],
+            )
 
         _client = ClobClient(**client_kwargs)
 
@@ -91,8 +102,8 @@ def init_live_client(dry_run: bool = False) -> bool:
         _client.use_server_time = True
 
         mode_str = "DRY-RUN" if dry_run else "LIVE"
-        logger.info("CLOB V2 client initialized in %s mode (server-time sync)", mode_str)
-        print(f"  [CLOB V2] Client initialized: {mode_str} mode (server-time sync)")
+        logger.info("CLOB V2 client initialized in %s mode (sig_type=%d, server-time sync)", mode_str, sig_type)
+        print(f"  [CLOB V2] Client initialized: {mode_str} mode (sig_type={sig_type})")
         return True
 
     except Exception as exc:
@@ -166,7 +177,7 @@ def buy_outcome(
             token_id=token_id,
             amount=order_amount,
             side=BUY,
-            order_type=OrderType.FOK,
+            order_type=OrderType.FAK,
         )
 
         logger.info("Sending MARKET BUY: %s | $%.2f", label, order_amount)
@@ -174,7 +185,7 @@ def buy_outcome(
 
         # NOTE: Do NOT retry post_order — a 401 may mask a successful fill.
         try:
-            resp = _client.post_order(signed, OrderType.FOK)
+            resp = _client.post_order(signed, OrderType.FAK)
             err = resp.get("error_message") if isinstance(resp, dict) else None
             if err:
                 logger.warning("BUY order API returned error: %s", err)
@@ -183,30 +194,57 @@ def buy_outcome(
             resp = None
 
         # ── Verify on-chain: shares received + USDC spent ──────────
-        time.sleep(2.0)
-        actual_shares = _retry_call(get_token_balance, token_id)
+        # Retry verification — blockchain can take 3-8 seconds to reflect
+        for verify_attempt in range(3):
+            wait_time = 4.0 if verify_attempt == 0 else 3.0
+            time.sleep(wait_time)
+            actual_shares = _retry_call(get_token_balance, token_id)
+            usdc_after = _retry_call(get_balance) or 0.0
+
+            if actual_shares is not None and actual_shares > 0:
+                actual_cost = round(usdc_before - usdc_after, 2)
+                actual_entry_price = round(actual_cost / actual_shares, 4) if actual_shares > 0 else price
+
+                logger.info(
+                    "Verified BUY on-chain: %.4f shares | Cost $%.2f | Avg price $%.4f",
+                    actual_shares, actual_cost, actual_entry_price,
+                )
+                print(f"  [LIVE BUY] {label} | {actual_shares:.2f} shares @ ${actual_entry_price:.4f} (cost ${actual_cost:.2f})")
+                return {
+                    "success": True,
+                    "shares": actual_shares,
+                    "actual_cost": actual_cost,
+                    "actual_entry_price": actual_entry_price,
+                    "token_id": token_id,
+                    "resp": resp,
+                }
+
+            logger.info("BUY verify attempt %d: no shares yet, retrying...", verify_attempt + 1)
+
+        # Final check: also verify USDC decreased (order might have filled
+        # but token balance API is slow)
         usdc_after = _retry_call(get_balance) or 0.0
-
-        if actual_shares is not None and actual_shares > 0:
-            actual_cost = round(usdc_before - usdc_after, 2)
-            actual_entry_price = round(actual_cost / actual_shares, 4) if actual_shares > 0 else price
-
-            logger.info(
-                "Verified BUY on-chain: %.4f shares | Cost $%.2f | Avg price $%.4f",
-                actual_shares, actual_cost, actual_entry_price,
+        usdc_spent = round(usdc_before - usdc_after, 2)
+        if usdc_spent >= size * 0.5:
+            # USDC decreased significantly — order likely filled but token balance lagging
+            logger.warning(
+                "BUY for %s: USDC spent $%.2f but no token balance yet. "
+                "Assuming fill to avoid orphaned position.", label, usdc_spent,
             )
-            print(f"  [LIVE BUY] {label} | {actual_shares:.2f} shares @ ${actual_entry_price:.4f} (cost ${actual_cost:.2f})")
+            estimated_shares = round(usdc_spent / price, 4)
+            print(f"  [LIVE BUY] {label} | ~{estimated_shares:.2f} shares (USDC-verified, cost ${usdc_spent:.2f})")
             return {
                 "success": True,
-                "shares": actual_shares,
-                "actual_cost": actual_cost,
-                "actual_entry_price": actual_entry_price,
+                "shares": estimated_shares,
+                "actual_cost": usdc_spent,
+                "actual_entry_price": price,
                 "token_id": token_id,
                 "resp": resp,
+                "usdc_verified": True,
             }
 
         logger.error("BUY order failed and no on-chain balance found for %s", label)
-        print(f"  [BUY FAILED] {label} | No fill detected")
+        print(f"  [BUY FAILED] {label} | No fill detected after 3 attempts")
         return None
 
     except Exception as exc:
@@ -248,57 +286,132 @@ def sell_outcome(
         from py_clob_client_v2.clob_types import MarketOrderArgs, OrderType
         from py_clob_client_v2.order_builder.builder import SELL
 
-        logger.info("Sending MARKET SELL: %s | %.2f shares @ ~$%.4f", label, size, price)
-
-        # ── Snapshot USDC balance BEFORE sell ───────────────────────
+        # ── Pre-sell diagnostics ─────────────────────────────────
         usdc_before = _retry_call(get_balance) or 0.0
+        actual_shares = _retry_call(get_token_balance, token_id)
 
-        # ── Sell Retry Loop & Fill Verification ─────────────────────
+        print(f"\n  ┌─ SELL DIAGNOSTICS: {label} ─────────────────────")
+        print(f"  │ Token:       {token_id[:24]}...")
+        print(f"  │ On-chain:    {actual_shares:.4f} shares" if actual_shares else "  │ On-chain:    UNKNOWN")
+        print(f"  │ Bot expects: {size:.4f} shares")
+        print(f"  │ USDC before: ${usdc_before:.2f}")
+        print(f"  │ Ask price:   ${price:.4f}")
+
+        # Check conditional token allowance
+        try:
+            from py_clob_client_v2.clob_types import BalanceAllowanceParams, AssetType
+            bal_allow = _client.get_balance_allowance(
+                BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL, token_id=token_id)
+            )
+            cond_balance = float(bal_allow.get("balance", 0)) / 1e6  # USDC has 6 decimals
+            print(f"  │ CLOB cond balance: {cond_balance:.4f}")
+            logger.info("SELL DIAG: CLOB conditional balance=%s allowances=%s",
+                        bal_allow.get("balance"), bal_allow.get("allowances"))
+        except Exception as diag_exc:
+            print(f"  │ CLOB cond balance: ERROR ({diag_exc})")
+
+        print(f"  └──────────────────────────────────────────────────")
+
+        if actual_shares is not None and actual_shares < 0.01:
+            logger.info("Shares already gone (balance: %.6f).", actual_shares)
+            usdc_after = _retry_call(get_balance) or 0.0
+            actual_proceeds = round(usdc_after - usdc_before, 2)
+            print(f"  [LIVE SELL] {label} | Already resolved (Δ ${actual_proceeds:.2f})")
+            return {
+                "success": True,
+                "remaining_shares": actual_shares,
+                "actual_proceeds": actual_proceeds,
+                "token_id": token_id,
+            }
+
+        # ── Sell Retry Loop ──────────────────────────────────────
+        shares_to_sell = (actual_shares if actual_shares is not None else size) * _SELL_SIZE_FACTOR
+        original_shares = actual_shares if actual_shares is not None else size
+
         for attempt in range(1, 4):
-            # Check actual on-chain balance before each attempt
-            actual_shares = _retry_call(get_token_balance, token_id)
-            if actual_shares is not None and actual_shares < 0.01:
-                logger.info("Shares already sold (balance: %.6f).", actual_shares)
-                usdc_after = _retry_call(get_balance) or 0.0
-                actual_proceeds = round(usdc_after - usdc_before, 2)
-                print(f"  [LIVE SELL] {label} | Sold (proceeds ${actual_proceeds:.2f})")
-                return {
-                    "success": True,
-                    "remaining_shares": actual_shares,
-                    "actual_proceeds": actual_proceeds,
-                    "token_id": token_id,
-                }
+            # Re-check balance before each retry (shares may have changed)
+            if attempt > 1:
+                current_bal = _retry_call(get_token_balance, token_id)
+                if current_bal is not None:
+                    if current_bal < 0.1:
+                        # Dust remaining — treat as success
+                        usdc_after = _retry_call(get_balance) or 0.0
+                        actual_proceeds = round(usdc_after - usdc_before, 2)
+                        sold_pct = (1 - current_bal / original_shares) * 100 if original_shares > 0 else 100
+                        print(f"  [LIVE SELL] {label} | ✅ Sold {sold_pct:.0f}% (dust {current_bal:.4f} remaining, proceeds ${actual_proceeds:.2f})")
+                        return {
+                            "success": True,
+                            "remaining_shares": current_bal,
+                            "actual_proceeds": actual_proceeds,
+                            "token_id": token_id,
+                        }
+                    # Recalculate sell amount from actual remaining balance
+                    shares_to_sell = current_bal * _SELL_SIZE_FACTOR
 
-            # Use actual balance for sell amount (no $1 minimum — that's BUY-only)
-            shares_to_sell = actual_shares if actual_shares is not None else size
-            sell_amount = shares_to_sell * price
+            logger.info(
+                "SELL attempt %d: %.4f shares (FAK, token=%s)",
+                attempt, shares_to_sell, token_id[:20],
+            )
 
             market_order = MarketOrderArgs(
                 token_id=token_id,
-                amount=sell_amount,
+                amount=shares_to_sell,
                 side=SELL,
-                order_type=OrderType.FOK,
+                order_type=OrderType.FAK,
             )
 
             try:
                 signed = _client.create_market_order(market_order)
-                resp = _client.post_order(signed, OrderType.FOK)
-                err = resp.get("error_message") if isinstance(resp, dict) else None
-                if err:
-                    logger.warning("SELL attempt %d API error: %s", attempt, err)
+                resp = _client.post_order(signed, OrderType.FAK)
+
+                # Log full response for diagnostics
+                logger.info("SELL attempt %d response: %s", attempt, resp)
+
+                if isinstance(resp, dict):
+                    status = resp.get("status", "unknown")
+                    err = resp.get("error_message") or resp.get("errorMsg")
+                    order_id = resp.get("orderID") or resp.get("id", "?")
+
+                    print(f"  [SELL #{attempt}] status={status} | order={str(order_id)[:12]}")
+
+                    if err:
+                        err_lower = str(err).lower()
+                        if "not enough balance" in err_lower:
+                            print(f"  [SELL #{attempt}] ⚠️ BALANCE/ALLOWANCE issue")
+                            logger.warning("SELL %d: balance error: %s", attempt, err)
+                        elif "no match" in err_lower or "not filled" in err_lower:
+                            print(f"  [SELL #{attempt}] ⚠️ NO LIQUIDITY on book")
+                            logger.warning("SELL %d: no liquidity: %s", attempt, err)
+                        else:
+                            print(f"  [SELL #{attempt}] ⚠️ Error: {err}")
+                            logger.warning("SELL %d: API error: %s", attempt, err)
+                    elif status == "matched":
+                        print(f"  [SELL #{attempt}] ✅ Order matched!")
+                else:
+                    logger.info("SELL attempt %d non-dict response: %s", attempt, type(resp))
+
             except Exception as api_exc:
-                logger.warning("SELL attempt %d POST exception: %s", attempt, api_exc)
+                err_str = str(api_exc).lower()
+                if "no match" in err_str or "not filled" in err_str:
+                    print(f"  [SELL #{attempt}] ⚠️ NO LIQUIDITY: {api_exc}")
+                elif "not enough balance" in err_str:
+                    print(f"  [SELL #{attempt}] ⚠️ BALANCE ERROR: {api_exc}")
+                else:
+                    print(f"  [SELL #{attempt}] ❌ Exception: {api_exc}")
+                logger.warning("SELL attempt %d exception: %s", attempt, api_exc)
 
             # Wait for blockchain sync then verify
-            time.sleep(2.0)
+            time.sleep(3.0)
 
             current_shares = _retry_call(get_token_balance, token_id)
             if current_shares is not None:
-                if current_shares < 0.01:
+                if current_shares < 0.1:
+                    # Sold (or dust remaining) — SUCCESS
                     usdc_after = _retry_call(get_balance) or 0.0
                     actual_proceeds = round(usdc_after - usdc_before, 2)
-                    logger.info("Verified SELL on-chain. Proceeds: $%.2f", actual_proceeds)
-                    print(f"  [LIVE SELL] {label} | Sold (proceeds ${actual_proceeds:.2f})")
+                    sold_pct = (1 - current_shares / original_shares) * 100 if original_shares > 0 else 100
+                    logger.info("Verified SELL on-chain. %.0f%% sold, proceeds: $%.2f", sold_pct, actual_proceeds)
+                    print(f"  [LIVE SELL] {label} | ✅ Sold {sold_pct:.0f}% (proceeds ${actual_proceeds:.2f})")
                     return {
                         "success": True,
                         "remaining_shares": current_shares,
@@ -306,15 +419,16 @@ def sell_outcome(
                         "token_id": token_id,
                     }
                 elif current_shares < shares_to_sell:
-                    logger.info("Partial fill detected: %.4f -> %.4f", shares_to_sell, current_shares)
+                    sold_pct = (1 - current_shares / original_shares) * 100
+                    print(f"  [SELL #{attempt}] Partial fill: {sold_pct:.0f}% sold ({current_shares:.4f} remaining)")
+                    logger.info("Partial fill: %.4f -> %.4f (%.0f%%)", shares_to_sell, current_shares, sold_pct)
                 else:
-                    logger.warning("SELL attempt %d failed to fill (shares unchanged).", attempt)
+                    print(f"  [SELL #{attempt}] ❌ No fill (shares unchanged: {current_shares:.4f})")
 
-            logger.info("Retrying SELL in 2s...")
             time.sleep(2.0)
 
-        logger.error("SELL completely failed for %s after 3 attempts.", label)
-        print(f"  [SELL FAILED] {label} | Could not fill")
+        print(f"  [SELL FAILED] {label} | 3 attempts failed → waiting for market resolution")
+        logger.error("SELL failed for %s after 3 attempts. Will resolve automatically.", label)
         return None
 
     except Exception as exc:

@@ -40,10 +40,18 @@ class StrategyProfile:
     base_stake: float = 10.0
     max_position_pct: float = 0.05  # max 5% of capital per trade
 
+    # ── Position limits ────────────────────────────────────────
+    max_open_positions: int = 4      # max simultaneous positions
+    best_signal_only: bool = False   # only enter on strongest signal per cycle
+
     # ── Chainlink-specific (v3) ────────────────────────────────
     chainlink_delta_threshold: float = 0.05  # % delta to trigger signal
     chainlink_confirm_readings: int = 3       # sustained readings needed
     use_technical_confirmation: bool = False   # require tech signal alignment
+
+    # ── Polymarket price filter (v4) ──────────────────────────
+    poly_price_filter: bool = False    # reject entry if market already priced in
+    poly_price_cap: float = 0.62       # max poly price in your direction to enter
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -100,6 +108,62 @@ PROFILES: dict[str, StrategyProfile] = {
         chainlink_delta_threshold=0.012,
         chainlink_confirm_readings=3,
         use_technical_confirmation=False,
+    ),
+
+    # ── Optimized variants (position limits + best signal) ────
+    "v1opt": StrategyProfile(
+        name="v1opt",
+        label="V1-OPT — Technical Scalper (Best Signal + Max 2 Pos)",
+        trades_file="hft_trades_v1opt.json",
+        signal_source="technical",
+        signal_threshold=0.40,
+        entry_mode="anytime",
+        take_profit=0.15,
+        stop_loss=0.30,
+        signal_reversal=0.60,
+        trailing_stop=False,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=2,
+        best_signal_only=True,
+    ),
+    "v2opt": StrategyProfile(
+        name="v2opt",
+        label="V2-OPT — Enhanced Technical (Best Signal + Max 2 Pos)",
+        trades_file="hft_trades_v2opt.json",
+        signal_source="technical_v2",
+        signal_threshold=0.40,
+        entry_mode="anytime",
+        take_profit=0.35,
+        stop_loss=0.30,
+        signal_reversal=0.60,
+        trailing_stop=True,
+        trailing_trigger=0.20,
+        sizing="kelly",
+        base_stake=10.0,
+        max_open_positions=2,
+        best_signal_only=True,
+    ),
+
+    # ── V4: Real-time ticks + Polymarket signal ───────────────
+    "v4": StrategyProfile(
+        name="v4",
+        label="V4 — Real-Time Ticks + Polymarket Signal",
+        trades_file="hft_trades_v4.json",
+        signal_source="ticks_v4",
+        signal_threshold=0.35,
+        entry_mode="anytime",
+        take_profit=0.20,
+        stop_loss=0.30,
+        signal_reversal=0.60,
+        trailing_stop=True,
+        trailing_trigger=0.15,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=2,
+        best_signal_only=True,
+        poly_price_filter=True,
+        poly_price_cap=0.62,
     ),
 }
 

@@ -138,6 +138,11 @@ def _run_single_cycle(
     for asset_key, sig in signals.items():
         signal_scores[asset_key] = sig.score
 
+    from scalper.trader import sync_trade_history
+    sync_actions = sync_trade_history()
+    for action in sync_actions:
+        print_trade_action(action["type"], action["trade"])
+
     actions = check_open_positions(signal_scores)
     for action in actions:
         print_trade_action(action["type"], action["trade"])
@@ -232,9 +237,10 @@ def _run_single_cycle_profiled(
     target_assets: dict,
     profile,
     chainlink_monitor=None,
+    tick_manager=None,
 ) -> bool:
     """
-    Execute a single polling cycle with strategy profile (V2/V3).
+    Execute a single polling cycle with strategy profile (V2/V3/V4).
 
     Routes signal computation, entry window, sizing, and exit logic
     based on the active StrategyProfile.
@@ -297,6 +303,24 @@ def _run_single_cycle_profiled(
                         f"| score={sig_score} dir={sig_dir} "
                         f"| sustained={delta_info['sustained']} readings={delta_info['readings_count']}"
                     )
+        elif profile.signal_source == "ticks_v4" and tick_manager:
+            from scalper.signals_v4 import compute_all_signals_v4
+
+            # Log warmup status
+            warmup = tick_manager.get_warmup_status()
+            any_cold = False
+            for a, st in warmup.items():
+                if not st["warm"]:
+                    any_cold = True
+                    print(f"  [V4-WARMUP] {a}: {st['ticks']}/{st['needed']} ticks (fallback to klines)")
+            if not any_cold and cycle_num <= 3:
+                print("  [V4] All WebSocket streams warm - OK")
+
+            signals = compute_all_signals_v4(
+                tick_manager=tick_manager,
+                assets=assets,
+                markets=markets,
+            )
         else:
             signals = compute_all_signals(assets)
     except Exception as exc:
@@ -315,24 +339,60 @@ def _run_single_cycle_profiled(
         return False
 
     # ── 4. MONITOR with profile ──────────────────────────────
+    from scalper.trader import sync_trade_history
+    sync_actions = sync_trade_history()
+    for action in sync_actions:
+        print_trade_action(action["type"], action["trade"])
+
+    # Ensure open position tokens are tracked by WS (scanner handles market tokens)
+    open_trades = [t for t in trades if t.get("status") == "open"]
+    if open_trades:
+        try:
+            from scalper.orderbook_ws import subscribe as ws_subscribe
+            token_ids = [t.get("token_id", "") for t in open_trades if t.get("token_id")]
+            if token_ids:
+                ws_subscribe(token_ids)
+        except Exception:
+            pass
+
     signal_scores = {k: s.score for k, s in signals.items()}
-    actions = check_open_positions_profiled(signal_scores, profile=profile)
+    actions = check_open_positions_profiled(signal_scores, profile=profile, markets_data=markets)
     for action in actions:
         print_trade_action(action["type"], action["trade"])
 
     # ── 5. ENTRY with profile rules ──────────────────────────
     entries_made = 0
 
+    # Position limit: how many more can we open?
+    current_open = len([t for t in trades if t["status"] == "open"])
+    slots_available = profile.max_open_positions - current_open
+
+    if slots_available <= 0:
+        print(f"  📊 Max positions reached ({profile.max_open_positions}). No new entries.")
+
+    # Build candidate list (assets that pass threshold)
+    candidates = []
     for asset_key in assets:
         if asset_key not in markets or asset_key not in signals:
             continue
+        signal = signals[asset_key]
+        if abs(signal.score) >= profile.signal_threshold:
+            candidates.append((asset_key, signal))
+
+    # Best signal only: sort by strength and limit to available slots
+    if profile.best_signal_only and len(candidates) > 1:
+        candidates.sort(key=lambda x: abs(x[1].score), reverse=True)
+        if len(candidates) > slots_available:
+            skipped = [c[0] for c in candidates[slots_available:]]
+            candidates = candidates[:max(slots_available, 0)]
+            if skipped:
+                print(f"  🎯 Best-signal filter: skipping {', '.join(skipped)}")
+
+    for asset_key, signal in candidates:
+        if entries_made >= slots_available:
+            break
 
         market = markets[asset_key]
-        signal = signals[asset_key]
-
-        # Signal threshold
-        if abs(signal.score) < profile.signal_threshold:
-            continue
 
         # Entry window: v3 "late" mode only enters in specified window
         if profile.entry_mode == "late":
@@ -358,6 +418,16 @@ def _run_single_cycle_profiled(
         side = signal.direction
         if side == "NEUTRAL":
             continue
+
+        # Polymarket price filter (Form A): skip if market already priced in
+        if profile.poly_price_filter:
+            directional_price = market.get("up_price", 0.5) if side == "UP" else market.get("down_price", 0.5)
+            if directional_price > profile.poly_price_cap:
+                print(
+                    f"  [POLY-FILTER] {asset_key} {side}: "
+                    f"price ${directional_price:.2f} > cap ${profile.poly_price_cap:.2f} -> SKIP"
+                )
+                continue
 
         # Entry price
         if side == "UP":
@@ -456,6 +526,13 @@ def run_scalper(
         from scalper.chainlink_delta import ChainlinkDeltaMonitor
         chainlink_monitor = ChainlinkDeltaMonitor()
 
+    # Initialize WebSocket tick manager for V4
+    tick_manager = None
+    if profile.signal_source == "ticks_v4":
+        from scalper.binance_ws import BinanceTickManager
+        tick_manager = BinanceTickManager()
+        tick_manager.start()
+
     print_scalper_banner()
 
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -472,6 +549,13 @@ def run_scalper(
     if profile.trailing_stop:
         print(f"  📈 Trailing stop: ON (trigger at +{profile.trailing_trigger:.0%})")
     print(f"  🎯 TP: {profile.take_profit:.0%} | SL: {profile.stop_loss:.0%}")
+
+    if profile.max_open_positions < 4:
+        print(f"  📊 Max positions: {profile.max_open_positions}")
+    if profile.best_signal_only:
+        print(f"  🎯 Best signal only: ON")
+    if profile.poly_price_filter:
+        print(f"  💲 Poly price cap: {profile.poly_price_cap:.2f}")
 
     assets_str = ", ".join((target_assets or HFT_ASSETS).keys())
     print(f"  📊 Assets: {assets_str}")
@@ -492,7 +576,7 @@ def run_scalper(
             else:
                 should_continue = _run_single_cycle_profiled(
                     cycle, target_assets or HFT_ASSETS,
-                    profile, chainlink_monitor,
+                    profile, chainlink_monitor, tick_manager,
                 )
 
             if not should_continue:
@@ -519,6 +603,9 @@ def run_scalper(
 
     except KeyboardInterrupt:
         print("\n\n  ⛔ Bot detenido por el usuario.\n")
+    finally:
+        if tick_manager:
+            tick_manager.stop()
 
     # Final report
     print(f"\n{'═' * 80}")

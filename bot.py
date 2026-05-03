@@ -181,6 +181,8 @@ def mode_scalp(
     interval_override: int | None = None,
     tp_override: float | None = None,
     sl_override: float | None = None,
+    poly_cap_override: float | None = None,
+    no_protection: bool = False,
     live: bool = False,
     dry_run: bool = False,
 ):
@@ -192,6 +194,7 @@ def mode_scalp(
       v1 — Original technical scalper (EMA+RSI+MOM+VOL+VWAP)
       v2 — Enhanced technical + trailing stop + Kelly sizing
       v3 — Chainlink delta signal + late entry + confirmation
+      v4 — Real-time WebSocket ticks + Polymarket price signal
     """
     from scalper.config import HFT_ASSETS
     from scalper.runner import run_scalper
@@ -239,7 +242,7 @@ def mode_scalp(
         print()
 
     # Override TP/SL on the strategy profile if specified
-    if tp_override is not None or sl_override is not None:
+    if tp_override is not None or sl_override is not None or poly_cap_override is not None:
         from scalper.strategy_profiles import get_profile
         profile = get_profile(strategy)
         if tp_override is not None:
@@ -248,6 +251,15 @@ def mode_scalp(
         if sl_override is not None:
             profile.stop_loss = sl_override / 100.0
             print(f"  📉 Stop Loss override: {sl_override:.0f}%")
+        if poly_cap_override is not None:
+            profile.poly_price_cap = poly_cap_override
+            print(f"  💲 Poly price cap override: {poly_cap_override:.2f}")
+
+    # Disable gain protection if requested (for overnight data collection)
+    if no_protection:
+        from scalper.trader import set_gain_protection_enabled
+        set_gain_protection_enabled(False)
+        print("  🛡️  Gain protection: DISABLED")
 
     run_scalper(target_assets=target_assets, strategy=strategy)
 
@@ -311,9 +323,9 @@ Ejemplos de uso:
     )
     parser.add_argument(
         "--strategy",
-        choices=["v1", "v2", "v3"],
+        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4"],
         default="v1",
-        help="Strategy version for scalp mode: v1=original, v2=enhanced, v3=chainlink (default: v1)",
+        help="Strategy: v1, v2, v3, v1opt, v2opt, v4 (ticks+polymarket)",
     )
     parser.add_argument(
         "--interval",
@@ -345,6 +357,18 @@ Ejemplos de uso:
         default=None,
         help="Stop loss %% override (e.g. --sl 50 for 50%%)",
     )
+    parser.add_argument(
+        "--no-protection",
+        action="store_true",
+        default=False,
+        help="Disable gain protection (for overnight data collection runs)",
+    )
+    parser.add_argument(
+        "--poly-cap",
+        type=float,
+        default=None,
+        help="Polymarket price cap for entry filter (e.g. --poly-cap 0.62)",
+    )
 
     args = parser.parse_args()
 
@@ -363,6 +387,8 @@ Ejemplos de uso:
                 interval_override=args.interval,
                 tp_override=args.tp,
                 sl_override=args.sl,
+                poly_cap_override=args.poly_cap,
+                no_protection=args.no_protection,
                 live=args.live,
                 dry_run=args.dry_run,
             )

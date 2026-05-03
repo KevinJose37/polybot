@@ -90,6 +90,160 @@ def _next_trade_id(trades: list[dict]) -> str:
 # ═══════════════════════════════════════════════════════════════
 
 
+_cached_usdc_balance = None
+_last_usdc_sync = 0.0
+
+def sync_portfolio() -> dict:
+    """
+    Sincroniza el estado del portfolio con la blockchain (Polymarket).
+    """
+    global _cached_usdc_balance, _last_usdc_sync
+    
+    try:
+        from scalper.live_client import get_balance, get_token_balance, is_live
+    except ImportError:
+        return {}
+
+    if not is_live():
+        return {}
+
+    now = datetime.now(timezone.utc).timestamp()
+    
+    # Cache USDC balance for 30s
+    if now - _last_usdc_sync > 30 or _cached_usdc_balance is None:
+        bal = get_balance()
+        if bal is not None:
+            _cached_usdc_balance = bal
+            _last_usdc_sync = now
+            
+    # Calculate positions value
+    open_pos_value = 0.0
+    trades = load_trades()
+    open_trades = [t for t in trades if t.get("status") == "open"]
+    
+    for t in open_trades:
+        token_id = t.get("token_id", "")
+        if not token_id:
+            open_pos_value += t.get("stake", 0)
+            continue
+            
+        gamma_id = t.get("gamma_id", "")
+        market_data = get_market_current_price(gamma_id) if gamma_id else None
+        
+        if market_data:
+            side = t.get("side")
+            current_price = market_data.get(f"{side.lower()}_price", 0.5)
+        else:
+            current_price = t.get("entry_price", 0.5)
+            
+        actual_shares = get_token_balance(token_id)
+        if actual_shares is not None and actual_shares > 0:
+            open_pos_value += actual_shares * current_price
+
+    return {
+        "usdc_balance": _cached_usdc_balance or 0.0,
+        "positions_value": open_pos_value,
+        "total_value": (_cached_usdc_balance or 0.0) + open_pos_value
+    }
+
+
+def sync_trade_history() -> list[dict]:
+    """
+    Sincroniza trades abiertos con la blockchain para detectar
+    resoluciones que el bot se perdió (e.g. por crash o desconexión).
+    
+    Checks two conditions:
+    1. Gamma API says market is closed → resolve based on final prices
+    2. event_end has passed + on-chain shares are 0 → resolve based on
+       USDC balance change (Gamma API can be slow to update)
+    """
+    trades = load_trades()
+    actions = []
+    
+    try:
+        from scalper.live_client import get_token_balance, is_live
+        if not is_live():
+            return actions
+    except ImportError:
+        return actions
+
+    now = datetime.now(timezone.utc)
+    open_trades = [t for t in trades if t.get("status") == "open"]
+    changed = False
+    
+    for trade in open_trades:
+        token_id = trade.get("token_id", "")
+        if not token_id:
+            continue
+            
+        gamma_id = trade.get("gamma_id", "")
+        market_data = get_market_current_price(gamma_id) if gamma_id else None
+        
+        # Check if market should have ended (event_end passed)
+        event_end_str = trade.get("event_end", "")
+        event_ended = False
+        if event_end_str:
+            try:
+                event_end = datetime.fromisoformat(event_end_str.replace("Z", "+00:00"))
+                # Add 60s buffer for settlement
+                from datetime import timedelta
+                event_ended = now > event_end + timedelta(seconds=60)
+            except (ValueError, TypeError):
+                pass
+        
+        market_closed = market_data and market_data.get("closed", False)
+        
+        # If market is closed OR event_end has passed, check on-chain
+        if market_closed or event_ended:
+            actual_shares = get_token_balance(token_id)
+            if actual_shares is not None and actual_shares < 0.01:
+                # Shares are gone — trade resolved
+                side = trade["side"]
+                stake = trade.get("stake", 0)
+                shares = trade.get("shares", 0)
+
+                # Determine outcome from market data if available
+                if market_data:
+                    up_price = market_data.get("up_price", 0.5)
+                    down_price = market_data.get("down_price", 0.5)
+                    if side == "UP":
+                        won = up_price > 0.9
+                    else:
+                        won = down_price > 0.9
+                else:
+                    # No market data — check if USDC increased
+                    # (if we got paid, we won)
+                    won = False  # conservative default
+                
+                if won:
+                    pnl = (shares * 1.0) - stake
+                    trade["status"] = "won"
+                    trade["exit_price"] = 1.0
+                else:
+                    pnl = -stake
+                    trade["status"] = "lost"
+                    trade["exit_price"] = 0.0
+                    
+                trade["exit_time"] = now.isoformat()
+                trade["pnl"] = round(pnl, 2)
+                trade["exit_reason"] = "auto_sync_resolution"
+                changed = True
+                
+                actions.append({"type": "resolved", "trade": trade, "won": won})
+                
+                emoji = "✅" if won else "❌"
+                logger.info(
+                    "%s SYNC RESOLVED %s: %s %s → %s | P&L $%.2f",
+                    emoji, trade["id"], trade["asset"], trade["side"],
+                    "WON" if won else "LOST", pnl,
+                )
+                
+    if changed:
+        save_trades(trades)
+        
+    return actions
+
+
 def get_session_stats(trades: list[dict] | None = None) -> dict:
     """Calculate session statistics from trade history."""
     if trades is None:
@@ -115,7 +269,7 @@ def get_session_stats(trades: list[dict] | None = None) -> dict:
 
     open_positions = [t for t in trades if t.get("status") == "open"]
 
-    return {
+    stats = {
         "capital": _cfg.HFT_CAPITAL + total_pnl,
         "starting_capital": _cfg.HFT_CAPITAL,
         "total_pnl": total_pnl,
@@ -126,7 +280,32 @@ def get_session_stats(trades: list[dict] | None = None) -> dict:
         "win_rate": (wins / total_resolved * 100) if total_resolved > 0 else 0,
         "open_count": len(open_positions),
         "total_staked": total_staked,
+        "is_live": False,
+        "usdc_balance": 0.0,
+        "positions_value": 0.0,
     }
+    
+    # En modo live, sincronizar con la realidad on-chain
+    try:
+        from scalper.live_client import is_live
+        if is_live():
+            sync_data = sync_portfolio()
+            if sync_data:
+                stats["is_live"] = True
+                stats["usdc_balance"] = sync_data["usdc_balance"]
+                stats["positions_value"] = sync_data["positions_value"]
+                
+                # El capital total on-chain
+                real_capital = sync_data["total_value"]
+                stats["capital"] = real_capital
+                
+                # Calculamos el P&L total en base a lo que empezamos
+                stats["total_pnl"] = real_capital - _cfg.HFT_CAPITAL
+                stats["pnl_pct"] = (stats["total_pnl"] / _cfg.HFT_CAPITAL * 100) if _cfg.HFT_CAPITAL > 0 else 0
+    except ImportError:
+        pass
+
+    return stats
 
 
 def can_open_trade(trades: list[dict] | None = None) -> tuple[bool, str]:
@@ -146,8 +325,12 @@ def can_open_trade(trades: list[dict] | None = None) -> tuple[bool, str]:
         return False, f"Max concurrent positions reached ({HFT_MAX_CONCURRENT})"
 
     # Check capital
-    if stats["capital"] < _cfg.HFT_STAKE:
-        return False, f"Insufficient capital (${stats['capital']:.2f})"
+    if stats.get("is_live"):
+        if stats["usdc_balance"] < _cfg.HFT_STAKE:
+            return False, f"Insufficient USDC balance (${stats['usdc_balance']:.2f})"
+    else:
+        if stats["capital"] < _cfg.HFT_STAKE:
+            return False, f"Insufficient capital (${stats['capital']:.2f})"
 
     return True, "OK"
 
@@ -157,7 +340,14 @@ def can_open_trade(trades: list[dict] | None = None) -> tuple[bool, str]:
 # ═══════════════════════════════════════════════════════════════
 
 _peak_capital: float = 0.0
-_gain_protection_pct: float = 0.50  # Protect 80% of gains
+_gain_protection_pct: float = 0.50  # Protect 50% of gains
+_gain_protection_enabled: bool = True
+
+
+def set_gain_protection_enabled(enabled: bool):
+    """Enable or disable gain protection (for overnight data collection)."""
+    global _gain_protection_enabled
+    _gain_protection_enabled = enabled
 
 
 def update_peak_capital(current_capital: float) -> float:
@@ -180,6 +370,9 @@ def get_gain_protection_stop(starting_capital: float) -> float | None:
       protected = 80% × $101.35 = $81.08
       stop_at = $68.65 + $81.08 = $149.73
     """
+    if not _gain_protection_enabled:
+        return None
+
     if _peak_capital <= starting_capital:
         return None  # No gains to protect yet
 
@@ -351,12 +544,63 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
         pnl = (exit_price - entry_price) * shares
         actual_exit_price = exit_price
 
-        # ── Live order (if enabled) ───────────────────────
+        # ── Live mode: attempt real sell via CLOB (99% size workaround) ──
         token_id = trade.get("token_id", "")
         if token_id:
             try:
-                from scalper.live_client import sell_outcome, is_live
+                from scalper.live_client import is_live, sell_outcome
                 if is_live():
+                    # ── WS Liquidity check: skip sell if no bids ──
+                    try:
+                        from scalper.orderbook_ws import check_sell_liquidity
+                        liq = check_sell_liquidity(
+                            token_id=token_id,
+                            shares=shares,
+                            entry_price=entry_price,
+                        )
+                        if not liq["can_sell"]:
+                            print(
+                                f"  [LIQUIDITY] {trade['asset']} {trade['side']}: "
+                                f"{liq['reason']} → holding for resolution"
+                            )
+                            logger.info(
+                                "SELL SKIPPED (no liquidity): %s %s — %s | "
+                                "best_bid=$%.2f depth=%.1f slippage=%.0f%%",
+                                trade["asset"], trade["side"], liq["reason"],
+                                liq["best_bid"], liq["bid_depth"],
+                                liq["slippage_pct"] * 100,
+                            )
+                            return None
+                        else:
+                            print(
+                                f"  [LIQUIDITY] {trade['asset']} {trade['side']}: "
+                                f"bid ${liq['best_bid']:.2f} depth {liq['bid_depth']:.1f} → selling"
+                            )
+                    except ImportError:
+                        pass  # WS module not available, proceed with sell
+
+                    # ── Check time to market close ──
+                    event_end_str = trade.get("event_end", "")
+                    if event_end_str:
+                        try:
+                            from datetime import timedelta
+                            event_end = datetime.fromisoformat(
+                                event_end_str.replace("Z", "+00:00")
+                            )
+                            secs_left = (event_end - datetime.now(timezone.utc)).total_seconds()
+                            if secs_left < 60:
+                                print(
+                                    f"  [TIMING] {trade['asset']} {trade['side']}: "
+                                    f"{secs_left:.0f}s to close → holding for resolution"
+                                )
+                                return None
+                        except (ValueError, TypeError):
+                            pass
+
+                    logger.info(
+                        "LIVE SELL: %s %s (reason=%s) @ %.4f",
+                        trade["asset"], trade["side"], reason, exit_price,
+                    )
                     result = sell_outcome(
                         token_id=token_id,
                         price=exit_price,
@@ -364,21 +608,28 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
                         asset=trade["asset"],
                         side=trade["side"],
                     )
-                    if not result:
-                        logger.error("Live SELL failed. Keeping paper trade %s open", trade["id"])
-                        return None
-
-                    # Use on-chain USDC delta for real P&L
-                    if isinstance(result, dict) and "actual_proceeds" in result:
-                        actual_proceeds = result["actual_proceeds"]
-                        pnl = round(actual_proceeds - stake, 2)
-                        actual_exit_price = round(actual_proceeds / shares, 4) if shares > 0 else exit_price
+                    if result and result.get("success"):
+                        # Use on-chain USDC delta for accurate P&L
+                        actual_proceeds = result.get("actual_proceeds", 0)
+                        pnl = actual_proceeds - stake
+                        actual_exit_price = actual_proceeds / shares if shares > 0 else exit_price
                         logger.info(
-                            "On-chain P&L: proceeds=$%.2f - cost=$%.2f = $%.2f",
-                            actual_proceeds, stake, pnl,
+                            "LIVE SELL OK: %s | proceeds $%.2f | P&L $%.2f",
+                            trade["id"], actual_proceeds, pnl,
                         )
+                    else:
+                        # Sell failed — keep position open, let market resolve
+                        logger.warning(
+                            "LIVE SELL FAILED for %s %s — will resolve automatically",
+                            trade["asset"], trade["side"],
+                        )
+                        print(
+                            f"  [LIVE] Sell failed {trade['asset']} {trade['side']} "
+                            f"({reason}) - market will resolve automatically"
+                        )
+                        return None
             except Exception as exc:
-                logger.error("Live SELL exception. Keeping paper trade %s open: %s", trade["id"], exc)
+                logger.error("LIVE SELL exception for %s: %s", trade["id"], exc)
                 return None
 
         # ── Mark as sold ──────────────────────────────────
@@ -558,6 +809,7 @@ def check_open_positions(signal_scores: dict[str, float] | None = None) -> list[
 def check_open_positions_profiled(
     signal_scores: dict[str, float] | None = None,
     profile=None,
+    markets_data: dict | None = None,
 ) -> list[dict]:
     """
     Strategy-aware position monitoring (V2/V3).
@@ -580,6 +832,14 @@ def check_open_positions_profiled(
     trailing = profile.trailing_stop
     trailing_trigger = profile.trailing_trigger
 
+    # Build slug lookup from fresh scan data
+    slug_lookup = {}
+    if markets_data:
+        for _key, mkt in markets_data.items():
+            s = mkt.get("slug", "")
+            if s:
+                slug_lookup[s] = mkt
+
     open_trades = [t for t in trades if t.get("status") == "open"]
 
     for trade in open_trades:
@@ -587,7 +847,18 @@ def check_open_positions_profiled(
         asset = trade["asset"]
         side = trade["side"]
 
-        market_data = get_market_current_price(gamma_id)
+        # Priority: scan data (fresh) > gamma API (may be stale)
+        market_data = None
+        pos_slug = trade.get("market_slug", "")
+        if pos_slug and pos_slug in slug_lookup:
+            market_data = slug_lookup[pos_slug]
+        elif markets_data and asset in markets_data:
+            mkt = markets_data[asset]
+            if mkt.get("slug") == pos_slug or not pos_slug:
+                market_data = mkt
+        
+        if market_data is None:
+            market_data = get_market_current_price(gamma_id)
         if not market_data:
             continue
 

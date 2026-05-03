@@ -89,11 +89,19 @@ def print_session_header(stats: dict):
     pnl_pct_str = _format_pct(pnl_pct)
     pnl_emoji = "📈" if pnl >= 0 else "📉"
 
+    is_live = stats.get("is_live", False)
+    if is_live:
+        usdc = stats.get("usdc_balance", 0)
+        pos = stats.get("positions_value", 0)
+        capital_str = f"${usdc:.2f}+${pos:.2f}"
+    else:
+        capital_str = _format_usd(capital)
+
     print(f"  ╔{'═' * 76}╗")
-    print(f"  ║  💰 Capital: {_format_usd(capital):>10}  │  "
-          f"{pnl_emoji} Session P&L: {pnl_str} ({pnl_pct_str})  │  "
-          f"📊 Trades: {total} ({wins}W/{losses}L)  │  "
-          f"📌 Open: {open_count}"
+    print(f"  ║  💰 Cap: {capital_str:>14} │ "
+          f"{pnl_emoji} P&L: {pnl_str} ({pnl_pct_str}) │ "
+          f"📊 Tr: {total} ({wins}W/{losses}L) │ "
+          f"📌 Op: {open_count}"
           f"{'':>1}║")
     print(f"  ╚{'═' * 76}╝")
 
@@ -105,10 +113,18 @@ def print_market_status(markets: dict, signals: dict):
     markets: dict keyed by asset with market data
     signals: dict keyed by asset with SignalResult
     """
-    now = datetime.now(timezone.utc)
+    # Check WS status
+    ws_status = ""
+    try:
+        from scalper.orderbook_ws import get_status
+        st = get_status()
+        if st["running"]:
+            ws_status = f" [WS: {st['active_prices']} prices live]"
+    except ImportError:
+        pass
 
     print(f"\n  {'─' * 78}")
-    print("  📡 ACTIVE MARKETS")
+    print(f"  📡 ACTIVE MARKETS{ws_status}")
     print(f"  {'─' * 78}")
     print(f"  {'Asset':<6} {'Window':<28} {'Up$':>5} {'Dn$':>5} "
           f"{'Signal':>8} {'Dir':<8} {'⏱ Start':>8}")
@@ -152,6 +168,16 @@ def print_open_positions(positions: list[dict], markets_data: dict | None = None
         print("\n  📭 No hay posiciones abiertas.\n")
         return
 
+    from scalper.market_scanner import get_market_current_price
+
+    # Build slug→market lookup from fresh scan data
+    slug_lookup = {}
+    if markets_data:
+        for _key, mkt in markets_data.items():
+            slug = mkt.get("slug", "")
+            if slug:
+                slug_lookup[slug] = mkt
+
     print(f"\n  {'─' * 78}")
     print("  📌 POSICIONES ABIERTAS")
     print(f"  {'─' * 78}")
@@ -163,14 +189,30 @@ def print_open_positions(positions: list[dict], markets_data: dict | None = None
         stake = pos.get("stake", 0)
         shares = pos.get("shares", 0)
 
-        # Try to get current price
-        current = entry  # fallback
-        if markets_data and asset in markets_data:
+        # Priority 1: Match by slug from fresh scan data
+        current = None
+        pos_slug = pos.get("market_slug", "")
+        if pos_slug and pos_slug in slug_lookup:
+            mkt = slug_lookup[pos_slug]
+            current = mkt.get(f"{side.lower()}_price")
+
+        # Priority 2: Match by asset from scan data
+        if current is None and markets_data and asset in markets_data:
             mkt = markets_data[asset]
-            if side == "UP":
-                current = mkt.get("up_price", entry)
-            else:
-                current = mkt.get("down_price", entry)
+            if mkt.get("slug") == pos_slug or not pos_slug:
+                current = mkt.get(f"{side.lower()}_price")
+
+        # Priority 3: Fetch from Gamma API by gamma_id (may be stale)
+        if current is None:
+            gamma_id = pos.get("gamma_id", "")
+            if gamma_id:
+                mkt = get_market_current_price(gamma_id)
+                if mkt:
+                    current = mkt.get(f"{side.lower()}_price")
+
+        # Fallback: use entry price
+        if current is None:
+            current = entry
 
         upnl = (current - entry) * shares
         change_pct = ((current - entry) / entry * 100) if entry > 0 else 0
