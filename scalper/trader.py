@@ -157,7 +157,7 @@ def can_open_trade(trades: list[dict] | None = None) -> tuple[bool, str]:
 # ═══════════════════════════════════════════════════════════════
 
 _peak_capital: float = 0.0
-_gain_protection_pct: float = 0.80  # Protect 80% of gains
+_gain_protection_pct: float = 0.50  # Protect 80% of gains
 
 
 def update_peak_capital(current_capital: float) -> float:
@@ -184,6 +184,11 @@ def get_gain_protection_stop(starting_capital: float) -> float | None:
         return None  # No gains to protect yet
 
     gains = _peak_capital - starting_capital
+
+    # Don't activate protection until gains are meaningful (at least $2)
+    if gains < 2.0:
+        return None
+
     protected_gains = gains * _gain_protection_pct
     stop_level = starting_capital + protected_gains
 
@@ -291,15 +296,34 @@ def open_trade(
         try:
             from scalper.live_client import buy_outcome, is_live
             if is_live():
-                buy_outcome(
+                result = buy_outcome(
                     token_id=token_id,
                     price=entry_price,
                     size=actual_stake,
                     asset=asset,
                     side=side,
                 )
+                if not result:
+                    logger.error("Live BUY failed. Reverting paper trade %s", trade["id"])
+                    trades = [t for t in trades if t["id"] != trade["id"]]
+                    save_trades(trades)
+                    return None
+                
+                # Use on-chain verified data for accurate P&L
+                if isinstance(result, dict):
+                    if "shares" in result:
+                        trade["shares"] = round(result["shares"], 4)
+                    if "actual_entry_price" in result:
+                        trade["entry_price"] = result["actual_entry_price"]
+                    if "actual_cost" in result:
+                        trade["stake"] = result["actual_cost"]
+                    save_trades(trades)
+
         except Exception as exc:
-            logger.error("Live BUY failed (paper trade still recorded): %s", exc)
+            logger.error("Live BUY exception. Reverting paper trade %s: %s", trade["id"], exc)
+            trades = [t for t in trades if t["id"] != trade["id"]]
+            save_trades(trades)
+            return None
 
     return trade
 
@@ -308,9 +332,8 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
     """
     Sell (early exit) an open position.
 
-    Simulates selling outcome tokens at the current bestBid.
-    P&L = (exit_price - entry_price) × shares
-    If live mode is active, also sends a real SELL order to the CLOB.
+    In live mode, P&L is calculated from actual USDC received (on-chain),
+    not from paper price observations.
     """
     trades = load_trades()
 
@@ -322,10 +345,45 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
 
         entry_price = trade["entry_price"]
         shares = trade["shares"]
-        pnl = (exit_price - entry_price) * shares
+        stake = trade.get("stake", entry_price * shares)
 
+        # Default paper P&L (used if no live data)
+        pnl = (exit_price - entry_price) * shares
+        actual_exit_price = exit_price
+
+        # ── Live order (if enabled) ───────────────────────
+        token_id = trade.get("token_id", "")
+        if token_id:
+            try:
+                from scalper.live_client import sell_outcome, is_live
+                if is_live():
+                    result = sell_outcome(
+                        token_id=token_id,
+                        price=exit_price,
+                        size=shares,
+                        asset=trade["asset"],
+                        side=trade["side"],
+                    )
+                    if not result:
+                        logger.error("Live SELL failed. Keeping paper trade %s open", trade["id"])
+                        return None
+
+                    # Use on-chain USDC delta for real P&L
+                    if isinstance(result, dict) and "actual_proceeds" in result:
+                        actual_proceeds = result["actual_proceeds"]
+                        pnl = round(actual_proceeds - stake, 2)
+                        actual_exit_price = round(actual_proceeds / shares, 4) if shares > 0 else exit_price
+                        logger.info(
+                            "On-chain P&L: proceeds=$%.2f - cost=$%.2f = $%.2f",
+                            actual_proceeds, stake, pnl,
+                        )
+            except Exception as exc:
+                logger.error("Live SELL exception. Keeping paper trade %s open: %s", trade["id"], exc)
+                return None
+
+        # ── Mark as sold ──────────────────────────────────
         trade["status"] = "sold"
-        trade["exit_price"] = round(exit_price, 4)
+        trade["exit_price"] = round(actual_exit_price, 4)
         trade["exit_time"] = datetime.now(timezone.utc).isoformat()
         trade["pnl"] = round(pnl, 2)
         trade["exit_reason"] = reason
@@ -335,24 +393,8 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
         logger.info(
             "SOLD %s: %s %s @ %.4f → %.4f | P&L $%.2f (%s)",
             trade["id"], trade["asset"], trade["side"],
-            entry_price, exit_price, pnl, reason,
+            entry_price, actual_exit_price, pnl, reason,
         )
-
-        # ── Live order (if enabled) ───────────────────────
-        token_id = trade.get("token_id", "")
-        if token_id:
-            try:
-                from scalper.live_client import sell_outcome, is_live
-                if is_live():
-                    sell_outcome(
-                        token_id=token_id,
-                        price=exit_price,
-                        size=shares,
-                        asset=trade["asset"],
-                        side=trade["side"],
-                    )
-            except Exception as exc:
-                logger.error("Live SELL failed (paper trade still recorded): %s", exc)
 
         return trade
 

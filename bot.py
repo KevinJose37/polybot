@@ -179,6 +179,8 @@ def mode_scalp(
     strategy: str = "v1",
     capital_override: float | None = None,
     interval_override: int | None = None,
+    tp_override: float | None = None,
+    sl_override: float | None = None,
     live: bool = False,
     dry_run: bool = False,
 ):
@@ -235,6 +237,17 @@ def mode_scalp(
             print("  ℹ️  Required: POLY_PRIVATE_KEY, POLY_API_KEY, POLY_API_SECRET, POLY_API_PASSPHRASE")
             sys.exit(1)
         print()
+
+    # Override TP/SL on the strategy profile if specified
+    if tp_override is not None or sl_override is not None:
+        from scalper.strategy_profiles import get_profile
+        profile = get_profile(strategy)
+        if tp_override is not None:
+            profile.take_profit = tp_override / 100.0
+            print(f"  📈 Take Profit override: {tp_override:.0f}%")
+        if sl_override is not None:
+            profile.stop_loss = sl_override / 100.0
+            print(f"  📉 Stop Loss override: {sl_override:.0f}%")
 
     run_scalper(target_assets=target_assets, strategy=strategy)
 
@@ -320,6 +333,18 @@ Ejemplos de uso:
         default=False,
         help="Log orders without sending them (use with --live for testing)",
     )
+    parser.add_argument(
+        "--tp",
+        type=float,
+        default=None,
+        help="Take profit %% override (e.g. --tp 25 for 25%%)",
+    )
+    parser.add_argument(
+        "--sl",
+        type=float,
+        default=None,
+        help="Stop loss %% override (e.g. --sl 50 for 50%%)",
+    )
 
     args = parser.parse_args()
 
@@ -336,6 +361,8 @@ Ejemplos de uso:
                 strategy=args.strategy,
                 capital_override=args.capital,
                 interval_override=args.interval,
+                tp_override=args.tp,
+                sl_override=args.sl,
                 live=args.live,
                 dry_run=args.dry_run,
             )

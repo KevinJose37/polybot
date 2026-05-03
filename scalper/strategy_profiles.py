@@ -86,9 +86,9 @@ PROFILES: dict[str, StrategyProfile] = {
         label="V3 — Chainlink Delta (Late Entry)",
         trades_file="hft_trades_v3.json",
         signal_source="chainlink_delta",
-        signal_threshold=0.05,
+        signal_threshold=0.30,
         entry_mode="late",
-        entry_window_start=210,
+        entry_window_start=120,
         entry_window_end=270,
         take_profit=0.35,
         stop_loss=0.30,
@@ -97,9 +97,9 @@ PROFILES: dict[str, StrategyProfile] = {
         trailing_trigger=0.20,
         sizing="delta_scaled",
         base_stake=10.0,
-        chainlink_delta_threshold=0.05,
+        chainlink_delta_threshold=0.012,
         chainlink_confirm_readings=3,
-        use_technical_confirmation=True,
+        use_technical_confirmation=False,
     ),
 }
 

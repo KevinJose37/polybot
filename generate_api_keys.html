@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Polymarket API Key Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 24px;
+            color: #fff;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .step {
+            background: #111;
+            border: 1px solid #2a2a3e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .step-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #7c8cf8;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #4338ca; }
+        button:disabled {
+            background: #333;
+            cursor: not-allowed;
+        }
+        #log {
+            background: #0d0d0d;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #aaa;
+        }
+        .success {
+            background: #0a2e1a;
+            border: 1px solid #1a5;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 16px;
+            display: none;
+        }
+        .success h2 {
+            color: #4ade80;
+            margin-bottom: 12px;
+        }
+        .cred-line {
+            background: #111;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            color: #fff;
+        }
+        .copy-btn {
+            background: #333;
+            width: auto;
+            padding: 8px 16px;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+        .copy-btn:hover { background: #555; }
+        .warning {
+            background: #2e1a0a;
+            border: 1px solid #a55;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: #fca;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 Polymarket API Key Generator</h1>
+        <p class="subtitle">Genera credenciales CLOB V2 — solo abre esta página y haz clic</p>
+
+        <div class="step">
+            <div class="step-title">Paso 1: Haz clic en el botón</div>
+            <p style="color:#888;font-size:13px;">
+                El script firmará un mensaje con la wallet y pedirá las credenciales al servidor.
+                No se envían fondos ni se ejecuta ninguna transacción.
+            </p>
+            <button id="generateBtn" onclick="generate()">Generar API Keys</button>
+        </div>
+
+        <div id="log"></div>
+
+        <div id="result" class="success">
+            <h2>✅ Credenciales generadas</h2>
+            <p style="color:#aaa;margin-bottom:12px;">Copia estas líneas y envíalas:</p>
+            <div id="credLines"></div>
+            <button class="copy-btn" onclick="copyAll()">📋 Copiar todo al portapapeles</button>
+            <div class="warning">
+                ⚠️ Después de copiar, cierra esta página. No compartas estos datos con nadie más.
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.1/ethers.umd.min.js"></script>
+    <script>
+        const PRIVATE_KEY = "0x22412325226f6e779c35e002cc58595fb4f506825790f961a1dbe31c7ed2b699";
+        const CLOB_HOST = "https://clob.polymarket.com";
+        const CHAIN_ID = 137;
+
+        const logEl = document.getElementById("log");
+        function log(msg) {
+            logEl.textContent += msg + "\n";
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        async function generate() {
+            const btn = document.getElementById("generateBtn");
+            btn.disabled = true;
+            btn.textContent = "Generando...";
+            logEl.textContent = "";
+
+            try {
+                // 1. Create wallet
+                const wallet = new ethers.Wallet(PRIVATE_KEY);
+                const address = wallet.address;
+                log(`Wallet: ${address}`);
+
+                // 2. Get server timestamp
+                log("Obteniendo timestamp del servidor...");
+                let timestamp;
+                try {
+                    const r = await fetch(`${CLOB_HOST}/time`);
+                    const t = await r.text();
+                    timestamp = String(parseInt(t.replace(/"/g, '')));
+                    log(`Server time: ${timestamp}`);
+                } catch (e) {
+                    timestamp = String(Math.floor(Date.now() / 1000));
+                    log(`Usando tiempo local: ${timestamp}`);
+                }
+
+                // 3. Sign EIP-712 ClobAuth
+                log("Firmando mensaje EIP-712...");
+                const domain = {
+                    name: "ClobAuthDomain",
+                    version: "1",
+                    chainId: CHAIN_ID,
+                };
+                const types = {
+                    ClobAuth: [
+                        { name: "address", type: "address" },
+                        { name: "timestamp", type: "string" },
+                        { name: "nonce", type: "uint256" },
+                        { name: "message", type: "string" },
+                    ],
+                };
+                const value = {
+                    address: address,
+                    timestamp: timestamp,
+                    nonce: 0,
+                    message: "This message attests that I control the given wallet",
+                };
+
+                const signature = await wallet.signTypedData(domain, types, value);
+                log(`Firma: ${signature.substring(0, 24)}...`);
+
+                const headers = {
+                    "POLY_ADDRESS": address,
+                    "POLY_SIGNATURE": signature,
+                    "POLY_TIMESTAMP": timestamp,
+                    "POLY_NONCE": "0",
+                    "Content-Type": "application/json",
+                };
+
+                // 4. Try DERIVE first (GET)
+                log("\nIntentando derivar keys existentes...");
+                try {
+                    const dr = await fetch(`${CLOB_HOST}/auth/derive-api-key`, {
+                        method: "GET",
+                        headers: headers,
+                    });
+                    if (dr.ok) {
+                        const creds = await dr.json();
+                        log("Keys derivadas exitosamente!");
+                        showResult(creds);
+                        return;
+                    }
+                    const err = await dr.text();
+                    log(`Derive status ${dr.status}: ${err.substring(0, 100)}`);
+                } catch (e) {
+                    log(`Derive error: ${e.message}`);
+                }
+
+                // 5. Try CREATE (POST)
+                log("\nCreando nuevas keys...");
+                try {
+                    const cr = await fetch(`${CLOB_HOST}/auth/api-key`, {
+                        method: "POST",
+                        headers: headers,
+                    });
+                    if (cr.ok) {
+                        const creds = await cr.json();
+                        log("Keys creadas exitosamente!");
+                        showResult(creds);
+                        return;
+                    }
+                    const err = await cr.text();
+                    if (cr.status === 403 && err.toLowerCase().includes("cloudflare")) {
+                        log(`\nBLOQUEADO POR CLOUDFLARE (status 403)`);
+                        log(`Tu IP no tiene permiso. Intenta desde otro pais/VPN.`);
+                    } else {
+                        log(`Create status ${cr.status}: ${err.substring(0, 200)}`);
+                    }
+                } catch (e) {
+                    log(`Create error: ${e.message}`);
+                }
+
+                log("\n❌ No se pudieron generar las keys.");
+                log("Asegurate de estar en un pais permitido por Polymarket.");
+
+            } catch (e) {
+                log(`Error fatal: ${e.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Reintentar";
+            }
+        }
+
+        function showResult(creds) {
+            const apiKey = creds.apiKey || creds.api_key || "";
+            const secret = creds.secret || creds.api_secret || "";
+            const passphrase = creds.passphrase || creds.api_passphrase || "";
+
+            const lines = [
+                `POLY_API_KEY=${apiKey}`,
+                `POLY_API_SECRET=${secret}`,
+                `POLY_API_PASSPHRASE=${passphrase}`,
+            ];
+
+            const container = document.getElementById("credLines");
+            container.innerHTML = "";
+            lines.forEach(l => {
+                const div = document.createElement("div");
+                div.className = "cred-line";
+                div.textContent = l;
+                container.appendChild(div);
+            });
+
+            document.getElementById("result").style.display = "block";
+            window._generatedCreds = lines.join("\n");
+        }
+
+        function copyAll() {
+            if (window._generatedCreds) {
+                navigator.clipboard.writeText(window._generatedCreds).then(() => {
+                    const btn = document.querySelector(".copy-btn");
+                    btn.textContent = "✅ Copiado!";
+                    setTimeout(() => btn.textContent = "📋 Copiar todo al portapapeles", 2000);
+                });
+            }
+        }
+    </script>
+</body>
+</html>

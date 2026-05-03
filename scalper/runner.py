@@ -44,7 +44,9 @@ from scalper.market_scanner import scan_active_markets
 from scalper.signals import compute_all_signals
 from scalper.trader import (
     can_open_trade,
+    check_gain_protection,
     check_open_positions,
+    get_gain_protection_stop,
     get_hindsight_summary,
     get_open_positions,
     get_recent_resolved,
@@ -52,6 +54,7 @@ from scalper.trader import (
     load_trades,
     open_trade,
     review_sold_trades,
+    update_peak_capital,
 )
 
 logger = logging.getLogger("polybot.scalper.runner")
@@ -264,23 +267,36 @@ def _run_single_cycle_profiled(
         if profile.signal_source == "technical_v2":
             signals = compute_all_signals_v2(assets)
         elif profile.signal_source == "chainlink_delta" and chainlink_monitor:
-            # V3: burst-poll delta readings (5 readings over ~10s)
-            # to build up enough data for sustained signal detection
-            import time as _t
-            for _burst in range(4):
-                chainlink_monitor.update_all(list(assets.keys()))
-                _t.sleep(2)
+            # V3: single update per cycle — buffer accumulates across cycles
             chainlink_monitor.update_all(list(assets.keys()))
 
-            # Get technical signals for confirmation
-            tech_signals = compute_all_signals(assets)
+            # Get technical signals for confirmation (if enabled)
+            tech_signals = None
+            if profile.use_technical_confirmation:
+                tech_signals = compute_all_signals(assets)
+
             signals = compute_all_signals_chainlink(
                 monitor=chainlink_monitor,
                 assets=assets,
                 threshold=profile.chainlink_delta_threshold,
-                technical_signals=tech_signals if profile.use_technical_confirmation else None,
+                technical_signals=tech_signals,
                 require_confirmation=profile.use_technical_confirmation,
             )
+
+            # ── V3 Diagnostics ──────────────────────────────────
+            for asset_key in assets:
+                delta_info = chainlink_monitor.get_delta(asset_key)
+                if delta_info:
+                    sig = signals.get(asset_key)
+                    sig_score = f"{sig.score:+.3f}" if sig else "none"
+                    sig_dir = sig.direction if sig else "N/A"
+                    passed = "PASS" if abs(delta_info["avg_delta_pct"]) >= profile.chainlink_delta_threshold else "BELOW"
+                    print(
+                        f"  [V3-DIAG] {asset_key} | delta={delta_info['avg_delta_pct']:+.4f}% "
+                        f"| threshold={profile.chainlink_delta_threshold}% | {passed} "
+                        f"| score={sig_score} dir={sig_dir} "
+                        f"| sustained={delta_info['sustained']} readings={delta_info['readings_count']}"
+                    )
         else:
             signals = compute_all_signals(assets)
     except Exception as exc:
@@ -318,15 +334,18 @@ def _run_single_cycle_profiled(
         if abs(signal.score) < profile.signal_threshold:
             continue
 
-        # Entry window: v3 "late" mode only enters in last 90 seconds
+        # Entry window: v3 "late" mode only enters in specified window
         if profile.entry_mode == "late":
             event_start = market.get("event_start")
             if event_start:
                 now = datetime.now(timezone.utc)
                 elapsed = (now - event_start).total_seconds()
-                if elapsed < profile.entry_window_start or elapsed > profile.entry_window_end:
-                    continue
             else:
+                # Fallback: assume market is mid-progress
+                elapsed = profile.entry_window_start + 1
+                print(f"  [V3-WARN] {asset_key}: event_start ausente, usando fallback (elapsed={elapsed:.0f}s)")
+
+            if elapsed < profile.entry_window_start or elapsed > profile.entry_window_end:
                 continue
         else:
             if not _is_in_entry_window(market):
@@ -480,12 +499,6 @@ def run_scalper(
                 break
 
             # ── Gain protection check ──────────────────────────
-            from scalper.trader import (
-                check_gain_protection,
-                get_gain_protection_stop,
-                get_session_stats,
-                update_peak_capital,
-            )
             stats = get_session_stats()
             current_capital = stats["capital"]
             starting_capital = stats["starting_capital"]

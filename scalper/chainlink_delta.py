@@ -231,8 +231,9 @@ class ChainlinkDeltaMonitor:
         spot_price = delta_info["spot_price"]
 
         # Score based on delta magnitude
-        # Normalize: 0.05% → 0.5 score, 0.10% → 1.0 score
-        raw_score = avg_delta / 0.10  # linear scaling
+        # Rescaled for real-world deltas (0.01-0.025%):
+        # 0.012% → 0.48 score, 0.020% → 0.80, 0.025% → 1.0
+        raw_score = avg_delta / 0.025
         score = float(max(-1.0, min(1.0, raw_score)))
 
         # Only generate directional signal if sustained
@@ -247,9 +248,9 @@ class ChainlinkDeltaMonitor:
             score *= 0.3
 
         # Confidence based on sustain and magnitude
-        if sustained and abs(avg_delta) >= 0.08:
+        if sustained and abs(avg_delta) >= 0.020:
             confidence = "HIGH"
-        elif sustained or abs(avg_delta) >= 0.05:
+        elif sustained or abs(avg_delta) >= 0.012:
             confidence = "MEDIUM"
         else:
             confidence = "LOW"
