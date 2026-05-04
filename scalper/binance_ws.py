@@ -216,6 +216,13 @@ class BinanceTickManager:
                         )
                         buf.add_tick(tick)
 
+                        # Record Binance WS latency
+                        try:
+                            from scalper.latency import record_binance_ws
+                            record_binance_ws(data["T"])
+                        except ImportError:
+                            pass
+
                     except websocket.WebSocketTimeoutException:
                         continue  # No data in 5s, just retry
                     except (KeyError, ValueError, TypeError) as exc:

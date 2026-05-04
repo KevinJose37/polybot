@@ -11,6 +11,10 @@ standalone functions that trader.py calls when in live mode.
 import logging
 import os
 import time
+import json
+from datetime import datetime, timezone
+
+import requests as _requests
 
 from dotenv import load_dotenv
 
@@ -162,7 +166,7 @@ def buy_outcome(
         # ── Duplicate entry guard (non-blocking) ────────────────────
         try:
             existing_shares = _retry_call(get_token_balance, token_id)
-            if existing_shares is not None and existing_shares > 0:
+            if existing_shares is not None and existing_shares > 0.1:
                 logger.warning("Already holding %.2f shares of %s. Skipping BUY.", existing_shares, label)
                 print(f"  [BUY SKIPPED] {label} | Already holding {existing_shares:.2f} shares")
                 return {"success": True, "shares": existing_shares, "token_id": token_id, "already_held": True}
@@ -172,11 +176,15 @@ def buy_outcome(
         # ── Snapshot USDC balance BEFORE ────────────────────────────
         usdc_before = _retry_call(get_balance) or 0.0
 
-        order_amount = max(size, MIN_ORDER_AMOUNT)
+        order_amount = round(max(size, MIN_ORDER_AMOUNT), 2)
+        # Use a limit price with aggressive slippage (observed price + $0.10) to ensure fill.
+        limit_price = round(min(price + 0.10, 0.99), 4)
+
         market_order = MarketOrderArgs(
             token_id=token_id,
             amount=order_amount,
             side=BUY,
+            price=limit_price,
             order_type=OrderType.FAK,
         )
 
@@ -185,7 +193,15 @@ def buy_outcome(
 
         # NOTE: Do NOT retry post_order — a 401 may mask a successful fill.
         try:
+            _t0 = time.perf_counter()
             resp = _client.post_order(signed, OrderType.FAK)
+            _elapsed_ms = (time.perf_counter() - _t0) * 1000
+            try:
+                from scalper.latency import record_order_exec
+                record_order_exec(_elapsed_ms)
+            except ImportError:
+                pass
+            logger.info("BUY post_order roundtrip: %.0fms", _elapsed_ms)
             err = resp.get("error_message") if isinstance(resp, dict) else None
             if err:
                 logger.warning("BUY order API returned error: %s", err)
@@ -253,6 +269,177 @@ def buy_outcome(
         return None
 
 
+# ═══════════════════════════════════════════════════════════════
+# REST Orderbook Helpers (public endpoint, no auth needed)
+# ═══════════════════════════════════════════════════════════════
+
+_CLOB_BOOK_URL = "https://clob.polymarket.com/book"
+
+
+def _fetch_rest_book(token_id: str) -> dict | None:
+    """
+    Fetch full orderbook from CLOB REST endpoint.
+    Public endpoint — no authentication required.
+    ~800ms latency from South America, ~100ms from US East Coast.
+    """
+    try:
+        resp = _requests.get(
+            _CLOB_BOOK_URL,
+            params={"token_id": token_id},
+            timeout=3,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as exc:
+        logger.debug("REST book fetch failed for %s: %s", token_id[:16], exc)
+        return None
+
+
+def _get_best_bid_rest(token_id: str) -> float | None:
+    """Get best bid price from CLOB REST. Fallback when WS is stale."""
+    data = _fetch_rest_book(token_id)
+    if not data:
+        return None
+    bids = data.get("bids", [])
+    if not bids:
+        return None
+    try:
+        sorted_bids = sorted(bids, key=lambda b: float(b.get("price", 0)), reverse=True)
+        best = float(sorted_bids[0]["price"])
+        return best if best > 0 else None
+    except (ValueError, IndexError, KeyError):
+        return None
+
+
+def _get_best_ask_rest(token_id: str) -> float | None:
+    """Get best ask price from CLOB REST. Fallback when WS is stale."""
+    data = _fetch_rest_book(token_id)
+    if not data:
+        return None
+    asks = data.get("asks", [])
+    if not asks:
+        return None
+    try:
+        sorted_asks = sorted(asks, key=lambda a: float(a.get("price", 0)))
+        best = float(sorted_asks[0]["price"])
+        return best if best > 0 else None
+    except (ValueError, IndexError, KeyError):
+        return None
+
+
+def check_entry_conditions(token_id: str, max_spread: float = 0.03, asset: str = "", side: str = "") -> dict:
+    """
+    REST snapshot before every BUY to verify the book is tradeable.
+
+    Returns dict with:
+      - can_enter: bool
+      - spread: float (bid-ask spread)
+      - mid_price: float (mid of bid/ask)
+      - best_ask: float (real price you'd pay to buy)
+      - best_bid: float
+      - reason: str
+    """
+    def _log_result(res: dict) -> dict:
+        if not asset or not side:
+            return res
+        log_entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "asset": asset,
+            "side": side,
+            "token_id": token_id,
+            "can_enter": res.get("can_enter", False),
+            "reason": res.get("reason", ""),
+            "best_bid": res.get("best_bid"),
+            "best_ask": res.get("best_ask"),
+            "spread": res.get("spread"),
+            "rr_ratio": res.get("rr_ratio"),
+        }
+        try:
+            with open("rest_checks.jsonl", "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception as e:
+            logger.error("Failed to write to rest_checks.jsonl: %s", e)
+        return res
+
+    data = _fetch_rest_book(token_id)
+    if not data:
+        return _log_result({"can_enter": False, "reason": "REST book fetch failed"})
+
+    bids = data.get("bids", [])
+    asks = data.get("asks", [])
+
+    if not bids or not asks:
+        return _log_result({"can_enter": False, "reason": "No bilateral book (missing bids or asks)"})
+
+    try:
+        sorted_bids = sorted(bids, key=lambda b: float(b.get("price", 0)), reverse=True)
+        sorted_asks = sorted(asks, key=lambda a: float(a.get("price", 0)))
+        best_bid = float(sorted_bids[0]["price"])
+        best_ask = float(sorted_asks[0]["price"])
+        best_bid_sz = float(sorted_bids[0].get("size", 0))
+        best_ask_sz = float(sorted_asks[0].get("size", 0))
+    except (ValueError, IndexError, KeyError):
+        return _log_result({"can_enter": False, "reason": "Failed to parse book data"})
+
+    if best_bid <= 0.01 or best_ask >= 0.99:
+        return _log_result({"can_enter": False, "reason": "Book is one-sided (resolved)"})
+
+    spread = round(best_ask - best_bid, 4)
+    mid = round((best_bid + best_ask) / 2, 4)
+
+    if spread > max_spread:
+        return _log_result({
+            "can_enter": False,
+            "reason": f"Spread ${spread:.4f} > max ${max_spread:.4f}",
+            "spread": spread,
+            "mid_price": mid,
+            "best_ask": best_ask,
+            "best_bid": best_bid,
+        })
+
+    if best_ask_sz < 2.0:
+        return _log_result({
+            "can_enter": False,
+            "reason": f"Ask size too thin ({best_ask_sz:.1f} shares)",
+            "spread": spread,
+            "mid_price": mid,
+            "best_ask": best_ask,
+            "best_bid": best_bid,
+        })
+
+    # Risk/reward filter: block entries where loss >> potential gain
+    potential_win = 1.0 - best_ask
+    potential_loss = best_ask
+    rr_ratio = round(potential_loss / potential_win, 2) if potential_win > 0 else 99.0
+    max_rr = 2.0  # Max acceptable risk/reward ratio (blocks entries above ~$0.67)
+
+    if rr_ratio > max_rr:
+        return _log_result({
+            "can_enter": False,
+            "reason": (
+                f"Bad R/R: {rr_ratio:.1f}x "
+                f"(lose ${potential_loss:.2f} to win ${potential_win:.2f})"
+            ),
+            "spread": spread,
+            "mid_price": mid,
+            "best_ask": best_ask,
+            "best_bid": best_bid,
+            "rr_ratio": rr_ratio,
+        })
+
+    return _log_result({
+        "can_enter": True,
+        "spread": spread,
+        "mid_price": mid,
+        "best_ask": best_ask,
+        "best_bid": best_bid,
+        "best_ask_sz": best_ask_sz,
+        "best_bid_sz": best_bid_sz,
+        "rr_ratio": rr_ratio,
+        "reason": f"OK spread=${spread:.4f} ask=${best_ask:.4f} R/R={rr_ratio:.1f}x (win ${potential_win:.2f} / lose ${potential_loss:.2f})",
+    })
+
+
 def sell_outcome(
     token_id: str,
     price: float,
@@ -290,12 +477,47 @@ def sell_outcome(
         usdc_before = _retry_call(get_balance) or 0.0
         actual_shares = _retry_call(get_token_balance, token_id)
 
+        # Retrieve full book summary for diagnostics & liquidity gate
+        book = None
+        try:
+            from scalper.orderbook_ws import get_book_summary
+            book = get_book_summary(token_id)
+        except ImportError:
+            pass
+
         print(f"\n  ┌─ SELL DIAGNOSTICS: {label} ─────────────────────")
         print(f"  │ Token:       {token_id[:24]}...")
         print(f"  │ On-chain:    {actual_shares:.4f} shares" if actual_shares else "  │ On-chain:    UNKNOWN")
         print(f"  │ Bot expects: {size:.4f} shares")
         print(f"  │ USDC before: ${usdc_before:.2f}")
-        print(f"  │ Ask price:   ${price:.4f}")
+
+        if book:
+            print(f"  │ ─── Order Book (WS) ───")
+            print(f"  │ Best bid:    ${book['best_bid']:.4f} (size: {book['best_bid_size']:.1f})")
+            print(f"  │ Best ask:    ${book['best_ask']:.4f} (size: {book['best_ask_size']:.1f})")
+            print(f"  │ Spread:      ${book['spread']:.4f} ({book['spread_pct']*100:.1f}%)")
+            print(f"  │ Bid depth:   {book['bid_depth']:.1f} shares")
+        else:
+            print(f"  │ WS book:     STALE/UNAVAILABLE")
+
+        # ── Determine best_bid: WS fresh > REST fallback ─────────
+        best_bid = (book["best_bid"] if book and book["best_bid"] > 0.01 else None)
+        if not best_bid:
+            rest_bid = _get_best_bid_rest(token_id)
+            if rest_bid and rest_bid > 0.01:
+                best_bid = rest_bid
+                print(f"  │ REST bid:    ${best_bid:.4f} (WS fallback)")
+            else:
+                print(f"  │ REST bid:    NONE")
+
+        # ── Calculate limit_price from REAL best_bid ──────────────
+        if best_bid and best_bid > 0.01:
+            limit_price = max(round(best_bid - 0.01, 4), 0.01)
+            print(f"  │ ─── Sell Plan ───")
+            print(f"  │ Limit price: ${limit_price:.4f} (best_bid ${best_bid:.4f} - $0.01)")
+        else:
+            limit_price = None
+            print(f"  │ Limit price: NONE (no bids found)")
 
         # Check conditional token allowance
         try:
@@ -324,11 +546,18 @@ def sell_outcome(
                 "token_id": token_id,
             }
 
+        # ── Pre-sell liquidity gate (handles WS stale + REST) ────
+        if limit_price is None:
+            print(f"  [SELL SKIP] No liquidity (WS + REST) -> hold to resolution")
+            logger.info("SELL skipped for %s: no liquidity from WS or REST", label)
+            return None
+
         # ── Sell Retry Loop ──────────────────────────────────────
         shares_to_sell = (actual_shares if actual_shares is not None else size) * _SELL_SIZE_FACTOR
         original_shares = actual_shares if actual_shares is not None else size
 
-        for attempt in range(1, 4):
+        # Reduced from 3 retries to 2 since liquidity is pre-verified
+        for attempt in range(1, 3):
             # Re-check balance before each retry (shares may have changed)
             if attempt > 1:
                 current_bal = _retry_call(get_token_balance, token_id)
@@ -357,12 +586,21 @@ def sell_outcome(
                 token_id=token_id,
                 amount=shares_to_sell,
                 side=SELL,
+                price=limit_price,
                 order_type=OrderType.FAK,
             )
 
             try:
                 signed = _client.create_market_order(market_order)
+                _t0 = time.perf_counter()
                 resp = _client.post_order(signed, OrderType.FAK)
+                _elapsed_ms = (time.perf_counter() - _t0) * 1000
+                try:
+                    from scalper.latency import record_order_exec
+                    record_order_exec(_elapsed_ms)
+                except ImportError:
+                    pass
+                logger.info("SELL post_order roundtrip: %.0fms", _elapsed_ms)
 
                 # Log full response for diagnostics
                 logger.info("SELL attempt %d response: %s", attempt, resp)
@@ -427,8 +665,8 @@ def sell_outcome(
 
             time.sleep(2.0)
 
-        print(f"  [SELL FAILED] {label} | 3 attempts failed → waiting for market resolution")
-        logger.error("SELL failed for %s after 3 attempts. Will resolve automatically.", label)
+        print(f"  [SELL FAILED] {label} | 2 attempts failed → waiting for market resolution")
+        logger.error("SELL failed for %s after 2 attempts. Will resolve automatically.", label)
         return None
 
     except Exception as exc:

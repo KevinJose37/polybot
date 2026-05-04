@@ -106,6 +106,47 @@ def get_total_bid_depth(token_id: str) -> float:
         return sum(size for _price, size in book.get("bids", []))
 
 
+def get_book_summary(token_id: str) -> dict | None:
+    """
+    Get a full orderbook summary for a token.
+
+    Returns dict with:
+        best_bid, best_bid_size, best_ask, best_ask_size,
+        spread, spread_pct, bid_depth, ask_depth
+    Or None if no orderbook data available.
+    """
+    with _lock:
+        book = _orderbooks.get(token_id)
+        if not book or (time.time() - book.get("updated", 0)) > 60:
+            return None
+
+        bids = book.get("bids", [])
+        asks = book.get("asks", [])
+
+    best_bid = bids[0][0] if bids else 0.0
+    best_bid_size = bids[0][1] if bids else 0.0
+    best_ask = asks[0][0] if asks else 0.0
+    best_ask_size = asks[0][1] if asks else 0.0
+
+    spread = round(best_ask - best_bid, 4) if (best_bid > 0 and best_ask > 0) else 0.0
+    mid = (best_bid + best_ask) / 2.0 if (best_bid > 0 and best_ask > 0) else 0.0
+    spread_pct = round(spread / mid, 4) if mid > 0 else 0.0
+
+    bid_depth = sum(s for _p, s in bids)
+    ask_depth = sum(s for _p, s in asks)
+
+    return {
+        "best_bid": best_bid,
+        "best_bid_size": best_bid_size,
+        "best_ask": best_ask,
+        "best_ask_size": best_ask_size,
+        "spread": spread,
+        "spread_pct": spread_pct,
+        "bid_depth": round(bid_depth, 2),
+        "ask_depth": round(ask_depth, 2),
+    }
+
+
 def check_sell_liquidity(
     token_id: str,
     shares: float,
@@ -330,6 +371,24 @@ async def _ws_main():
                             continue
 
                         event_type = data.get("event_type", "")
+
+                        # One-shot: log the first message keys for debugging
+                        if not hasattr(_ws_main, "_first_logged"):
+                            _ws_main._first_logged = True
+                            logger.info(
+                                "WS first msg keys=%s event=%s ts=%s",
+                                list(data.keys()), event_type,
+                                data.get("timestamp", "MISSING"),
+                            )
+
+                        # Record WS latency (every message)
+                        try:
+                            from scalper.latency import record_polymarket_ws
+                            server_ts = data.get("timestamp")
+                            ts_val = int(server_ts) if server_ts else None
+                            record_polymarket_ws(ts_val)
+                        except (ValueError, TypeError, ImportError):
+                            pass
 
                         if event_type == "book":
                             _parse_book_message(data)

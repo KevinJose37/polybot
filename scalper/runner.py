@@ -25,7 +25,9 @@ if sys.stderr.encoding != "utf-8":
 import scalper.config as _cfg
 from scalper.config import (
     HFT_ASSETS,
+    HFT_MAX_SPREAD,
     HFT_SIGNAL_THRESHOLD,
+    HFT_TRADEABLE_ASSETS,
 )
 from scalper.display import (
     print_cycle_separator,
@@ -154,6 +156,10 @@ def _run_single_cycle(
         if asset_key not in markets or asset_key not in signals:
             continue
 
+        # Asset liquidity filter
+        if asset_key not in HFT_TRADEABLE_ASSETS:
+            continue
+
         market = markets[asset_key]
         signal = signals[asset_key]
 
@@ -176,23 +182,34 @@ def _run_single_cycle(
         if side == "NEUTRAL":
             continue
 
-        # Entry price: buy at the bestAsk for the CORRECT side
-        if side == "UP":
-            entry_price = market.get("up_best_ask", market.get("up_price", 0.5))
-            if entry_price <= 0:
-                entry_price = market.get("up_price", 0.5) + 0.01
+        # Get the correct CLOB token ID for this side
+        token_id = market.get(f"{side.lower()}_token_id", "")
+
+        # REST pre-entry check: verify bilateral book + spread
+        if token_id:
+            from scalper.live_client import check_entry_conditions
+            entry_check = check_entry_conditions(token_id, max_spread=HFT_MAX_SPREAD, asset=asset_key, side=side)
+            if not entry_check["can_enter"]:
+                print(f"  [REST CHECK] {asset_key} {side}: {entry_check['reason']} -> SKIP")
+                continue
+            # Use REST best_ask as real entry price (replaces stale Gamma)
+            entry_price = entry_check["best_ask"]
+            print(f"  [REST CHECK] {asset_key} {side}: {entry_check['reason']}")
         else:
-            entry_price = market.get("down_best_ask", market.get("down_price", 0.5))
-            if entry_price <= 0:
-                entry_price = market.get("down_price", 0.5) + 0.01
+            # Fallback: Gamma price (no token_id for REST)
+            if side == "UP":
+                entry_price = market.get("up_best_ask", market.get("up_price", 0.5))
+                if entry_price <= 0:
+                    entry_price = market.get("up_price", 0.5) + 0.01
+            else:
+                entry_price = market.get("down_best_ask", market.get("down_price", 0.5))
+                if entry_price <= 0:
+                    entry_price = market.get("down_price", 0.5) + 0.01
 
         # Sanity check: don't buy at extreme prices
         if entry_price >= 0.95 or entry_price <= 0.05:
             logger.debug("Skipping %s: entry price %.4f too extreme", asset_key, entry_price)
             continue
-
-        # Get the correct CLOB token ID for this side
-        token_id = market.get(f"{side.lower()}_token_id", "")
 
         # Open the trade
         trade = open_trade(
@@ -228,6 +245,13 @@ def _run_single_cycle(
     # ── 9. HINDSIGHT SUMMARY: Aggregate sell vs hold ────────
     hs_summary = get_hindsight_summary()
     print_hindsight_summary(hs_summary)
+
+    # ── 10. LATENCY: Show pipeline latency diagnostics ──────
+    try:
+        from scalper.latency import format_latency_display
+        print(f"\n{format_latency_display()}")
+    except ImportError:
+        pass
 
     return True
 
@@ -375,6 +399,9 @@ def _run_single_cycle_profiled(
     for asset_key in assets:
         if asset_key not in markets or asset_key not in signals:
             continue
+        # Asset liquidity filter
+        if asset_key not in HFT_TRADEABLE_ASSETS:
+            continue
         signal = signals[asset_key]
         if abs(signal.score) >= profile.signal_threshold:
             candidates.append((asset_key, signal))
@@ -429,15 +456,29 @@ def _run_single_cycle_profiled(
                 )
                 continue
 
-        # Entry price
-        if side == "UP":
-            entry_price = market.get("up_best_ask", market.get("up_price", 0.5))
-            if entry_price <= 0:
-                entry_price = market.get("up_price", 0.5) + 0.01
+        # Entry price + REST pre-entry check
+        # Get the correct CLOB token ID for this side
+        token_id = market.get(f"{side.lower()}_token_id", "")
+
+        if token_id:
+            from scalper.live_client import check_entry_conditions
+            entry_check = check_entry_conditions(token_id, max_spread=HFT_MAX_SPREAD, asset=asset_key, side=side)
+            if not entry_check["can_enter"]:
+                print(f"  [REST CHECK] {asset_key} {side}: {entry_check['reason']} -> SKIP")
+                continue
+            # Use REST best_ask as real entry price (replaces stale Gamma)
+            entry_price = entry_check["best_ask"]
+            print(f"  [REST CHECK] {asset_key} {side}: {entry_check['reason']}")
         else:
-            entry_price = market.get("down_best_ask", market.get("down_price", 0.5))
-            if entry_price <= 0:
-                entry_price = market.get("down_price", 0.5) + 0.01
+            # Fallback: Gamma price (no token_id)
+            if side == "UP":
+                entry_price = market.get("up_best_ask", market.get("up_price", 0.5))
+                if entry_price <= 0:
+                    entry_price = market.get("up_price", 0.5) + 0.01
+            else:
+                entry_price = market.get("down_best_ask", market.get("down_price", 0.5))
+                if entry_price <= 0:
+                    entry_price = market.get("down_price", 0.5) + 0.01
 
         if entry_price >= 0.95 or entry_price <= 0.05:
             continue
@@ -459,9 +500,6 @@ def _run_single_cycle_profiled(
             stake = round(stake, 2)
         else:
             stake = profile.base_stake
-
-        # Get the correct CLOB token ID for this side
-        token_id = market.get(f"{side.lower()}_token_id", "")
 
         trade = open_trade(
             asset=asset_key,
@@ -495,6 +533,13 @@ def _run_single_cycle_profiled(
 
     hs_summary = get_hindsight_summary()
     print_hindsight_summary(hs_summary)
+
+    # ── 7. LATENCY: Show pipeline latency diagnostics ──────
+    try:
+        from scalper.latency import format_latency_display
+        print(f"\n{format_latency_display()}")
+    except ImportError:
+        pass
 
     return True
 

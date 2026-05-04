@@ -185,9 +185,9 @@ def sync_trade_history() -> list[dict]:
         if event_end_str:
             try:
                 event_end = datetime.fromisoformat(event_end_str.replace("Z", "+00:00"))
-                # Add 60s buffer for settlement
+                # Add 20s buffer for settlement (faster slot release)
                 from datetime import timedelta
-                event_ended = now > event_end + timedelta(seconds=60)
+                event_ended = now > event_end + timedelta(seconds=20)
             except (ValueError, TypeError):
                 pass
         
@@ -340,7 +340,7 @@ def can_open_trade(trades: list[dict] | None = None) -> tuple[bool, str]:
 # ═══════════════════════════════════════════════════════════════
 
 _peak_capital: float = 0.0
-_gain_protection_pct: float = 0.50  # Protect 50% of gains
+_gain_protection_pct: float = 0.20  # Protect only 20% of gains (more permissive)
 _gain_protection_enabled: bool = True
 
 
@@ -378,8 +378,8 @@ def get_gain_protection_stop(starting_capital: float) -> float | None:
 
     gains = _peak_capital - starting_capital
 
-    # Don't activate protection until gains are meaningful (at least $2)
-    if gains < 2.0:
+    # Don't activate protection until gains are meaningful (at least $5)
+    if gains < 5.0:
         return None
 
     protected_gains = gains * _gain_protection_pct
@@ -405,7 +405,7 @@ def check_gain_protection(current_capital: float, starting_capital: float) -> tu
             f"  Peak capital:    ${_peak_capital:.2f}\n"
             f"  Current capital: ${current_capital:.2f}\n"
             f"  Drawdown:        -${lost:.2f}\n"
-            f"  Stop level:      ${stop_level:.2f} (protecting 80% of gains)"
+            f"  Stop level:      ${stop_level:.2f} (protecting {int(_gain_protection_pct*100)}% of gains)"
         )
 
     return False, ""
@@ -448,6 +448,60 @@ def open_trade(
             return None
 
     actual_stake = stake or _cfg.HFT_STAKE
+
+    # ── Paper mode: realistic liquidity check via WS ─────────
+    is_live_mode = False
+    try:
+        from scalper.live_client import is_live
+        is_live_mode = is_live()
+    except ImportError:
+        pass
+
+    if not is_live_mode and token_id:
+        try:
+            from scalper.orderbook_ws import get_book_summary
+            book = get_book_summary(token_id)
+            if book:
+                best_ask = book["best_ask"]
+                ask_depth = book["ask_depth"]
+                best_bid = book["best_bid"]
+                spread = book.get("spread_pct", 0)
+
+                # Check if there are sellers
+                if best_ask >= 0.99 or best_ask <= 0.01:
+                    print(
+                        f"  [PAPER BUY] {asset} {side}: "
+                        f"No asks on book → skipping entry"
+                    )
+                    logger.info("PAPER BUY SKIPPED (no asks): %s %s", asset, side)
+                    return None
+
+                # Check depth
+                estimated_shares = actual_stake / best_ask
+                if ask_depth < estimated_shares * 0.5:
+                    print(
+                        f"  [PAPER BUY] {asset} {side}: "
+                        f"Thin ask depth ({ask_depth:.1f}) vs size ({estimated_shares:.1f}) → skipping entry"
+                    )
+                    logger.info("PAPER BUY SKIPPED (thin depth): %s %s", asset, side)
+                    return None
+
+                # Adjust entry price to the actual best ask from WS
+                original_price = entry_price
+                entry_price = best_ask
+                print(
+                    f"  [PAPER BUY] {asset} {side}: "
+                    f"ask=${best_ask:.4f} bid=${best_bid:.4f} "
+                    f"spread={spread:.1%} depth={ask_depth:.0f} "
+                    f"{'(price adj ' + f'${original_price:.4f}→${best_ask:.4f})' if abs(original_price - best_ask) > 0.005 else ''}"
+                )
+            else:
+                print(
+                    f"  [PAPER BUY] {asset} {side}: "
+                    f"No WS data → using Gamma price ${entry_price:.4f}"
+                )
+        except (ImportError, AttributeError) as e:
+            logger.debug("Paper liquidity check unavailable: %s", e)
 
     # Calculate shares (how many outcome tokens we buy)
     if entry_price <= 0 or entry_price >= 1:
@@ -527,7 +581,15 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
 
     In live mode, P&L is calculated from actual USDC received (on-chain),
     not from paper price observations.
+
+    In paper mode, WS orderbook is checked to simulate realistic fills:
+    if no bids exist or slippage is too high, the sell is rejected.
     """
+    # ── Hold-only mode: block all early sells ─────────────────
+    import scalper.config as _cfg
+    if getattr(_cfg, "HOLD_ONLY", False):
+        return None
+
     trades = load_trades()
 
     for trade in trades:
@@ -539,6 +601,82 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
         entry_price = trade["entry_price"]
         shares = trade["shares"]
         stake = trade.get("stake", entry_price * shares)
+
+        # ── Paper mode: realistic liquidity check via WS ─────────
+        token_id = trade.get("token_id", "")
+        is_live_mode = False
+        try:
+            from scalper.live_client import is_live
+            is_live_mode = is_live()
+        except ImportError:
+            pass
+
+        if not is_live_mode and token_id:
+            # Paper mode with WS data available — simulate realistic fill
+            try:
+                from scalper.orderbook_ws import get_book_summary
+                book = get_book_summary(token_id)
+                if book:
+                    best_bid = book["best_bid"]
+                    bid_depth = book["bid_depth"]
+                    best_ask = book.get("best_ask", 0)
+                    spread = book.get("spread_pct", 0)
+
+                    if best_bid <= 0.01:
+                        print(
+                            f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                            f"No bids on book (ask=${best_ask:.2f}) → holding for resolution"
+                        )
+                        logger.info(
+                            "PAPER SELL SKIPPED (no bids): %s %s",
+                            trade["asset"], trade["side"],
+                        )
+                        return None
+
+                    if bid_depth < shares * 0.5:
+                        print(
+                            f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                            f"Thin depth ({bid_depth:.1f}) vs size ({shares:.1f}) "
+                            f"bid=${best_bid:.2f} → holding for resolution"
+                        )
+                        logger.info(
+                            "PAPER SELL SKIPPED (thin depth): %s %s | "
+                            "depth=%.1f shares=%.1f",
+                            trade["asset"], trade["side"], bid_depth, shares,
+                        )
+                        return None
+
+                    slippage = (entry_price - best_bid) / entry_price if entry_price > 0 else 1.0
+                    if slippage > 0.15:
+                        print(
+                            f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                            f"Slippage {slippage:.0%} (bid ${best_bid:.2f} vs entry ${entry_price:.2f}) "
+                            f"→ holding for resolution"
+                        )
+                        logger.info(
+                            "PAPER SELL SKIPPED (slippage): %s %s | "
+                            "bid=$%.2f entry=$%.2f slippage=%.0f%%",
+                            trade["asset"], trade["side"],
+                            best_bid, entry_price, slippage * 100,
+                        )
+                        return None
+
+                    # Paper mode: use best bid as realistic exit price
+                    exit_price = best_bid
+                    pnl_preview = (best_bid - entry_price) * shares
+                    print(
+                        f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                        f"bid=${best_bid:.4f} ask=${best_ask:.4f} "
+                        f"spread={spread:.1%} depth={bid_depth:.0f} "
+                        f"slip={slippage:.1%} pnl=${pnl_preview:+.2f}"
+                    )
+                else:
+                    print(
+                        f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                        f"No WS data → using Gamma price ${exit_price:.4f}"
+                    )
+            except (ImportError, AttributeError) as e:
+                logger.debug("Paper liquidity check unavailable: %s", e)
 
         # Default paper P&L (used if no live data)
         pnl = (exit_price - entry_price) * shares
@@ -576,8 +714,9 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
                                 f"  [LIQUIDITY] {trade['asset']} {trade['side']}: "
                                 f"bid ${liq['best_bid']:.2f} depth {liq['bid_depth']:.1f} → selling"
                             )
-                    except ImportError:
-                        pass  # WS module not available, proceed with sell
+                    except (ImportError, AttributeError) as e:
+                        logger.debug("Liquidity check skipped or failed: %s", e)
+                        pass  # WS module not available or older version, proceed with sell
 
                     # ── Check time to market close ──
                     event_end_str = trade.get("event_end", "")
@@ -746,13 +885,30 @@ def check_open_positions(signal_scores: dict[str, float] | None = None) -> list[
             continue
 
         # ── Check for early exit ─────────────────────────────
-        # Current price and sell price for the CORRECT side
+        # Current price for P&L calc; sell price = actual best bid
         if side == "UP":
             current_price = market_data.get("up_price", 0.5)
-            sell_price = market_data.get("up_best_bid", current_price)
+            gamma_bid = market_data.get("up_best_bid", 0)
         else:
             current_price = market_data.get("down_price", 0.5)
-            sell_price = market_data.get("down_best_bid", current_price)
+            gamma_bid = market_data.get("down_best_bid", 0)
+
+        # Priority: WS real-time bid > Gamma REST bid > mid-price fallback
+        ws_bid = None
+        try:
+            from scalper.orderbook_ws import get_best_bid as _get_best_bid
+            bid_data = _get_best_bid(trade.get("token_id", ""))
+            if bid_data:
+                ws_bid = bid_data[0]  # (price, size) tuple
+        except (ImportError, AttributeError):
+            pass
+
+        if ws_bid and ws_bid > 0.01:
+            sell_price = ws_bid
+        elif gamma_bid and gamma_bid > 0.01:
+            sell_price = gamma_bid
+        else:
+            sell_price = current_price
 
         entry_price = trade["entry_price"]
 
@@ -876,10 +1032,27 @@ def check_open_positions_profiled(
         # ── Price calculation ────────────────────────────────
         if side == "UP":
             current_price = market_data.get("up_price", 0.5)
-            sell_price = market_data.get("up_best_bid", current_price)
+            gamma_bid = market_data.get("up_best_bid", 0)
         else:
             current_price = market_data.get("down_price", 0.5)
-            sell_price = market_data.get("down_best_bid", current_price)
+            gamma_bid = market_data.get("down_best_bid", 0)
+
+        # Priority: WS real-time bid > Gamma REST bid > mid-price fallback
+        ws_bid = None
+        try:
+            from scalper.orderbook_ws import get_best_bid as _get_best_bid
+            bid_data = _get_best_bid(trade.get("token_id", ""))
+            if bid_data:
+                ws_bid = bid_data[0]  # (price, size) tuple
+        except (ImportError, AttributeError):
+            pass
+
+        if ws_bid and ws_bid > 0.01:
+            sell_price = ws_bid
+        elif gamma_bid and gamma_bid > 0.01:
+            sell_price = gamma_bid
+        else:
+            sell_price = current_price
 
         entry_price = trade["entry_price"]
         price_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0

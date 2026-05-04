@@ -129,7 +129,7 @@ PROFILES: dict[str, StrategyProfile] = {
     ),
     "v2opt": StrategyProfile(
         name="v2opt",
-        label="V2-OPT — Enhanced Technical (Best Signal + Max 2 Pos)",
+        label="V2-OPT — Enhanced Technical (Best Signal + Max 3 Pos)",
         trades_file="hft_trades_v2opt.json",
         signal_source="technical_v2",
         signal_threshold=0.40,
@@ -141,7 +141,7 @@ PROFILES: dict[str, StrategyProfile] = {
         trailing_trigger=0.20,
         sizing="kelly",
         base_stake=10.0,
-        max_open_positions=2,
+        max_open_positions=3,
         best_signal_only=True,
     ),
 

@@ -183,6 +183,7 @@ def mode_scalp(
     sl_override: float | None = None,
     poly_cap_override: float | None = None,
     no_protection: bool = False,
+    hold_only: bool = False,
     live: bool = False,
     dry_run: bool = False,
 ):
@@ -260,6 +261,12 @@ def mode_scalp(
         from scalper.trader import set_gain_protection_enabled
         set_gain_protection_enabled(False)
         print("  🛡️  Gain protection: DISABLED")
+
+    # Hold-only mode: disable all sells (buy + hold to resolution)
+    if hold_only:
+        import scalper.config as scalper_cfg
+        scalper_cfg.HOLD_ONLY = True
+        print("  \U0001f512  Hold-only mode: ALL sells disabled (hold to resolution)")
 
     run_scalper(target_assets=target_assets, strategy=strategy)
 
@@ -369,6 +376,12 @@ Ejemplos de uso:
         default=None,
         help="Polymarket price cap for entry filter (e.g. --poly-cap 0.62)",
     )
+    parser.add_argument(
+        "--hold-only",
+        action="store_true",
+        default=False,
+        help="Disable all early sells (hold every position to market resolution)",
+    )
 
     args = parser.parse_args()
 
@@ -389,6 +402,7 @@ Ejemplos de uso:
                 sl_override=args.sl,
                 poly_cap_override=args.poly_cap,
                 no_protection=args.no_protection,
+                hold_only=args.hold_only,
                 live=args.live,
                 dry_run=args.dry_run,
             )

@@ -26,6 +26,13 @@ HFT_STOP_LOSS = 0.30           # Cut loss at 30% drop on position
 HFT_EARLY_EXIT_REVERSAL = 0.60 # Exit if signal reverses past this
 HFT_SESSION_STOP_LOSS = 0.20   # Stop trading at 20% session loss
 
+# ── REST orderbook filters ─────────────────────────────────────
+HFT_MAX_SPREAD = 0.03          # Max bid-ask spread for entry (skip if wider)
+HFT_TRADEABLE_ASSETS = ["BTC", "ETH", "SOL", "XRP"]  # REST spread filter handles liquidity
+
+# ── Simulation flags ───────────────────────────────────────────
+HOLD_ONLY = False              # When True, skip all sells → hold to resolution
+
 # ── Persistence ────────────────────────────────────────────────
 HFT_TRADES_FILE = os.getenv("HFT_TRADES_FILE", "hft_trades.json")
 

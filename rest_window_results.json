@@ -1,0 +1,3712 @@
+[
+  {
+    "elapsed_s": 0,
+    "asset": "BTC",
+    "side": "UP",
+    "best_bid": 0.49,
+    "best_bid_sz": 30.0,
+    "best_ask": 0.5,
+    "best_ask_sz": 354.49,
+    "bid_depth": 81980.47,
+    "ask_depth": 82558.09,
+    "bid_levels": 49,
+    "ask_levels": 50,
+    "spread": 0.010000000000000009,
+    "mid": 0.495,
+    "latency_ms": 979.0,
+    "top_bids": [
+      {
+        "price": 0.49,
+        "size": 30.0
+      },
+      {
+        "price": 0.48,
+        "size": 15.27
+      },
+      {
+        "price": 0.47,
+        "size": 20.0
+      },
+      {
+        "price": 0.46,
+        "size": 45.0
+      },
+      {
+        "price": 0.45,
+        "size": 96.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.5,
+        "size": 354.49
+      },
+      {
+        "price": 0.51,
+        "size": 350.97
+      },
+      {
+        "price": 0.52,
+        "size": 45.0
+      },
+      {
+        "price": 0.53,
+        "size": 80.0
+      },
+      {
+        "price": 0.54,
+        "size": 70.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 0,
+    "asset": "BTC",
+    "side": "DN",
+    "best_bid": 0.52,
+    "best_bid_sz": 214.51,
+    "best_ask": 0.53,
+    "best_ask_sz": 10.0,
+    "bid_depth": 84513.65,
+    "ask_depth": 82246.65,
+    "bid_levels": 52,
+    "ask_levels": 47,
+    "spread": 0.010000000000000009,
+    "mid": 0.525,
+    "latency_ms": 797.0,
+    "top_bids": [
+      {
+        "price": 0.52,
+        "size": 214.51
+      },
+      {
+        "price": 0.51,
+        "size": 31.1
+      },
+      {
+        "price": 0.5,
+        "size": 302.05
+      },
+      {
+        "price": 0.49,
+        "size": 345.97
+      },
+      {
+        "price": 0.48,
+        "size": 106.39
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.53,
+        "size": 10.0
+      },
+      {
+        "price": 0.54,
+        "size": 45.0
+      },
+      {
+        "price": 0.55,
+        "size": 87.0
+      },
+      {
+        "price": 0.56,
+        "size": 50.0
+      },
+      {
+        "price": 0.57,
+        "size": 145.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 0,
+    "asset": "ETH",
+    "side": "UP",
+    "best_bid": 0.44,
+    "best_bid_sz": 5.35,
+    "best_ask": 0.45,
+    "best_ask_sz": 186.81,
+    "bid_depth": 66388.33,
+    "ask_depth": 66749.6,
+    "bid_levels": 33,
+    "ask_levels": 38,
+    "spread": 0.010000000000000009,
+    "mid": 0.445,
+    "latency_ms": 766.0,
+    "top_bids": [
+      {
+        "price": 0.44,
+        "size": 5.35
+      },
+      {
+        "price": 0.43,
+        "size": 25.0
+      },
+      {
+        "price": 0.42,
+        "size": 22.98
+      },
+      {
+        "price": 0.41,
+        "size": 36.0
+      },
+      {
+        "price": 0.4,
+        "size": 17.5
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.45,
+        "size": 186.81
+      },
+      {
+        "price": 0.47,
+        "size": 17.75
+      },
+      {
+        "price": 0.48,
+        "size": 20.0
+      },
+      {
+        "price": 0.49,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 31.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 0,
+    "asset": "ETH",
+    "side": "DN",
+    "best_bid": 0.55,
+    "best_bid_sz": 186.81,
+    "best_ask": 0.56,
+    "best_ask_sz": 5.35,
+    "bid_depth": 67287.6,
+    "ask_depth": 66042.33,
+    "bid_levels": 37,
+    "ask_levels": 32,
+    "spread": 0.010000000000000009,
+    "mid": 0.555,
+    "latency_ms": 815.0,
+    "top_bids": [
+      {
+        "price": 0.55,
+        "size": 186.81
+      },
+      {
+        "price": 0.53,
+        "size": 17.75
+      },
+      {
+        "price": 0.52,
+        "size": 20.0
+      },
+      {
+        "price": 0.51,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 31.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.56,
+        "size": 5.35
+      },
+      {
+        "price": 0.57,
+        "size": 25.0
+      },
+      {
+        "price": 0.58,
+        "size": 22.98
+      },
+      {
+        "price": 0.59,
+        "size": 36.0
+      },
+      {
+        "price": 0.6,
+        "size": 17.5
+      }
+    ]
+  },
+  {
+    "elapsed_s": 0,
+    "asset": "SOL",
+    "side": "UP",
+    "best_bid": 0.42,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.46,
+    "best_ask_sz": 15.0,
+    "bid_depth": 57685.7,
+    "ask_depth": 58143.74,
+    "bid_levels": 27,
+    "ask_levels": 27,
+    "spread": 0.040000000000000036,
+    "mid": 0.44,
+    "latency_ms": 822.0,
+    "top_bids": [
+      {
+        "price": 0.42,
+        "size": 5.0
+      },
+      {
+        "price": 0.41,
+        "size": 15.0
+      },
+      {
+        "price": 0.4,
+        "size": 5.0
+      },
+      {
+        "price": 0.39,
+        "size": 15.0
+      },
+      {
+        "price": 0.38,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.46,
+        "size": 15.0
+      },
+      {
+        "price": 0.47,
+        "size": 5.0
+      },
+      {
+        "price": 0.48,
+        "size": 5.0
+      },
+      {
+        "price": 0.49,
+        "size": 20.04
+      },
+      {
+        "price": 0.5,
+        "size": 10.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 0,
+    "asset": "SOL",
+    "side": "DN",
+    "best_bid": 0.54,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.58,
+    "best_ask_sz": 5.0,
+    "bid_depth": 58123.7,
+    "ask_depth": 57685.7,
+    "bid_levels": 27,
+    "ask_levels": 27,
+    "spread": 0.039999999999999925,
+    "mid": 0.56,
+    "latency_ms": 809.0,
+    "top_bids": [
+      {
+        "price": 0.54,
+        "size": 5.0
+      },
+      {
+        "price": 0.53,
+        "size": 5.0
+      },
+      {
+        "price": 0.52,
+        "size": 10.0
+      },
+      {
+        "price": 0.51,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 10.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.58,
+        "size": 5.0
+      },
+      {
+        "price": 0.59,
+        "size": 15.0
+      },
+      {
+        "price": 0.6,
+        "size": 5.0
+      },
+      {
+        "price": 0.61,
+        "size": 15.0
+      },
+      {
+        "price": 0.62,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 0,
+    "asset": "XRP",
+    "side": "UP",
+    "best_bid": 0.45,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.48,
+    "best_ask_sz": 5.0,
+    "bid_depth": 56925.5,
+    "ask_depth": 56919.6,
+    "bid_levels": 25,
+    "ask_levels": 28,
+    "spread": 0.02999999999999997,
+    "mid": 0.46499999999999997,
+    "latency_ms": 766.0,
+    "top_bids": [
+      {
+        "price": 0.45,
+        "size": 5.0
+      },
+      {
+        "price": 0.44,
+        "size": 15.0
+      },
+      {
+        "price": 0.43,
+        "size": 5.0
+      },
+      {
+        "price": 0.42,
+        "size": 5.0
+      },
+      {
+        "price": 0.41,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.48,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 10.1
+      },
+      {
+        "price": 0.52,
+        "size": 5.0
+      },
+      {
+        "price": 0.53,
+        "size": 5.0
+      },
+      {
+        "price": 0.54,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 0,
+    "asset": "XRP",
+    "side": "DN",
+    "best_bid": 0.52,
+    "best_bid_sz": 10.0,
+    "best_ask": 0.55,
+    "best_ask_sz": 10.0,
+    "bid_depth": 56934.6,
+    "ask_depth": 56930.5,
+    "bid_levels": 28,
+    "ask_levels": 25,
+    "spread": 0.030000000000000027,
+    "mid": 0.535,
+    "latency_ms": 775.0,
+    "top_bids": [
+      {
+        "price": 0.52,
+        "size": 10.0
+      },
+      {
+        "price": 0.5,
+        "size": 10.1
+      },
+      {
+        "price": 0.48,
+        "size": 5.0
+      },
+      {
+        "price": 0.47,
+        "size": 10.0
+      },
+      {
+        "price": 0.46,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.55,
+        "size": 10.0
+      },
+      {
+        "price": 0.56,
+        "size": 15.0
+      },
+      {
+        "price": 0.57,
+        "size": 5.0
+      },
+      {
+        "price": 0.58,
+        "size": 5.0
+      },
+      {
+        "price": 0.59,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 15,
+    "asset": "BTC",
+    "side": "UP",
+    "best_bid": 0.47,
+    "best_bid_sz": 72.04,
+    "best_ask": 0.48,
+    "best_ask_sz": 128.71,
+    "bid_depth": 65050.23,
+    "ask_depth": 64363.67,
+    "bid_levels": 47,
+    "ask_levels": 52,
+    "spread": 0.010000000000000009,
+    "mid": 0.475,
+    "latency_ms": 801.0,
+    "top_bids": [
+      {
+        "price": 0.47,
+        "size": 72.04
+      },
+      {
+        "price": 0.46,
+        "size": 62.83
+      },
+      {
+        "price": 0.45,
+        "size": 219.55
+      },
+      {
+        "price": 0.44,
+        "size": 120.0
+      },
+      {
+        "price": 0.43,
+        "size": 386.55
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.48,
+        "size": 128.71
+      },
+      {
+        "price": 0.49,
+        "size": 183.62
+      },
+      {
+        "price": 0.5,
+        "size": 312.07
+      },
+      {
+        "price": 0.51,
+        "size": 326.03
+      },
+      {
+        "price": 0.52,
+        "size": 110.42
+      }
+    ]
+  },
+  {
+    "elapsed_s": 15,
+    "asset": "BTC",
+    "side": "DN",
+    "best_bid": 0.52,
+    "best_bid_sz": 128.71,
+    "best_ask": 0.53,
+    "best_ask_sz": 62.04,
+    "bid_depth": 64363.67,
+    "ask_depth": 65040.23,
+    "bid_levels": 52,
+    "ask_levels": 47,
+    "spread": 0.010000000000000009,
+    "mid": 0.525,
+    "latency_ms": 803.0,
+    "top_bids": [
+      {
+        "price": 0.52,
+        "size": 128.71
+      },
+      {
+        "price": 0.51,
+        "size": 183.62
+      },
+      {
+        "price": 0.5,
+        "size": 312.07
+      },
+      {
+        "price": 0.49,
+        "size": 326.03
+      },
+      {
+        "price": 0.48,
+        "size": 110.42
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.53,
+        "size": 62.04
+      },
+      {
+        "price": 0.54,
+        "size": 62.83
+      },
+      {
+        "price": 0.55,
+        "size": 219.55
+      },
+      {
+        "price": 0.56,
+        "size": 120.0
+      },
+      {
+        "price": 0.57,
+        "size": 386.55
+      }
+    ]
+  },
+  {
+    "elapsed_s": 15,
+    "asset": "ETH",
+    "side": "UP",
+    "best_bid": 0.44,
+    "best_bid_sz": 41.28,
+    "best_ask": 0.45,
+    "best_ask_sz": 146.81,
+    "bid_depth": 46660.93,
+    "ask_depth": 48285.38,
+    "bid_levels": 26,
+    "ask_levels": 36,
+    "spread": 0.010000000000000009,
+    "mid": 0.445,
+    "latency_ms": 892.0,
+    "top_bids": [
+      {
+        "price": 0.44,
+        "size": 41.28
+      },
+      {
+        "price": 0.43,
+        "size": 54.05
+      },
+      {
+        "price": 0.42,
+        "size": 47.8
+      },
+      {
+        "price": 0.41,
+        "size": 162.8
+      },
+      {
+        "price": 0.4,
+        "size": 17.5
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.45,
+        "size": 146.81
+      },
+      {
+        "price": 0.46,
+        "size": 37.8
+      },
+      {
+        "price": 0.47,
+        "size": 50.55
+      },
+      {
+        "price": 0.48,
+        "size": 77.8
+      },
+      {
+        "price": 0.49,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 15,
+    "asset": "ETH",
+    "side": "DN",
+    "best_bid": 0.55,
+    "best_bid_sz": 146.81,
+    "best_ask": 0.56,
+    "best_ask_sz": 62.28,
+    "bid_depth": 48308.38,
+    "ask_depth": 46671.93,
+    "bid_levels": 37,
+    "ask_levels": 26,
+    "spread": 0.010000000000000009,
+    "mid": 0.555,
+    "latency_ms": 816.0,
+    "top_bids": [
+      {
+        "price": 0.55,
+        "size": 146.81
+      },
+      {
+        "price": 0.54,
+        "size": 37.8
+      },
+      {
+        "price": 0.53,
+        "size": 50.55
+      },
+      {
+        "price": 0.52,
+        "size": 72.8
+      },
+      {
+        "price": 0.51,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.56,
+        "size": 62.28
+      },
+      {
+        "price": 0.57,
+        "size": 54.05
+      },
+      {
+        "price": 0.58,
+        "size": 47.8
+      },
+      {
+        "price": 0.59,
+        "size": 162.8
+      },
+      {
+        "price": 0.6,
+        "size": 17.5
+      }
+    ]
+  },
+  {
+    "elapsed_s": 15,
+    "asset": "SOL",
+    "side": "UP",
+    "best_bid": 0.39,
+    "best_bid_sz": 14.0,
+    "best_ask": 0.42,
+    "best_ask_sz": 5.0,
+    "bid_depth": 44273.7,
+    "ask_depth": 44683.4,
+    "bid_levels": 23,
+    "ask_levels": 27,
+    "spread": 0.02999999999999997,
+    "mid": 0.405,
+    "latency_ms": 820.0,
+    "top_bids": [
+      {
+        "price": 0.39,
+        "size": 14.0
+      },
+      {
+        "price": 0.38,
+        "size": 5.0
+      },
+      {
+        "price": 0.37,
+        "size": 14.0
+      },
+      {
+        "price": 0.36,
+        "size": 5.0
+      },
+      {
+        "price": 0.35,
+        "size": 15.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.42,
+        "size": 5.0
+      },
+      {
+        "price": 0.43,
+        "size": 5.0
+      },
+      {
+        "price": 0.44,
+        "size": 5.0
+      },
+      {
+        "price": 0.45,
+        "size": 5.0
+      },
+      {
+        "price": 0.46,
+        "size": 23.57
+      }
+    ]
+  },
+  {
+    "elapsed_s": 15,
+    "asset": "SOL",
+    "side": "DN",
+    "best_bid": 0.58,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.61,
+    "best_ask_sz": 14.0,
+    "bid_depth": 38465.4,
+    "ask_depth": 38048.7,
+    "bid_levels": 26,
+    "ask_levels": 23,
+    "spread": 0.030000000000000027,
+    "mid": 0.595,
+    "latency_ms": 819.0,
+    "top_bids": [
+      {
+        "price": 0.58,
+        "size": 5.0
+      },
+      {
+        "price": 0.57,
+        "size": 5.0
+      },
+      {
+        "price": 0.56,
+        "size": 5.0
+      },
+      {
+        "price": 0.55,
+        "size": 5.0
+      },
+      {
+        "price": 0.54,
+        "size": 23.57
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.61,
+        "size": 14.0
+      },
+      {
+        "price": 0.62,
+        "size": 5.0
+      },
+      {
+        "price": 0.63,
+        "size": 14.0
+      },
+      {
+        "price": 0.64,
+        "size": 5.0
+      },
+      {
+        "price": 0.65,
+        "size": 15.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 15,
+    "asset": "XRP",
+    "side": "UP",
+    "best_bid": 0.46,
+    "best_bid_sz": 3.14,
+    "best_ask": 0.49,
+    "best_ask_sz": 5.0,
+    "bid_depth": 37187.64,
+    "ask_depth": 37295.6,
+    "bid_levels": 23,
+    "ask_levels": 26,
+    "spread": 0.02999999999999997,
+    "mid": 0.475,
+    "latency_ms": 812.0,
+    "top_bids": [
+      {
+        "price": 0.46,
+        "size": 3.14
+      },
+      {
+        "price": 0.45,
+        "size": 5.0
+      },
+      {
+        "price": 0.44,
+        "size": 20.0
+      },
+      {
+        "price": 0.43,
+        "size": 5.0
+      },
+      {
+        "price": 0.42,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.49,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 15.1
+      },
+      {
+        "price": 0.51,
+        "size": 5.0
+      },
+      {
+        "price": 0.53,
+        "size": 10.0
+      },
+      {
+        "price": 0.54,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 15,
+    "asset": "XRP",
+    "side": "DN",
+    "best_bid": 0.51,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.54,
+    "best_ask_sz": 3.14,
+    "bid_depth": 37295.6,
+    "ask_depth": 37187.64,
+    "bid_levels": 26,
+    "ask_levels": 23,
+    "spread": 0.030000000000000027,
+    "mid": 0.525,
+    "latency_ms": 822.0,
+    "top_bids": [
+      {
+        "price": 0.51,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 15.1
+      },
+      {
+        "price": 0.49,
+        "size": 5.0
+      },
+      {
+        "price": 0.48,
+        "size": 5.0
+      },
+      {
+        "price": 0.47,
+        "size": 10.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.54,
+        "size": 3.14
+      },
+      {
+        "price": 0.55,
+        "size": 5.0
+      },
+      {
+        "price": 0.56,
+        "size": 20.0
+      },
+      {
+        "price": 0.57,
+        "size": 5.0
+      },
+      {
+        "price": 0.58,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 30,
+    "asset": "BTC",
+    "side": "UP",
+    "best_bid": 0.35,
+    "best_bid_sz": 117.64,
+    "best_ask": 0.36,
+    "best_ask_sz": 123.58,
+    "bid_depth": 49457.7,
+    "ask_depth": 63930.68,
+    "bid_levels": 35,
+    "ask_levels": 64,
+    "spread": 0.010000000000000009,
+    "mid": 0.355,
+    "latency_ms": 800.0,
+    "top_bids": [
+      {
+        "price": 0.35,
+        "size": 117.64
+      },
+      {
+        "price": 0.34,
+        "size": 372.15
+      },
+      {
+        "price": 0.33,
+        "size": 367.58
+      },
+      {
+        "price": 0.32,
+        "size": 232.5
+      },
+      {
+        "price": 0.31,
+        "size": 35.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.36,
+        "size": 123.58
+      },
+      {
+        "price": 0.37,
+        "size": 170.52
+      },
+      {
+        "price": 0.38,
+        "size": 169.52
+      },
+      {
+        "price": 0.39,
+        "size": 170.52
+      },
+      {
+        "price": 0.4,
+        "size": 158.66
+      }
+    ]
+  },
+  {
+    "elapsed_s": 30,
+    "asset": "BTC",
+    "side": "DN",
+    "best_bid": 0.64,
+    "best_bid_sz": 134.18,
+    "best_ask": 0.65,
+    "best_ask_sz": 68.18,
+    "bid_depth": 64098.96,
+    "ask_depth": 49454.14,
+    "bid_levels": 64,
+    "ask_levels": 35,
+    "spread": 0.010000000000000009,
+    "mid": 0.645,
+    "latency_ms": 845.0,
+    "top_bids": [
+      {
+        "price": 0.64,
+        "size": 134.18
+      },
+      {
+        "price": 0.63,
+        "size": 170.52
+      },
+      {
+        "price": 0.62,
+        "size": 169.52
+      },
+      {
+        "price": 0.61,
+        "size": 185.52
+      },
+      {
+        "price": 0.6,
+        "size": 158.66
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.65,
+        "size": 68.18
+      },
+      {
+        "price": 0.66,
+        "size": 372.15
+      },
+      {
+        "price": 0.67,
+        "size": 367.58
+      },
+      {
+        "price": 0.68,
+        "size": 232.5
+      },
+      {
+        "price": 0.69,
+        "size": 35.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 30,
+    "asset": "ETH",
+    "side": "UP",
+    "best_bid": 0.35,
+    "best_bid_sz": 8.89,
+    "best_ask": 0.36,
+    "best_ask_sz": 61.27,
+    "bid_depth": 31990.24,
+    "ask_depth": 32662.58,
+    "bid_levels": 28,
+    "ask_levels": 43,
+    "spread": 0.010000000000000009,
+    "mid": 0.355,
+    "latency_ms": 802.0,
+    "top_bids": [
+      {
+        "price": 0.35,
+        "size": 8.89
+      },
+      {
+        "price": 0.34,
+        "size": 5.45
+      },
+      {
+        "price": 0.33,
+        "size": 15.0
+      },
+      {
+        "price": 0.32,
+        "size": 42.8
+      },
+      {
+        "price": 0.31,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.36,
+        "size": 61.27
+      },
+      {
+        "price": 0.37,
+        "size": 116.05
+      },
+      {
+        "price": 0.38,
+        "size": 111.05
+      },
+      {
+        "price": 0.39,
+        "size": 54.05
+      },
+      {
+        "price": 0.4,
+        "size": 42.8
+      }
+    ]
+  },
+  {
+    "elapsed_s": 30,
+    "asset": "ETH",
+    "side": "DN",
+    "best_bid": 0.66,
+    "best_bid_sz": 10.0,
+    "best_ask": 0.67,
+    "best_ask_sz": 100.05,
+    "bid_depth": 32193.21,
+    "ask_depth": 32513.38,
+    "bid_levels": 40,
+    "ask_levels": 31,
+    "spread": 0.010000000000000009,
+    "mid": 0.665,
+    "latency_ms": 787.0,
+    "top_bids": [
+      {
+        "price": 0.66,
+        "size": 10.0
+      },
+      {
+        "price": 0.63,
+        "size": 37.8
+      },
+      {
+        "price": 0.62,
+        "size": 37.8
+      },
+      {
+        "price": 0.61,
+        "size": 67.05
+      },
+      {
+        "price": 0.6,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.67,
+        "size": 100.05
+      },
+      {
+        "price": 0.68,
+        "size": 164.05
+      },
+      {
+        "price": 0.69,
+        "size": 51.69
+      },
+      {
+        "price": 0.7,
+        "size": 23.89
+      },
+      {
+        "price": 0.71,
+        "size": 11.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 30,
+    "asset": "SOL",
+    "side": "UP",
+    "best_bid": 0.29,
+    "best_bid_sz": 3.57,
+    "best_ask": 0.36,
+    "best_ask_sz": 5.0,
+    "bid_depth": 30489.53,
+    "ask_depth": 30324.59,
+    "bid_levels": 29,
+    "ask_levels": 36,
+    "spread": 0.07,
+    "mid": 0.32499999999999996,
+    "latency_ms": 797.0,
+    "top_bids": [
+      {
+        "price": 0.29,
+        "size": 3.57
+      },
+      {
+        "price": 0.28,
+        "size": 30.0
+      },
+      {
+        "price": 0.27,
+        "size": 5.0
+      },
+      {
+        "price": 0.26,
+        "size": 15.0
+      },
+      {
+        "price": 0.25,
+        "size": 78.56
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.36,
+        "size": 5.0
+      },
+      {
+        "price": 0.37,
+        "size": 5.0
+      },
+      {
+        "price": 0.38,
+        "size": 5.0
+      },
+      {
+        "price": 0.39,
+        "size": 5.0
+      },
+      {
+        "price": 0.4,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 30,
+    "asset": "SOL",
+    "side": "DN",
+    "best_bid": 0.62,
+    "best_bid_sz": 1.6,
+    "best_ask": 0.67,
+    "best_ask_sz": 5.0,
+    "bid_depth": 30352.57,
+    "ask_depth": 30509.76,
+    "bid_levels": 37,
+    "ask_levels": 33,
+    "spread": 0.050000000000000044,
+    "mid": 0.645,
+    "latency_ms": 780.0,
+    "top_bids": [
+      {
+        "price": 0.62,
+        "size": 1.6
+      },
+      {
+        "price": 0.61,
+        "size": 5.0
+      },
+      {
+        "price": 0.6,
+        "size": 16.19
+      },
+      {
+        "price": 0.59,
+        "size": 5.0
+      },
+      {
+        "price": 0.58,
+        "size": 20.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.67,
+        "size": 5.0
+      },
+      {
+        "price": 0.68,
+        "size": 13.8
+      },
+      {
+        "price": 0.69,
+        "size": 5.0
+      },
+      {
+        "price": 0.7,
+        "size": 5.0
+      },
+      {
+        "price": 0.71,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 30,
+    "asset": "XRP",
+    "side": "UP",
+    "best_bid": 0.37,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.4,
+    "best_ask_sz": 5.0,
+    "bid_depth": 28207.96,
+    "ask_depth": 28545.6,
+    "bid_levels": 24,
+    "ask_levels": 23,
+    "spread": 0.030000000000000027,
+    "mid": 0.385,
+    "latency_ms": 814.0,
+    "top_bids": [
+      {
+        "price": 0.37,
+        "size": 5.0
+      },
+      {
+        "price": 0.36,
+        "size": 5.0
+      },
+      {
+        "price": 0.35,
+        "size": 13.46
+      },
+      {
+        "price": 0.34,
+        "size": 25.0
+      },
+      {
+        "price": 0.33,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.4,
+        "size": 5.0
+      },
+      {
+        "price": 0.42,
+        "size": 5.0
+      },
+      {
+        "price": 0.43,
+        "size": 5.0
+      },
+      {
+        "price": 0.44,
+        "size": 5.0
+      },
+      {
+        "price": 0.45,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 30,
+    "asset": "XRP",
+    "side": "DN",
+    "best_bid": 0.5,
+    "best_bid_sz": 10.1,
+    "best_ask": 0.57,
+    "best_ask_sz": 5.0,
+    "bid_depth": 28264.6,
+    "ask_depth": 28862.5,
+    "bid_levels": 24,
+    "ask_levels": 18,
+    "spread": 0.06999999999999995,
+    "mid": 0.5349999999999999,
+    "latency_ms": 774.0,
+    "top_bids": [
+      {
+        "price": 0.5,
+        "size": 10.1
+      },
+      {
+        "price": 0.49,
+        "size": 5.0
+      },
+      {
+        "price": 0.44,
+        "size": 5.0
+      },
+      {
+        "price": 0.43,
+        "size": 5.0
+      },
+      {
+        "price": 0.42,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.57,
+        "size": 5.0
+      },
+      {
+        "price": 0.59,
+        "size": 5.0
+      },
+      {
+        "price": 0.61,
+        "size": 5.0
+      },
+      {
+        "price": 0.62,
+        "size": 5.0
+      },
+      {
+        "price": 0.63,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 60,
+    "asset": "BTC",
+    "side": "UP",
+    "best_bid": 0.46,
+    "best_bid_sz": 80.0,
+    "best_ask": 0.47,
+    "best_ask_sz": 53.87,
+    "bid_depth": 26491.39,
+    "ask_depth": 24564.33,
+    "bid_levels": 46,
+    "ask_levels": 53,
+    "spread": 0.009999999999999953,
+    "mid": 0.46499999999999997,
+    "latency_ms": 788.0,
+    "top_bids": [
+      {
+        "price": 0.46,
+        "size": 80.0
+      },
+      {
+        "price": 0.45,
+        "size": 196.12
+      },
+      {
+        "price": 0.44,
+        "size": 174.5
+      },
+      {
+        "price": 0.43,
+        "size": 99.04
+      },
+      {
+        "price": 0.42,
+        "size": 514.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.47,
+        "size": 53.87
+      },
+      {
+        "price": 0.48,
+        "size": 72.0
+      },
+      {
+        "price": 0.49,
+        "size": 234.58
+      },
+      {
+        "price": 0.5,
+        "size": 306.05
+      },
+      {
+        "price": 0.51,
+        "size": 220.7
+      }
+    ]
+  },
+  {
+    "elapsed_s": 60,
+    "asset": "BTC",
+    "side": "DN",
+    "best_bid": 0.52,
+    "best_bid_sz": 351.28,
+    "best_ask": 0.53,
+    "best_ask_sz": 10.0,
+    "bid_depth": 26853.76,
+    "ask_depth": 23446.57,
+    "bid_levels": 52,
+    "ask_levels": 47,
+    "spread": 0.010000000000000009,
+    "mid": 0.525,
+    "latency_ms": 772.0,
+    "top_bids": [
+      {
+        "price": 0.52,
+        "size": 351.28
+      },
+      {
+        "price": 0.51,
+        "size": 132.08
+      },
+      {
+        "price": 0.5,
+        "size": 206.05
+      },
+      {
+        "price": 0.49,
+        "size": 330.7
+      },
+      {
+        "price": 0.48,
+        "size": 194.4
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.53,
+        "size": 10.0
+      },
+      {
+        "price": 0.54,
+        "size": 26.0
+      },
+      {
+        "price": 0.55,
+        "size": 106.12
+      },
+      {
+        "price": 0.56,
+        "size": 89.5
+      },
+      {
+        "price": 0.57,
+        "size": 204.04
+      }
+    ]
+  },
+  {
+    "elapsed_s": 60,
+    "asset": "ETH",
+    "side": "UP",
+    "best_bid": 0.52,
+    "best_bid_sz": 1.28,
+    "best_ask": 0.53,
+    "best_ask_sz": 81.92,
+    "bid_depth": 6568.53,
+    "ask_depth": 6351.3,
+    "bid_levels": 52,
+    "ask_levels": 47,
+    "spread": 0.010000000000000009,
+    "mid": 0.525,
+    "latency_ms": 819.0,
+    "top_bids": [
+      {
+        "price": 0.52,
+        "size": 1.28
+      },
+      {
+        "price": 0.51,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 36.8
+      },
+      {
+        "price": 0.49,
+        "size": 42.8
+      },
+      {
+        "price": 0.48,
+        "size": 131.8
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.53,
+        "size": 81.92
+      },
+      {
+        "price": 0.54,
+        "size": 42.8
+      },
+      {
+        "price": 0.55,
+        "size": 5.0
+      },
+      {
+        "price": 0.56,
+        "size": 16.0
+      },
+      {
+        "price": 0.57,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 60,
+    "asset": "ETH",
+    "side": "DN",
+    "best_bid": 0.47,
+    "best_bid_sz": 49.16,
+    "best_ask": 0.48,
+    "best_ask_sz": 1.28,
+    "bid_depth": 6276.54,
+    "ask_depth": 6654.13,
+    "bid_levels": 47,
+    "ask_levels": 52,
+    "spread": 0.010000000000000009,
+    "mid": 0.475,
+    "latency_ms": 775.0,
+    "top_bids": [
+      {
+        "price": 0.47,
+        "size": 49.16
+      },
+      {
+        "price": 0.46,
+        "size": 42.8
+      },
+      {
+        "price": 0.45,
+        "size": 5.0
+      },
+      {
+        "price": 0.44,
+        "size": 5.0
+      },
+      {
+        "price": 0.43,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.48,
+        "size": 1.28
+      },
+      {
+        "price": 0.49,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 36.8
+      },
+      {
+        "price": 0.51,
+        "size": 42.8
+      },
+      {
+        "price": 0.52,
+        "size": 131.8
+      }
+    ]
+  },
+  {
+    "elapsed_s": 60,
+    "asset": "SOL",
+    "side": "UP",
+    "best_bid": 0.64,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.69,
+    "best_ask_sz": 23.75,
+    "bid_depth": 3635.86,
+    "ask_depth": 2453.38,
+    "bid_levels": 58,
+    "ask_levels": 30,
+    "spread": 0.04999999999999993,
+    "mid": 0.665,
+    "latency_ms": 867.0,
+    "top_bids": [
+      {
+        "price": 0.64,
+        "size": 5.0
+      },
+      {
+        "price": 0.63,
+        "size": 5.0
+      },
+      {
+        "price": 0.62,
+        "size": 23.59
+      },
+      {
+        "price": 0.61,
+        "size": 5.0
+      },
+      {
+        "price": 0.6,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.69,
+        "size": 23.75
+      },
+      {
+        "price": 0.7,
+        "size": 14.42
+      },
+      {
+        "price": 0.71,
+        "size": 10.0
+      },
+      {
+        "price": 0.72,
+        "size": 15.0
+      },
+      {
+        "price": 0.73,
+        "size": 15.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 60,
+    "asset": "SOL",
+    "side": "DN",
+    "best_bid": 0.31,
+    "best_bid_sz": 23.75,
+    "best_ask": 0.36,
+    "best_ask_sz": 5.0,
+    "bid_depth": 2681.38,
+    "ask_depth": 3432.86,
+    "bid_levels": 31,
+    "ask_levels": 58,
+    "spread": 0.04999999999999999,
+    "mid": 0.33499999999999996,
+    "latency_ms": 811.0,
+    "top_bids": [
+      {
+        "price": 0.31,
+        "size": 23.75
+      },
+      {
+        "price": 0.3,
+        "size": 14.42
+      },
+      {
+        "price": 0.29,
+        "size": 5.0
+      },
+      {
+        "price": 0.28,
+        "size": 21.0
+      },
+      {
+        "price": 0.27,
+        "size": 15.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.36,
+        "size": 5.0
+      },
+      {
+        "price": 0.37,
+        "size": 5.0
+      },
+      {
+        "price": 0.38,
+        "size": 23.59
+      },
+      {
+        "price": 0.39,
+        "size": 5.0
+      },
+      {
+        "price": 0.4,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 60,
+    "asset": "XRP",
+    "side": "UP",
+    "best_bid": 0.53,
+    "best_bid_sz": 10.0,
+    "best_ask": 0.54,
+    "best_ask_sz": 5.0,
+    "bid_depth": 1794.2,
+    "ask_depth": 1403.5,
+    "bid_levels": 21,
+    "ask_levels": 22,
+    "spread": 0.010000000000000009,
+    "mid": 0.535,
+    "latency_ms": 820.0,
+    "top_bids": [
+      {
+        "price": 0.53,
+        "size": 10.0
+      },
+      {
+        "price": 0.52,
+        "size": 5.0
+      },
+      {
+        "price": 0.51,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 15.0
+      },
+      {
+        "price": 0.49,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.54,
+        "size": 5.0
+      },
+      {
+        "price": 0.55,
+        "size": 5.0
+      },
+      {
+        "price": 0.56,
+        "size": 5.0
+      },
+      {
+        "price": 0.57,
+        "size": 5.0
+      },
+      {
+        "price": 0.58,
+        "size": 10.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 60,
+    "asset": "XRP",
+    "side": "DN",
+    "best_bid": 0.46,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.47,
+    "best_ask_sz": 5.74,
+    "bid_depth": 1433.5,
+    "ask_depth": 1789.94,
+    "bid_levels": 21,
+    "ask_levels": 21,
+    "spread": 0.009999999999999953,
+    "mid": 0.46499999999999997,
+    "latency_ms": 822.0,
+    "top_bids": [
+      {
+        "price": 0.46,
+        "size": 5.0
+      },
+      {
+        "price": 0.45,
+        "size": 5.0
+      },
+      {
+        "price": 0.44,
+        "size": 5.0
+      },
+      {
+        "price": 0.43,
+        "size": 5.0
+      },
+      {
+        "price": 0.42,
+        "size": 10.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.47,
+        "size": 5.74
+      },
+      {
+        "price": 0.48,
+        "size": 5.0
+      },
+      {
+        "price": 0.49,
+        "size": 5.0
+      },
+      {
+        "price": 0.5,
+        "size": 15.0
+      },
+      {
+        "price": 0.51,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 120,
+    "asset": "BTC",
+    "side": "UP",
+    "best_bid": 0.48,
+    "best_bid_sz": 130.55,
+    "best_ask": 0.49,
+    "best_ask_sz": 87.83,
+    "bid_depth": 17336.17,
+    "ask_depth": 16316.95,
+    "bid_levels": 48,
+    "ask_levels": 51,
+    "spread": 0.010000000000000009,
+    "mid": 0.485,
+    "latency_ms": 798.0,
+    "top_bids": [
+      {
+        "price": 0.48,
+        "size": 130.55
+      },
+      {
+        "price": 0.47,
+        "size": 83.52
+      },
+      {
+        "price": 0.46,
+        "size": 140.94
+      },
+      {
+        "price": 0.45,
+        "size": 140.02
+      },
+      {
+        "price": 0.44,
+        "size": 166.32
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.49,
+        "size": 87.83
+      },
+      {
+        "price": 0.5,
+        "size": 20.02
+      },
+      {
+        "price": 0.51,
+        "size": 197.0
+      },
+      {
+        "price": 0.52,
+        "size": 179.5
+      },
+      {
+        "price": 0.53,
+        "size": 70.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 120,
+    "asset": "BTC",
+    "side": "DN",
+    "best_bid": 0.47,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.48,
+    "best_ask_sz": 196.02,
+    "bid_depth": 15601.41,
+    "ask_depth": 18671.79,
+    "bid_levels": 47,
+    "ask_levels": 52,
+    "spread": 0.010000000000000009,
+    "mid": 0.475,
+    "latency_ms": 984.0,
+    "top_bids": [
+      {
+        "price": 0.47,
+        "size": 5.0
+      },
+      {
+        "price": 0.46,
+        "size": 179.52
+      },
+      {
+        "price": 0.45,
+        "size": 155.0
+      },
+      {
+        "price": 0.44,
+        "size": 206.89
+      },
+      {
+        "price": 0.43,
+        "size": 168.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.48,
+        "size": 196.02
+      },
+      {
+        "price": 0.49,
+        "size": 247.52
+      },
+      {
+        "price": 0.5,
+        "size": 139.52
+      },
+      {
+        "price": 0.51,
+        "size": 82.02
+      },
+      {
+        "price": 0.52,
+        "size": 229.55
+      }
+    ]
+  },
+  {
+    "elapsed_s": 120,
+    "asset": "ETH",
+    "side": "UP",
+    "best_bid": 0.47,
+    "best_bid_sz": 56.76,
+    "best_ask": 0.48,
+    "best_ask_sz": 27.0,
+    "bid_depth": 4753.0199999999995,
+    "ask_depth": 5311.13,
+    "bid_levels": 47,
+    "ask_levels": 52,
+    "spread": 0.010000000000000009,
+    "mid": 0.475,
+    "latency_ms": 923.0,
+    "top_bids": [
+      {
+        "price": 0.47,
+        "size": 56.76
+      },
+      {
+        "price": 0.46,
+        "size": 59.05
+      },
+      {
+        "price": 0.45,
+        "size": 68.24
+      },
+      {
+        "price": 0.44,
+        "size": 10.3
+      },
+      {
+        "price": 0.43,
+        "size": 110.3
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.48,
+        "size": 27.0
+      },
+      {
+        "price": 0.49,
+        "size": 71.05
+      },
+      {
+        "price": 0.5,
+        "size": 68.8
+      },
+      {
+        "price": 0.51,
+        "size": 49.05
+      },
+      {
+        "price": 0.52,
+        "size": 49.05
+      }
+    ]
+  },
+  {
+    "elapsed_s": 120,
+    "asset": "ETH",
+    "side": "DN",
+    "best_bid": 0.52,
+    "best_bid_sz": 27.0,
+    "best_ask": 0.53,
+    "best_ask_sz": 56.76,
+    "bid_depth": 5370.83,
+    "ask_depth": 4823.0199999999995,
+    "bid_levels": 52,
+    "ask_levels": 47,
+    "spread": 0.010000000000000009,
+    "mid": 0.525,
+    "latency_ms": 890.0,
+    "top_bids": [
+      {
+        "price": 0.52,
+        "size": 27.0
+      },
+      {
+        "price": 0.51,
+        "size": 71.05
+      },
+      {
+        "price": 0.5,
+        "size": 42.8
+      },
+      {
+        "price": 0.49,
+        "size": 75.05
+      },
+      {
+        "price": 0.48,
+        "size": 49.05
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.53,
+        "size": 56.76
+      },
+      {
+        "price": 0.54,
+        "size": 59.05
+      },
+      {
+        "price": 0.55,
+        "size": 68.24
+      },
+      {
+        "price": 0.56,
+        "size": 10.3
+      },
+      {
+        "price": 0.57,
+        "size": 110.3
+      }
+    ]
+  },
+  {
+    "elapsed_s": 120,
+    "asset": "SOL",
+    "side": "UP",
+    "best_bid": 0.8,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.83,
+    "best_ask_sz": 16.6,
+    "bid_depth": 3429.67,
+    "ask_depth": 1923.49,
+    "bid_levels": 74,
+    "ask_levels": 17,
+    "spread": 0.029999999999999916,
+    "mid": 0.815,
+    "latency_ms": 920.0,
+    "top_bids": [
+      {
+        "price": 0.8,
+        "size": 5.0
+      },
+      {
+        "price": 0.79,
+        "size": 5.0
+      },
+      {
+        "price": 0.78,
+        "size": 14.39
+      },
+      {
+        "price": 0.77,
+        "size": 5.0
+      },
+      {
+        "price": 0.76,
+        "size": 15.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.83,
+        "size": 16.6
+      },
+      {
+        "price": 0.84,
+        "size": 33.31
+      },
+      {
+        "price": 0.85,
+        "size": 14.0
+      },
+      {
+        "price": 0.86,
+        "size": 8.0
+      },
+      {
+        "price": 0.87,
+        "size": 6.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 120,
+    "asset": "SOL",
+    "side": "DN",
+    "best_bid": 0.18,
+    "best_bid_sz": 6.0,
+    "best_ask": 0.2,
+    "best_ask_sz": 5.0,
+    "bid_depth": 1969.77,
+    "ask_depth": 3434.87,
+    "bid_levels": 17,
+    "ask_levels": 75,
+    "spread": 0.020000000000000018,
+    "mid": 0.19,
+    "latency_ms": 871.0,
+    "top_bids": [
+      {
+        "price": 0.18,
+        "size": 6.0
+      },
+      {
+        "price": 0.17,
+        "size": 16.6
+      },
+      {
+        "price": 0.16,
+        "size": 78.29
+      },
+      {
+        "price": 0.14,
+        "size": 13.0
+      },
+      {
+        "price": 0.13,
+        "size": 8.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.2,
+        "size": 5.0
+      },
+      {
+        "price": 0.21,
+        "size": 5.0
+      },
+      {
+        "price": 0.22,
+        "size": 14.39
+      },
+      {
+        "price": 0.23,
+        "size": 5.0
+      },
+      {
+        "price": 0.24,
+        "size": 15.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 120,
+    "asset": "XRP",
+    "side": "UP",
+    "best_bid": 0.55,
+    "best_bid_sz": 10.0,
+    "best_ask": 0.57,
+    "best_ask_sz": 11.16,
+    "bid_depth": 2392.1,
+    "ask_depth": 2102.88,
+    "bid_levels": 29,
+    "ask_levels": 30,
+    "spread": 0.019999999999999907,
+    "mid": 0.56,
+    "latency_ms": 905.0,
+    "top_bids": [
+      {
+        "price": 0.55,
+        "size": 10.0
+      },
+      {
+        "price": 0.54,
+        "size": 15.0
+      },
+      {
+        "price": 0.53,
+        "size": 10.0
+      },
+      {
+        "price": 0.52,
+        "size": 5.0
+      },
+      {
+        "price": 0.51,
+        "size": 4.9
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.57,
+        "size": 11.16
+      },
+      {
+        "price": 0.58,
+        "size": 5.0
+      },
+      {
+        "price": 0.59,
+        "size": 5.0
+      },
+      {
+        "price": 0.6,
+        "size": 17.72
+      },
+      {
+        "price": 0.61,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 120,
+    "asset": "XRP",
+    "side": "DN",
+    "best_bid": 0.43,
+    "best_bid_sz": 11.16,
+    "best_ask": 0.44,
+    "best_ask_sz": 10.0,
+    "bid_depth": 2103.88,
+    "ask_depth": 2397.1,
+    "bid_levels": 30,
+    "ask_levels": 30,
+    "spread": 0.010000000000000009,
+    "mid": 0.435,
+    "latency_ms": 876.0,
+    "top_bids": [
+      {
+        "price": 0.43,
+        "size": 11.16
+      },
+      {
+        "price": 0.42,
+        "size": 5.0
+      },
+      {
+        "price": 0.41,
+        "size": 5.0
+      },
+      {
+        "price": 0.4,
+        "size": 17.72
+      },
+      {
+        "price": 0.39,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.44,
+        "size": 10.0
+      },
+      {
+        "price": 0.45,
+        "size": 10.0
+      },
+      {
+        "price": 0.46,
+        "size": 15.0
+      },
+      {
+        "price": 0.47,
+        "size": 10.0
+      },
+      {
+        "price": 0.48,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 180,
+    "asset": "BTC",
+    "side": "UP",
+    "best_bid": 0.54,
+    "best_bid_sz": 98.02,
+    "best_ask": 0.55,
+    "best_ask_sz": 118.21,
+    "bid_depth": 15009.02,
+    "ask_depth": 13881.43,
+    "bid_levels": 54,
+    "ask_levels": 45,
+    "spread": 0.010000000000000009,
+    "mid": 0.545,
+    "latency_ms": 1008.0,
+    "top_bids": [
+      {
+        "price": 0.54,
+        "size": 98.02
+      },
+      {
+        "price": 0.53,
+        "size": 107.52
+      },
+      {
+        "price": 0.52,
+        "size": 102.77
+      },
+      {
+        "price": 0.51,
+        "size": 87.0
+      },
+      {
+        "price": 0.5,
+        "size": 107.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.55,
+        "size": 118.21
+      },
+      {
+        "price": 0.56,
+        "size": 232.38
+      },
+      {
+        "price": 0.57,
+        "size": 116.02
+      },
+      {
+        "price": 0.58,
+        "size": 112.02
+      },
+      {
+        "price": 0.59,
+        "size": 53.64
+      }
+    ]
+  },
+  {
+    "elapsed_s": 180,
+    "asset": "BTC",
+    "side": "DN",
+    "best_bid": 0.42,
+    "best_bid_sz": 142.18,
+    "best_ask": 0.43,
+    "best_ask_sz": 71.02,
+    "bid_depth": 12683.49,
+    "ask_depth": 15795.12,
+    "bid_levels": 42,
+    "ask_levels": 57,
+    "spread": 0.010000000000000009,
+    "mid": 0.425,
+    "latency_ms": 994.0,
+    "top_bids": [
+      {
+        "price": 0.42,
+        "size": 142.18
+      },
+      {
+        "price": 0.41,
+        "size": 278.14
+      },
+      {
+        "price": 0.4,
+        "size": 50.02
+      },
+      {
+        "price": 0.39,
+        "size": 52.4
+      },
+      {
+        "price": 0.38,
+        "size": 40.02
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.43,
+        "size": 71.02
+      },
+      {
+        "price": 0.44,
+        "size": 36.5
+      },
+      {
+        "price": 0.45,
+        "size": 208.5
+      },
+      {
+        "price": 0.46,
+        "size": 92.0
+      },
+      {
+        "price": 0.47,
+        "size": 94.02
+      }
+    ]
+  },
+  {
+    "elapsed_s": 180,
+    "asset": "ETH",
+    "side": "UP",
+    "best_bid": 0.27,
+    "best_bid_sz": 21.69,
+    "best_ask": 0.28,
+    "best_ask_sz": 55.25,
+    "bid_depth": 2916.24,
+    "ask_depth": 4151.14,
+    "bid_levels": 27,
+    "ask_levels": 72,
+    "spread": 0.010000000000000009,
+    "mid": 0.275,
+    "latency_ms": 1016.0,
+    "top_bids": [
+      {
+        "price": 0.27,
+        "size": 21.69
+      },
+      {
+        "price": 0.26,
+        "size": 51.8
+      },
+      {
+        "price": 0.25,
+        "size": 68.05
+      },
+      {
+        "price": 0.24,
+        "size": 69.22
+      },
+      {
+        "price": 0.23,
+        "size": 68.8
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.28,
+        "size": 55.25
+      },
+      {
+        "price": 0.29,
+        "size": 180.3
+      },
+      {
+        "price": 0.3,
+        "size": 59.05
+      },
+      {
+        "price": 0.31,
+        "size": 41.24
+      },
+      {
+        "price": 0.32,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 180,
+    "asset": "ETH",
+    "side": "DN",
+    "best_bid": 0.72,
+    "best_bid_sz": 119.38,
+    "best_ask": 0.73,
+    "best_ask_sz": 4.07,
+    "bid_depth": 4229.21,
+    "ask_depth": 2877.95,
+    "bid_levels": 72,
+    "ask_levels": 27,
+    "spread": 0.010000000000000009,
+    "mid": 0.725,
+    "latency_ms": 1088.0,
+    "top_bids": [
+      {
+        "price": 0.72,
+        "size": 119.38
+      },
+      {
+        "price": 0.71,
+        "size": 170.3
+      },
+      {
+        "price": 0.7,
+        "size": 59.05
+      },
+      {
+        "price": 0.69,
+        "size": 47.24
+      },
+      {
+        "price": 0.68,
+        "size": 16.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.73,
+        "size": 4.07
+      },
+      {
+        "price": 0.74,
+        "size": 14.0
+      },
+      {
+        "price": 0.75,
+        "size": 14.0
+      },
+      {
+        "price": 0.76,
+        "size": 42.8
+      },
+      {
+        "price": 0.77,
+        "size": 42.8
+      }
+    ]
+  },
+  {
+    "elapsed_s": 180,
+    "asset": "SOL",
+    "side": "UP",
+    "best_bid": 0.93,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.95,
+    "best_ask_sz": 14.09,
+    "bid_depth": 3067.66,
+    "ask_depth": 908.49,
+    "bid_levels": 93,
+    "ask_levels": 5,
+    "spread": 0.019999999999999907,
+    "mid": 0.94,
+    "latency_ms": 891.0,
+    "top_bids": [
+      {
+        "price": 0.93,
+        "size": 5.0
+      },
+      {
+        "price": 0.92,
+        "size": 12.63
+      },
+      {
+        "price": 0.91,
+        "size": 5.0
+      },
+      {
+        "price": 0.9,
+        "size": 5.0
+      },
+      {
+        "price": 0.89,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.95,
+        "size": 14.09
+      },
+      {
+        "price": 0.96,
+        "size": 56.9
+      },
+      {
+        "price": 0.97,
+        "size": 95.7
+      },
+      {
+        "price": 0.98,
+        "size": 111.3
+      },
+      {
+        "price": 0.99,
+        "size": 630.5
+      }
+    ]
+  },
+  {
+    "elapsed_s": 180,
+    "asset": "SOL",
+    "side": "DN",
+    "best_bid": 0.05,
+    "best_bid_sz": 9.09,
+    "best_ask": 0.06,
+    "best_ask_sz": 5.0,
+    "bid_depth": 930.47,
+    "ask_depth": 3073.67,
+    "bid_levels": 5,
+    "ask_levels": 93,
+    "spread": 0.009999999999999995,
+    "mid": 0.055,
+    "latency_ms": 919.0,
+    "top_bids": [
+      {
+        "price": 0.05,
+        "size": 9.09
+      },
+      {
+        "price": 0.04,
+        "size": 65.88
+      },
+      {
+        "price": 0.03,
+        "size": 113.7
+      },
+      {
+        "price": 0.02,
+        "size": 111.3
+      },
+      {
+        "price": 0.01,
+        "size": 630.5
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.06,
+        "size": 5.0
+      },
+      {
+        "price": 0.07,
+        "size": 11.01
+      },
+      {
+        "price": 0.08,
+        "size": 12.63
+      },
+      {
+        "price": 0.09,
+        "size": 5.0
+      },
+      {
+        "price": 0.1,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 180,
+    "asset": "XRP",
+    "side": "UP",
+    "best_bid": 0.34,
+    "best_bid_sz": 8.47,
+    "best_ask": 0.38,
+    "best_ask_sz": 10.0,
+    "bid_depth": 537.17,
+    "ask_depth": 1581.86,
+    "bid_levels": 18,
+    "ask_levels": 24,
+    "spread": 0.03999999999999998,
+    "mid": 0.36,
+    "latency_ms": 933.0,
+    "top_bids": [
+      {
+        "price": 0.34,
+        "size": 8.47
+      },
+      {
+        "price": 0.33,
+        "size": 5.0
+      },
+      {
+        "price": 0.32,
+        "size": 5.0
+      },
+      {
+        "price": 0.31,
+        "size": 5.0
+      },
+      {
+        "price": 0.3,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.38,
+        "size": 10.0
+      },
+      {
+        "price": 0.39,
+        "size": 10.0
+      },
+      {
+        "price": 0.4,
+        "size": 32.41
+      },
+      {
+        "price": 0.41,
+        "size": 10.0
+      },
+      {
+        "price": 0.42,
+        "size": 10.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 180,
+    "asset": "XRP",
+    "side": "DN",
+    "best_bid": 0.54,
+    "best_bid_sz": 4.9,
+    "best_ask": 0.57,
+    "best_ask_sz": 10.0,
+    "bid_depth": 1523.35,
+    "ask_depth": 837.17,
+    "bid_levels": 20,
+    "ask_levels": 19,
+    "spread": 0.029999999999999916,
+    "mid": 0.5549999999999999,
+    "latency_ms": 873.0,
+    "top_bids": [
+      {
+        "price": 0.54,
+        "size": 4.9
+      },
+      {
+        "price": 0.53,
+        "size": 10.0
+      },
+      {
+        "price": 0.52,
+        "size": 10.0
+      },
+      {
+        "price": 0.51,
+        "size": 10.0
+      },
+      {
+        "price": 0.5,
+        "size": 5.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.57,
+        "size": 10.0
+      },
+      {
+        "price": 0.58,
+        "size": 10.0
+      },
+      {
+        "price": 0.59,
+        "size": 10.0
+      },
+      {
+        "price": 0.6,
+        "size": 5.0
+      },
+      {
+        "price": 0.61,
+        "size": 5.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 240,
+    "asset": "BTC",
+    "side": "UP",
+    "best_bid": 0.76,
+    "best_bid_sz": 20.02,
+    "best_ask": 0.77,
+    "best_ask_sz": 14.58,
+    "bid_depth": 13513.4,
+    "ask_depth": 7208.3099999999995,
+    "bid_levels": 75,
+    "ask_levels": 23,
+    "spread": 0.010000000000000009,
+    "mid": 0.765,
+    "latency_ms": 892.0,
+    "top_bids": [
+      {
+        "price": 0.76,
+        "size": 20.02
+      },
+      {
+        "price": 0.75,
+        "size": 5.0
+      },
+      {
+        "price": 0.74,
+        "size": 114.02
+      },
+      {
+        "price": 0.73,
+        "size": 5.02
+      },
+      {
+        "price": 0.72,
+        "size": 10.02
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.77,
+        "size": 14.58
+      },
+      {
+        "price": 0.78,
+        "size": 293.05
+      },
+      {
+        "price": 0.79,
+        "size": 607.8
+      },
+      {
+        "price": 0.8,
+        "size": 239.22
+      },
+      {
+        "price": 0.81,
+        "size": 24.4
+      }
+    ]
+  },
+  {
+    "elapsed_s": 240,
+    "asset": "BTC",
+    "side": "DN",
+    "best_bid": 0.2,
+    "best_bid_sz": 340.89,
+    "best_ask": 0.21,
+    "best_ask_sz": 38.0,
+    "bid_depth": 6604.2,
+    "ask_depth": 16443.95,
+    "bid_levels": 19,
+    "ask_levels": 78,
+    "spread": 0.009999999999999981,
+    "mid": 0.20500000000000002,
+    "latency_ms": 887.0,
+    "top_bids": [
+      {
+        "price": 0.2,
+        "size": 340.89
+      },
+      {
+        "price": 0.18,
+        "size": 20.0
+      },
+      {
+        "price": 0.17,
+        "size": 51.07
+      },
+      {
+        "price": 0.16,
+        "size": 142.69
+      },
+      {
+        "price": 0.15,
+        "size": 165.19
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.21,
+        "size": 38.0
+      },
+      {
+        "price": 0.22,
+        "size": 131.07
+      },
+      {
+        "price": 0.23,
+        "size": 24.05
+      },
+      {
+        "price": 0.24,
+        "size": 15.02
+      },
+      {
+        "price": 0.25,
+        "size": 15.02
+      }
+    ]
+  },
+  {
+    "elapsed_s": 240,
+    "asset": "ETH",
+    "side": "UP",
+    "best_bid": 0.15,
+    "best_bid_sz": 28.33,
+    "best_ask": 0.17,
+    "best_ask_sz": 7.19,
+    "bid_depth": 1872.19,
+    "ask_depth": 3188.6,
+    "bid_levels": 15,
+    "ask_levels": 83,
+    "spread": 0.020000000000000018,
+    "mid": 0.16,
+    "latency_ms": 915.0,
+    "top_bids": [
+      {
+        "price": 0.15,
+        "size": 28.33
+      },
+      {
+        "price": 0.14,
+        "size": 43.94
+      },
+      {
+        "price": 0.13,
+        "size": 31.5
+      },
+      {
+        "price": 0.12,
+        "size": 12.3
+      },
+      {
+        "price": 0.11,
+        "size": 13.3
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.17,
+        "size": 7.19
+      },
+      {
+        "price": 0.18,
+        "size": 31.69
+      },
+      {
+        "price": 0.19,
+        "size": 10.12
+      },
+      {
+        "price": 0.2,
+        "size": 15.0
+      },
+      {
+        "price": 0.21,
+        "size": 14.99
+      }
+    ]
+  },
+  {
+    "elapsed_s": 240,
+    "asset": "ETH",
+    "side": "DN",
+    "best_bid": 0.84,
+    "best_bid_sz": 7.19,
+    "best_ask": 0.85,
+    "best_ask_sz": 10.19,
+    "bid_depth": 3218.5,
+    "ask_depth": 1900.05,
+    "bid_levels": 84,
+    "ask_levels": 15,
+    "spread": 0.010000000000000009,
+    "mid": 0.845,
+    "latency_ms": 879.0,
+    "top_bids": [
+      {
+        "price": 0.84,
+        "size": 7.19
+      },
+      {
+        "price": 0.83,
+        "size": 33.19
+      },
+      {
+        "price": 0.82,
+        "size": 25.8
+      },
+      {
+        "price": 0.81,
+        "size": 10.12
+      },
+      {
+        "price": 0.8,
+        "size": 15.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.85,
+        "size": 10.19
+      },
+      {
+        "price": 0.86,
+        "size": 43.94
+      },
+      {
+        "price": 0.87,
+        "size": 57.5
+      },
+      {
+        "price": 0.88,
+        "size": 32.3
+      },
+      {
+        "price": 0.89,
+        "size": 13.3
+      }
+    ]
+  },
+  {
+    "elapsed_s": 240,
+    "asset": "SOL",
+    "side": "UP",
+    "best_bid": 0.99,
+    "best_bid_sz": 334.04,
+    "best_ask": 0,
+    "best_ask_sz": 0,
+    "bid_depth": 2718.3,
+    "ask_depth": 0,
+    "bid_levels": 99,
+    "ask_levels": 0,
+    "spread": 0,
+    "mid": 0.99,
+    "latency_ms": 844.0,
+    "top_bids": [
+      {
+        "price": 0.99,
+        "size": 334.04
+      },
+      {
+        "price": 0.98,
+        "size": 30.01
+      },
+      {
+        "price": 0.97,
+        "size": 49.7
+      },
+      {
+        "price": 0.96,
+        "size": 38.9
+      },
+      {
+        "price": 0.95,
+        "size": 32.4
+      }
+    ],
+    "top_asks": []
+  },
+  {
+    "elapsed_s": 240,
+    "asset": "SOL",
+    "side": "DN",
+    "best_bid": 0,
+    "best_bid_sz": 0,
+    "best_ask": 0.01,
+    "best_ask_sz": 334.04,
+    "bid_depth": 0,
+    "ask_depth": 2718.3,
+    "bid_levels": 0,
+    "ask_levels": 99,
+    "spread": 0,
+    "mid": 0.01,
+    "latency_ms": 851.0,
+    "top_bids": [],
+    "top_asks": [
+      {
+        "price": 0.01,
+        "size": 334.04
+      },
+      {
+        "price": 0.02,
+        "size": 30.01
+      },
+      {
+        "price": 0.03,
+        "size": 49.7
+      },
+      {
+        "price": 0.04,
+        "size": 38.9
+      },
+      {
+        "price": 0.05,
+        "size": 32.4
+      }
+    ]
+  },
+  {
+    "elapsed_s": 240,
+    "asset": "XRP",
+    "side": "UP",
+    "best_bid": 0.25,
+    "best_bid_sz": 20.02,
+    "best_ask": 0.61,
+    "best_ask_sz": 5.0,
+    "bid_depth": 1632.72,
+    "ask_depth": 1004.22,
+    "bid_levels": 17,
+    "ask_levels": 13,
+    "spread": 0.36,
+    "mid": 0.43,
+    "latency_ms": 847.0,
+    "top_bids": [
+      {
+        "price": 0.25,
+        "size": 20.02
+      },
+      {
+        "price": 0.21,
+        "size": 50.0
+      },
+      {
+        "price": 0.2,
+        "size": 60.0
+      },
+      {
+        "price": 0.17,
+        "size": 50.0
+      },
+      {
+        "price": 0.16,
+        "size": 50.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.61,
+        "size": 5.0
+      },
+      {
+        "price": 0.62,
+        "size": 5.0
+      },
+      {
+        "price": 0.63,
+        "size": 5.0
+      },
+      {
+        "price": 0.64,
+        "size": 5.0
+      },
+      {
+        "price": 0.82,
+        "size": 27.77
+      }
+    ]
+  },
+  {
+    "elapsed_s": 240,
+    "asset": "XRP",
+    "side": "DN",
+    "best_bid": 0.39,
+    "best_bid_sz": 5.0,
+    "best_ask": 0.75,
+    "best_ask_sz": 40.02,
+    "bid_depth": 1004.22,
+    "ask_depth": 1652.72,
+    "bid_levels": 13,
+    "ask_levels": 17,
+    "spread": 0.36,
+    "mid": 0.5700000000000001,
+    "latency_ms": 838.0,
+    "top_bids": [
+      {
+        "price": 0.39,
+        "size": 5.0
+      },
+      {
+        "price": 0.38,
+        "size": 5.0
+      },
+      {
+        "price": 0.37,
+        "size": 5.0
+      },
+      {
+        "price": 0.36,
+        "size": 5.0
+      },
+      {
+        "price": 0.18,
+        "size": 27.77
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.75,
+        "size": 40.02
+      },
+      {
+        "price": 0.79,
+        "size": 50.0
+      },
+      {
+        "price": 0.81,
+        "size": 60.0
+      },
+      {
+        "price": 0.83,
+        "size": 50.0
+      },
+      {
+        "price": 0.84,
+        "size": 50.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 280,
+    "asset": "BTC",
+    "side": "UP",
+    "best_bid": 0.4,
+    "best_bid_sz": 10.0,
+    "best_ask": 0.41,
+    "best_ask_sz": 45.0,
+    "bid_depth": 6748.88,
+    "ask_depth": 4757.69,
+    "bid_levels": 28,
+    "ask_levels": 29,
+    "spread": 0.009999999999999953,
+    "mid": 0.405,
+    "latency_ms": 952.0,
+    "top_bids": [
+      {
+        "price": 0.4,
+        "size": 10.0
+      },
+      {
+        "price": 0.38,
+        "size": 27.24
+      },
+      {
+        "price": 0.37,
+        "size": 5.0
+      },
+      {
+        "price": 0.36,
+        "size": 15.0
+      },
+      {
+        "price": 0.34,
+        "size": 15.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.41,
+        "size": 45.0
+      },
+      {
+        "price": 0.5,
+        "size": 26.0
+      },
+      {
+        "price": 0.63,
+        "size": 11.93
+      },
+      {
+        "price": 0.64,
+        "size": 0.13
+      },
+      {
+        "price": 0.66,
+        "size": 15.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 280,
+    "asset": "BTC",
+    "side": "DN",
+    "best_bid": 0.42,
+    "best_bid_sz": 30.0,
+    "best_ask": 0.6,
+    "best_ask_sz": 4.05,
+    "bid_depth": 4306.84,
+    "ask_depth": 6431.65,
+    "bid_levels": 30,
+    "ask_levels": 28,
+    "spread": 0.18,
+    "mid": 0.51,
+    "latency_ms": 987.0,
+    "top_bids": [
+      {
+        "price": 0.42,
+        "size": 30.0
+      },
+      {
+        "price": 0.4,
+        "size": 27.0
+      },
+      {
+        "price": 0.38,
+        "size": 13.15
+      },
+      {
+        "price": 0.37,
+        "size": 51.93
+      },
+      {
+        "price": 0.36,
+        "size": 0.13
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.6,
+        "size": 4.05
+      },
+      {
+        "price": 0.62,
+        "size": 27.24
+      },
+      {
+        "price": 0.63,
+        "size": 5.0
+      },
+      {
+        "price": 0.64,
+        "size": 15.0
+      },
+      {
+        "price": 0.66,
+        "size": 15.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 280,
+    "asset": "ETH",
+    "side": "UP",
+    "best_bid": 0,
+    "best_bid_sz": 0,
+    "best_ask": 0.01,
+    "best_ask_sz": 376.05,
+    "bid_depth": 0,
+    "ask_depth": 4982.32,
+    "bid_levels": 0,
+    "ask_levels": 19,
+    "spread": 0,
+    "mid": 0.01,
+    "latency_ms": 911.0,
+    "top_bids": [],
+    "top_asks": [
+      {
+        "price": 0.01,
+        "size": 376.05
+      },
+      {
+        "price": 0.02,
+        "size": 110.5
+      },
+      {
+        "price": 0.03,
+        "size": 5.0
+      },
+      {
+        "price": 0.04,
+        "size": 290.16
+      },
+      {
+        "price": 0.05,
+        "size": 7.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 280,
+    "asset": "ETH",
+    "side": "DN",
+    "best_bid": 0.99,
+    "best_bid_sz": 371.1,
+    "best_ask": 0,
+    "best_ask_sz": 0,
+    "bid_depth": 4939.37,
+    "ask_depth": 0,
+    "bid_levels": 18,
+    "ask_levels": 0,
+    "spread": 0,
+    "mid": 0.99,
+    "latency_ms": 964.0,
+    "top_bids": [
+      {
+        "price": 0.99,
+        "size": 371.1
+      },
+      {
+        "price": 0.98,
+        "size": 110.5
+      },
+      {
+        "price": 0.97,
+        "size": 5.0
+      },
+      {
+        "price": 0.96,
+        "size": 219.16
+      },
+      {
+        "price": 0.93,
+        "size": 10.0
+      }
+    ],
+    "top_asks": []
+  },
+  {
+    "elapsed_s": 280,
+    "asset": "SOL",
+    "side": "UP",
+    "best_bid": 0.99,
+    "best_bid_sz": 1921.05,
+    "best_ask": 0,
+    "best_ask_sz": 0,
+    "bid_depth": 5810.24,
+    "ask_depth": 0,
+    "bid_levels": 18,
+    "ask_levels": 0,
+    "spread": 0,
+    "mid": 0.99,
+    "latency_ms": 897.0,
+    "top_bids": [
+      {
+        "price": 0.99,
+        "size": 1921.05
+      },
+      {
+        "price": 0.98,
+        "size": 40.51
+      },
+      {
+        "price": 0.97,
+        "size": 5.0
+      },
+      {
+        "price": 0.96,
+        "size": 10.2
+      },
+      {
+        "price": 0.91,
+        "size": 10.0
+      }
+    ],
+    "top_asks": []
+  },
+  {
+    "elapsed_s": 280,
+    "asset": "SOL",
+    "side": "DN",
+    "best_bid": 0,
+    "best_bid_sz": 0,
+    "best_ask": 0.01,
+    "best_ask_sz": 1921.05,
+    "bid_depth": 0,
+    "ask_depth": 6140.24,
+    "bid_levels": 0,
+    "ask_levels": 18,
+    "spread": 0,
+    "mid": 0.01,
+    "latency_ms": 950.0,
+    "top_bids": [],
+    "top_asks": [
+      {
+        "price": 0.01,
+        "size": 1921.05
+      },
+      {
+        "price": 0.02,
+        "size": 40.51
+      },
+      {
+        "price": 0.03,
+        "size": 5.0
+      },
+      {
+        "price": 0.04,
+        "size": 10.2
+      },
+      {
+        "price": 0.09,
+        "size": 10.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 280,
+    "asset": "XRP",
+    "side": "UP",
+    "best_bid": 0.08,
+    "best_bid_sz": 3.07,
+    "best_ask": 0.7,
+    "best_ask_sz": 5.0,
+    "bid_depth": 456.77,
+    "ask_depth": 1200.25,
+    "bid_levels": 6,
+    "ask_levels": 10,
+    "spread": 0.62,
+    "mid": 0.38999999999999996,
+    "latency_ms": 1003.0,
+    "top_bids": [
+      {
+        "price": 0.08,
+        "size": 3.07
+      },
+      {
+        "price": 0.05,
+        "size": 30.0
+      },
+      {
+        "price": 0.04,
+        "size": 15.7
+      },
+      {
+        "price": 0.03,
+        "size": 16.0
+      },
+      {
+        "price": 0.02,
+        "size": 80.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.7,
+        "size": 5.0
+      },
+      {
+        "price": 0.75,
+        "size": 23.8
+      },
+      {
+        "price": 0.8,
+        "size": 20.0
+      },
+      {
+        "price": 0.9,
+        "size": 25.0
+      },
+      {
+        "price": 0.92,
+        "size": 10.0
+      }
+    ]
+  },
+  {
+    "elapsed_s": 280,
+    "asset": "XRP",
+    "side": "DN",
+    "best_bid": 0.35,
+    "best_bid_sz": 40.0,
+    "best_ask": 0.9,
+    "best_ask_sz": 40.0,
+    "bid_depth": 1439.25,
+    "ask_depth": 434.15,
+    "bid_levels": 17,
+    "ask_levels": 4,
+    "spread": 0.55,
+    "mid": 0.625,
+    "latency_ms": 1136.0,
+    "top_bids": [
+      {
+        "price": 0.35,
+        "size": 40.0
+      },
+      {
+        "price": 0.34,
+        "size": 40.0
+      },
+      {
+        "price": 0.33,
+        "size": 40.0
+      },
+      {
+        "price": 0.32,
+        "size": 40.0
+      },
+      {
+        "price": 0.31,
+        "size": 40.0
+      }
+    ],
+    "top_asks": [
+      {
+        "price": 0.9,
+        "size": 40.0
+      },
+      {
+        "price": 0.91,
+        "size": 40.0
+      },
+      {
+        "price": 0.98,
+        "size": 42.15
+      },
+      {
+        "price": 0.99,
+        "size": 312.0
+      }
+    ]
+  }
+]

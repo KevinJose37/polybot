@@ -295,10 +295,14 @@ def scan_active_markets(
             from scalper.orderbook_ws import start as ws_start, subscribe as ws_subscribe, is_running as ws_running
             if not ws_running():
                 ws_start(ws_token_ids)
+                logger.info("WS started with %d tokens", len(ws_token_ids))
             else:
                 ws_subscribe(ws_token_ids)
-        except ImportError:
-            pass
+        except Exception as ws_exc:
+            logger.warning("WS start/subscribe failed: %s", ws_exc)
+            print(f"  [WS] ⚠️ Failed to start: {ws_exc}")
+    else:
+        logger.debug("No token IDs found for WS subscription")
 
     return results
 
