@@ -62,14 +62,13 @@ from scalper.trader import (
 logger = logging.getLogger("polybot.scalper.runner")
 
 
-def _is_in_entry_window(market: dict) -> bool:
+def _is_in_entry_window(market: dict, max_elapsed: int = 210, duration_minutes: int = 5) -> bool:
     """
     Check if a market is tradeable right now.
 
     Entry is allowed when:
-    1. Market is UPCOMING and starts within 5 minutes (300s)
-    2. Market is IN PROGRESS and less than 3.5 min has elapsed
-       (gives us time before the 5-min window closes)
+    1. Market is UPCOMING and starts within `duration_minutes` (e.g. 300s or 900s)
+    2. Market is IN PROGRESS and less than `max_elapsed` seconds have elapsed
     3. Market must be accepting orders
     """
     if not market.get("accepting_orders", False):
@@ -78,22 +77,24 @@ def _is_in_entry_window(market: dict) -> bool:
     time_to_start = market.get("time_to_start_sec", 99999)
     is_in_progress = market.get("is_in_progress", False)
 
-    # If market is currently in progress, enter in the first 3.5 minutes
+    # If market is currently in progress, enforce profile entry window
     if is_in_progress:
         event_start = market.get("event_start")
         if event_start:
             now = datetime.now(timezone.utc)
             elapsed = (now - event_start).total_seconds()
-            return elapsed < 210  # First 3.5 minutes of the 5-minute window
+            return elapsed < max_elapsed
         return False
 
-    # Upcoming market: enter if it starts within 5 minutes
-    return 0 < time_to_start <= 300
+    # Upcoming market: enter if it starts within duration
+    duration_seconds = duration_minutes * 60
+    return 0 < time_to_start <= duration_seconds
 
 
 def _run_single_cycle(
     cycle_num: int,
     target_assets: dict | None = None,
+    duration_minutes: int = 5,
 ) -> bool:
     """
     Execute a single polling cycle.
@@ -107,7 +108,7 @@ def _run_single_cycle(
 
     # ── 1. SCAN: Find active markets ─────────────────────────
     try:
-        markets = scan_active_markets(assets)
+        markets = scan_active_markets(assets, duration_minutes=duration_minutes)
     except Exception as exc:
         logger.error("Market scan failed: %s", exc)
         markets = {}
@@ -262,6 +263,7 @@ def _run_single_cycle_profiled(
     profile,
     chainlink_monitor=None,
     tick_manager=None,
+    duration_minutes: int = 5,
 ) -> bool:
     """
     Execute a single polling cycle with strategy profile (V2/V3/V4).
@@ -284,7 +286,7 @@ def _run_single_cycle_profiled(
 
     # ── 1. SCAN ──────────────────────────────────────────────
     try:
-        markets = scan_active_markets(assets)
+        markets = scan_active_markets(assets, duration_minutes=duration_minutes)
     except Exception as exc:
         logger.error("Market scan failed: %s", exc)
         markets = {}
@@ -421,21 +423,28 @@ def _run_single_cycle_profiled(
 
         market = markets[asset_key]
 
+        # Scale windows based on duration (e.g., 15m is 3x larger than 5m)
+        time_multiplier = duration_minutes / 5.0
+
         # Entry window: v3 "late" mode only enters in specified window
         if profile.entry_mode == "late":
+            scaled_start = profile.entry_window_start * time_multiplier
+            scaled_end = profile.entry_window_end * time_multiplier
+
             event_start = market.get("event_start")
             if event_start:
                 now = datetime.now(timezone.utc)
                 elapsed = (now - event_start).total_seconds()
             else:
                 # Fallback: assume market is mid-progress
-                elapsed = profile.entry_window_start + 1
+                elapsed = scaled_start + 1
                 print(f"  [V3-WARN] {asset_key}: event_start ausente, usando fallback (elapsed={elapsed:.0f}s)")
 
-            if elapsed < profile.entry_window_start or elapsed > profile.entry_window_end:
+            if elapsed < scaled_start or elapsed > scaled_end:
                 continue
         else:
-            if not _is_in_entry_window(market):
+            scaled_end = getattr(profile, "entry_window_end", 210) * time_multiplier
+            if not _is_in_entry_window(market, max_elapsed=scaled_end, duration_minutes=duration_minutes):
                 continue
 
         ok, reason = can_open_trade()
@@ -456,9 +465,122 @@ def _run_single_cycle_profiled(
                 )
                 continue
 
+            # ── Min price filter: block market-decided entries ────────────
+            min_price = getattr(profile, "min_entry_price", 0.0)
+            if min_price > 0 and directional_price < min_price:
+                print(
+                    f"  [PRICE-FLOOR] {asset_key} {side}: "
+                    f"price ${directional_price:.2f} < floor ${min_price:.2f} -> SKIP"
+                )
+                continue
+
+        # ── Score ceiling: block momentum-exhaustion entries ─────────────
+        max_score = getattr(profile, "max_signal_score", 1.0)
+        if abs(signal.score) > max_score:
+            print(
+                f"  [SCORE-CEIL] {asset_key} {side}: "
+                f"|score|={abs(signal.score):.3f} > ceiling {max_score:.2f} (momentum exhausted) -> SKIP"
+            )
+            continue
+
         # Entry price + REST pre-entry check
         # Get the correct CLOB token ID for this side
         token_id = market.get(f"{side.lower()}_token_id", "")
+
+        # ── Velocity confirmation gate (V2OPT3) ─────────────────────────
+        if getattr(profile, "velocity_confirmation", False) and token_id:
+            from scalper.orderbook_ws import get_mid_velocity
+            vel_window = getattr(profile, "velocity_window_sec", 30)
+            vel_thresh = getattr(profile, "velocity_threshold", 0.02)
+            velocity = get_mid_velocity(token_id, window_sec=vel_window)
+
+            if velocity == 0.0:
+                # Not enough WS data yet — skip to avoid false entries
+                print(
+                    f"  [VELOCITY] {asset_key} {side}: "
+                    f"insufficient WS data (<3 samples in {vel_window}s) -> SKIP"
+                )
+                continue
+
+            vel_confirms = (
+                (side == "UP" and velocity >= vel_thresh)
+                or (side == "DOWN" and velocity <= -vel_thresh)
+            )
+            if not vel_confirms:
+                print(
+                    f"  [VELOCITY] {asset_key} {side}: "
+                    f"velocity={velocity:+.4f} does not confirm {side} "
+                    f"(need {'>' if side == 'UP' else '<'}{vel_thresh if side == 'UP' else -vel_thresh:.2f}) -> SKIP"
+                )
+                continue
+            print(
+                f"  [VELOCITY] {asset_key} {side}: "
+                f"velocity={velocity:+.4f} confirms {side} ✔"
+            )
+
+        # ── V5 Smart Execution Filters (Soft Penalties) ──────────────
+        if token_id and getattr(profile, "penalty_per_failed_filter", 0) > 0:
+            from scalper.orderbook_ws import get_imbalance, get_price_change, get_mid_velocity
+            
+            penalty = 0.0
+            failed_filters = []
+            
+            # 1. Acceleration Decay
+            if getattr(profile, "filter_accel_decay", False) and tick_manager:
+                vel_15 = tick_manager.get_velocity(asset_key, 15)
+                vel_60 = tick_manager.get_velocity(asset_key, 60)
+                if vel_60 != 0:
+                    # ratio of 15s speed vs 60s speed (normalized to per-second)
+                    speed_15 = abs(vel_15 / 15)
+                    speed_60 = abs(vel_60 / 60)
+                    if speed_60 > 0 and speed_15 / speed_60 < 0.3:
+                        penalty += profile.penalty_per_failed_filter
+                        failed_filters.append(f"accel_decay({speed_15:.3f} vs {speed_60:.3f})")
+            
+            # 2. Orderbook Imbalance
+            if getattr(profile, "filter_imbalance", False):
+                imbalance = get_imbalance(token_id)
+                imb_val = imbalance["up_imbalance"] if side == "UP" else imbalance["down_imbalance"]
+                if imb_val > 3.0:
+                    penalty += profile.penalty_per_failed_filter
+                    failed_filters.append(f"imbalance({imb_val:.1f}x)")
+            
+            # 3. Fake Momentum
+            if getattr(profile, "filter_fake_momentum", False) and tick_manager:
+                poly_change = get_price_change(token_id, window_sec=120)
+                binance_change = tick_manager.get_price_change(asset_key, 120)
+                # If poly moved > 5x binance (in the direction of the trade)
+                poly_reaction = abs(poly_change)
+                bin_reaction = abs(binance_change)
+                if poly_reaction > 0 and bin_reaction > 0 and poly_reaction / max(bin_reaction, 0.0001) > 5.0:
+                    penalty += profile.penalty_per_failed_filter
+                    failed_filters.append(f"fake_mom({poly_reaction:.1%} vs {bin_reaction:.1%})")
+            
+            # 4. Reversal Detection
+            if getattr(profile, "filter_reversal", False):
+                vel_15 = get_mid_velocity(token_id, window_sec=15)
+                vel_30 = get_mid_velocity(token_id, window_sec=30)
+                if (side == "UP" and vel_15 < -0.005 and vel_30 > 0.005) or (side == "DOWN" and vel_15 > 0.005 and vel_30 < -0.005):
+                    penalty += profile.penalty_per_failed_filter
+                    failed_filters.append(f"reversal({vel_15:+.3f})")
+            
+            # Apply penalties
+            if penalty > 0:
+                old_score = signal.score
+                # Reduce absolute score towards zero
+                if signal.score > 0:
+                    signal.score = max(0, signal.score - penalty)
+                else:
+                    signal.score = min(0, signal.score + penalty)
+                
+                print(f"  [V5-SMART] {asset_key} {side}: Soft penalty -{penalty:.2f} applied for {','.join(failed_filters)}")
+                print(f"  [V5-SMART] {asset_key} {side}: Score adjusted {old_score:+.3f} -> {signal.score:+.3f}")
+                
+                # Check if it still passes threshold
+                if abs(signal.score) < profile.signal_threshold:
+                    print(f"  [V5-SMART] {asset_key} {side}: Adjusted score < {profile.signal_threshold} -> SKIP")
+                    continue
+
 
         if token_id:
             from scalper.live_client import check_entry_conditions
@@ -548,6 +670,7 @@ def run_scalper(
     target_assets: dict | None = None,
     max_cycles: int | None = None,
     strategy: str = "v1",
+    duration_minutes: int = 5,
 ):
     """
     Main entry point for the HFT scalper bot.
@@ -617,11 +740,15 @@ def run_scalper(
                 break
 
             if strategy == "v1":
-                should_continue = _run_single_cycle(cycle, target_assets)
+                should_continue = _run_single_cycle(cycle, target_assets, duration_minutes=duration_minutes)
             else:
                 should_continue = _run_single_cycle_profiled(
-                    cycle, target_assets or HFT_ASSETS,
-                    profile, chainlink_monitor, tick_manager,
+                    cycle,
+                    target_assets=target_assets or HFT_ASSETS,
+                    profile=profile,
+                    chainlink_monitor=chainlink_monitor,
+                    tick_manager=tick_manager,
+                    duration_minutes=duration_minutes,
                 )
 
             if not should_continue:

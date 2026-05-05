@@ -30,22 +30,18 @@ def _parse_iso(dt_str: str) -> datetime:
     return datetime.fromisoformat(cleaned)
 
 
-def _compute_5m_slots(now: datetime, count: int = 6) -> list[int]:
+def _compute_market_slots(now: datetime, duration_minutes: int = 5, count: int = 6) -> list[int]:
     """
-    Compute the unix timestamps for the current and upcoming
-    5-minute market slots.
-
-    Markets use 5-minute boundaries aligned to the clock:
-    :00, :05, :10, :15, :20, :25, :30, :35, :40, :45, :50, :55
-
-    Returns list of unix timestamps, e.g.:
-    [1777651200, 1777651500, 1777651800, ...]
+    Compute the unix timestamps for the current and upcoming market slots.
+    
+    If duration is 5, boundaries are :00, :05, :10...
+    If duration is 15, boundaries are :00, :15, :30...
     """
     # Convert to unix timestamp
     ts = int(now.timestamp())
 
-    # Round DOWN to the previous 5-minute boundary
-    slot_seconds = 300  # 5 minutes
+    # Round DOWN to the previous boundary
+    slot_seconds = duration_minutes * 60
     current_slot = (ts // slot_seconds) * slot_seconds
 
     # Generate current + next N slots
@@ -57,19 +53,19 @@ def _compute_5m_slots(now: datetime, count: int = 6) -> list[int]:
     return slots
 
 
-def _slug_for_asset(asset_key: str, timestamp: int) -> str:
+def _slug_for_asset(asset_key: str, timestamp: int, duration_str: str = "5m") -> str:
     """
     Construct the event slug for a given asset and timestamp.
 
-    Pattern: {asset}-updown-5m-{timestamp}
+    Pattern: {asset}-updown-{duration}-{timestamp}
     """
     prefix_map = {
-        "BTC": "btc-updown-5m",
-        "ETH": "eth-updown-5m",
-        "SOL": "sol-updown-5m",
-        "XRP": "xrp-updown-5m",
+        "BTC": f"btc-updown-{duration_str}",
+        "ETH": f"eth-updown-{duration_str}",
+        "SOL": f"sol-updown-{duration_str}",
+        "XRP": f"xrp-updown-{duration_str}",
     }
-    prefix = prefix_map.get(asset_key, f"{asset_key.lower()}-updown-5m")
+    prefix = prefix_map.get(asset_key, f"{asset_key.lower()}-updown-{duration_str}")
     return f"{prefix}-{timestamp}"
 
 
@@ -190,10 +186,11 @@ def _extract_market_data(event: dict, asset: str) -> dict | None:
 
 def scan_active_markets(
     assets: dict | None = None,
+    duration_minutes: int = 5,
 ) -> dict[str, dict]:
     """
     Scan all configured assets and find the best active/upcoming
-    5-minute market for each.
+    market for each.
 
     Hybrid strategy:
     1. REST discovery: find active markets by slug (needed for metadata)
@@ -205,7 +202,7 @@ def scan_active_markets(
     """
     target_assets = assets or HFT_ASSETS
     now = datetime.now(timezone.utc)
-    slots = _compute_5m_slots(now, count=6)
+    slots = _compute_market_slots(now, duration_minutes=duration_minutes, count=6)
     results = {}
 
     # Collect token_ids for WS subscription
@@ -216,7 +213,8 @@ def scan_active_markets(
         best_time_to_start = None
 
         for ts in slots:
-            slug = _slug_for_asset(asset_key, ts)
+            duration_str = f"{duration_minutes}m"
+            slug = _slug_for_asset(asset_key, ts, duration_str=duration_str)
             event = _fetch_event_by_slug(slug)
             if not event:
                 continue

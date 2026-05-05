@@ -53,6 +53,27 @@ class StrategyProfile:
     poly_price_filter: bool = False    # reject entry if market already priced in
     poly_price_cap: float = 0.62       # max poly price in your direction to enter
 
+    # ── Price band filter (v2opt3) ──────────────────────────────
+    min_entry_price: float = 0.0       # block entry if price below this (market decided)
+
+    # ── Signal score ceiling (v2opt3) ────────────────────────────
+    max_signal_score: float = 1.0      # block entry if |score| above this (momentum exhausted)
+
+    # ── Orderbook velocity confirmation (v2opt3) ───────────────────
+    velocity_confirmation: bool = False  # require Polymarket book to move in signal direction
+    velocity_window_sec: int = 30        # look-back window in seconds
+    velocity_threshold: float = 0.02    # minimum |velocity| to confirm (e.g. $0.02 move in 30s)
+
+    # ── Hold-to-resolution mode ────────────────────────────────
+    hold_to_resolution: bool = False   # skip all TP/SL/reversal exits; let market resolve
+
+    # ── V5 Smart Execution Filters ─────────────────────────────
+    filter_accel_decay: bool = False
+    filter_imbalance: bool = False
+    filter_fake_momentum: bool = False
+    filter_reversal: bool = False
+    penalty_per_failed_filter: float = 0.10
+
 
 # ═══════════════════════════════════════════════════════════════
 # Strategy Profiles
@@ -73,6 +94,7 @@ PROFILES: dict[str, StrategyProfile] = {
         trailing_stop=False,
         sizing="flat",
         base_stake=10.0,
+        min_entry_price=0.30,
     ),
     "v2": StrategyProfile(
         name="v2",
@@ -88,6 +110,9 @@ PROFILES: dict[str, StrategyProfile] = {
         trailing_trigger=0.20,
         sizing="kelly",
         base_stake=10.0,
+        min_entry_price=0.30,
+        poly_price_filter=True,
+        poly_price_cap=0.65,
     ),
     "v3": StrategyProfile(
         name="v3",
@@ -108,6 +133,7 @@ PROFILES: dict[str, StrategyProfile] = {
         chainlink_delta_threshold=0.012,
         chainlink_confirm_readings=3,
         use_technical_confirmation=False,
+        min_entry_price=0.30,
     ),
 
     # ── Optimized variants (position limits + best signal) ────
@@ -126,6 +152,7 @@ PROFILES: dict[str, StrategyProfile] = {
         base_stake=10.0,
         max_open_positions=2,
         best_signal_only=True,
+        min_entry_price=0.30,
     ),
     "v2opt": StrategyProfile(
         name="v2opt",
@@ -143,6 +170,8 @@ PROFILES: dict[str, StrategyProfile] = {
         base_stake=10.0,
         max_open_positions=3,
         best_signal_only=True,
+        min_entry_price=0.30,
+        max_signal_score=0.80,
     ),
 
     # ── V4: Real-time ticks + Polymarket signal ───────────────
@@ -164,6 +193,91 @@ PROFILES: dict[str, StrategyProfile] = {
         best_signal_only=True,
         poly_price_filter=True,
         poly_price_cap=0.62,
+        min_entry_price=0.30,
+    ),
+
+    # ── V2OPT2: Hold-to-resolution, early entry only, tight price cap ─
+    "v2opt2": StrategyProfile(
+        name="v2opt2",
+        label="V2OPT2 — Hold-to-Resolution (2min window, $0.58 cap)",
+        trades_file="hft_trades_v2opt2.json",
+        signal_source="technical_v2",
+        signal_threshold=0.40,
+        entry_mode="anytime",
+        entry_window_end=120,          # Only enter in the first 2 minutes
+        take_profit=0.35,              # Ignored — hold_to_resolution overrides
+        stop_loss=0.30,               # Ignored — hold_to_resolution overrides
+        signal_reversal=0.60,          # Ignored — hold_to_resolution overrides
+        trailing_stop=False,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=2,
+        best_signal_only=True,
+        poly_price_filter=True,
+        poly_price_cap=0.58,
+        min_entry_price=0.30,
+        max_signal_score=0.80,
+        hold_to_resolution=True,
+    ),
+
+    # ── V2OPT3: Polymarket velocity-first, price band, score ceiling ───
+    "v2opt3": StrategyProfile(
+        name="v2opt3",
+        label="V2OPT3 — Velocity-First (Poly orderbook > Binance)",
+        trades_file="hft_trades_v2opt3.json",
+        signal_source="technical_v2",     # Binance signal as secondary filter
+        signal_threshold=0.35,             # min |score| to pass
+        entry_mode="late",                 # use entry_window_start/end
+        entry_window_start=20,             # skip first 20s (allow book to form)
+        entry_window_end=180,              # no entry after 3 min (market decided)
+        take_profit=0.35,                  # ignored — hold_to_resolution overrides
+        stop_loss=0.30,                    # ignored — hold_to_resolution overrides
+        signal_reversal=0.60,              # ignored — hold_to_resolution overrides
+        trailing_stop=False,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=3,
+        best_signal_only=True,
+        # Price band
+        poly_price_filter=True,
+        poly_price_cap=0.65,               # max price (upper band)
+        min_entry_price=0.32,              # min price (lower band — market not yet decided)
+        # Score ceiling (blocks exhausted momentum)
+        max_signal_score=0.80,
+        # Velocity gate
+        velocity_confirmation=True,
+        velocity_window_sec=30,
+        velocity_threshold=0.02,
+        # Always hold to resolution
+        hold_to_resolution=True,
+    ),
+
+    # ── V5: Smart Execution with Soft Penalty Filters ──────────
+    "v5": StrategyProfile(
+        name="v5",
+        label="V5 — Smart Execution (Soft Penalty Filters)",
+        trades_file="hft_trades_v5.json",
+        signal_source="ticks_v4",       # Binance ticks for fast velocity calculation
+        signal_threshold=0.30,          # Lower base threshold
+        entry_mode="anytime",
+        take_profit=0.35,               # Ignored — hold_to_resolution overrides
+        stop_loss=0.30,                 # Ignored — hold_to_resolution overrides
+        signal_reversal=0.60,           # Ignored — hold_to_resolution overrides
+        trailing_stop=False,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=3,
+        best_signal_only=True,
+        poly_price_filter=True,
+        poly_price_cap=0.65,
+        min_entry_price=0.30,
+        # Smart filters
+        filter_accel_decay=True,
+        filter_imbalance=True,
+        filter_fake_momentum=True,
+        filter_reversal=True,
+        penalty_per_failed_filter=0.15, # Deduct from signal score if a filter fails
+        hold_to_resolution=True,
     ),
 }
 

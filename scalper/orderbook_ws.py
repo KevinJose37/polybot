@@ -20,6 +20,7 @@ import json
 import logging
 import threading
 import time
+from collections import deque
 
 import websockets
 
@@ -36,6 +37,9 @@ _orderbooks: dict[str, dict] = {}
 
 # token_id → {"price": float, "updated": ts}
 _prices: dict[str, dict] = {}
+
+# token_id → deque of (timestamp, mid_price) — 2 minutes of history at max
+_mid_history: dict[str, deque] = {}
 
 _subscribed_tokens: set[str] = set()
 _lock = threading.Lock()
@@ -57,6 +61,47 @@ def get_price(token_id: str) -> float | None:
         if entry and (time.time() - entry.get("updated", 0)) < 60:
             return entry["price"]
         return None
+
+
+def update_mid_history(token_id: str, mid_price: float) -> None:
+    """
+    Append a (timestamp, mid_price) sample to the circular buffer for token_id.
+    Called internally every time the book snapshot produces a new mid-price.
+    Buffer holds up to 120 samples (~2 minutes at 1 sample/sec).
+    """
+    # NOTE: must be called with _lock already held
+    if token_id not in _mid_history:
+        _mid_history[token_id] = deque(maxlen=120)
+    _mid_history[token_id].append((time.time(), mid_price))
+
+
+def get_mid_velocity(token_id: str, window_sec: int = 30) -> float:
+    """
+    Compute how much the Polymarket mid-price has moved in the last `window_sec`.
+
+    Returns:
+        float: (current_mid - oldest_mid_in_window)
+               Positive → price rising (orderbook leans UP)
+               Negative → price falling (orderbook leans DOWN)
+               0.0      → insufficient data (<3 samples in window)
+
+    Thread-safe; can be called from any thread.
+    """
+    with _lock:
+        history = _mid_history.get(token_id)
+        if not history:
+            return 0.0
+
+    now = time.time()
+    cutoff = now - window_sec
+    window_samples = [(t, p) for t, p in history if t >= cutoff]
+
+    if len(window_samples) < 3:
+        return 0.0  # too sparse to be meaningful
+
+    oldest_price = window_samples[0][1]
+    current_price = window_samples[-1][1]
+    return round(current_price - oldest_price, 4)
 
 
 def get_prices_for_market(up_token_id: str, down_token_id: str) -> dict | None:
@@ -145,6 +190,54 @@ def get_book_summary(token_id: str) -> dict | None:
         "bid_depth": round(bid_depth, 2),
         "ask_depth": round(ask_depth, 2),
     }
+
+
+def get_imbalance(token_id: str) -> dict:
+    """
+    Get the orderbook imbalance ratio.
+    Returns:
+        {"up_imbalance": float, "down_imbalance": float}
+        up_imbalance = ask_depth / max(bid_depth, 1)  (>1 means more sellers, against UP)
+        down_imbalance = bid_depth / max(ask_depth, 1) (>1 means more buyers, against DOWN)
+    """
+    summary = get_book_summary(token_id)
+    if not summary:
+        return {"up_imbalance": 1.0, "down_imbalance": 1.0}
+    
+    bid_depth = summary["bid_depth"]
+    ask_depth = summary["ask_depth"]
+    
+    up_imbalance = ask_depth / max(bid_depth, 1.0)
+    down_imbalance = bid_depth / max(ask_depth, 1.0)
+    
+    return {"up_imbalance": round(up_imbalance, 2), "down_imbalance": round(down_imbalance, 2)}
+
+
+def get_price_change(token_id: str, window_sec: int = 120) -> float:
+    """
+    Compute % change in Polymarket mid-price over the last `window_sec`.
+    Returns:
+        float: % change (e.g. 0.05 for +5%, -0.02 for -2%)
+    """
+    with _lock:
+        history = _mid_history.get(token_id)
+        if not history:
+            return 0.0
+
+    now = time.time()
+    cutoff = now - window_sec
+    window_samples = [(t, p) for t, p in history if t >= cutoff]
+
+    if len(window_samples) < 2:
+        return 0.0
+
+    oldest_price = window_samples[0][1]
+    current_price = window_samples[-1][1]
+    
+    if oldest_price <= 0:
+        return 0.0
+        
+    return round((current_price - oldest_price) / oldest_price, 4)
 
 
 def check_sell_liquidity(
@@ -293,12 +386,13 @@ def _parse_price_change(data: dict):
 
             book["updated"] = now
 
-            # Update mid-price
+            # Update mid-price and history buffer
             bids = book["bids"]
             asks = book["asks"]
             if bids and asks:
                 mid = (bids[0][0] + asks[0][0]) / 2.0
                 _prices[asset_id] = {"price": mid, "updated": now}
+                update_mid_history(asset_id, mid)  # feed velocity buffer
 
 
 def _parse_last_trade_price(data: dict):

@@ -43,22 +43,22 @@ BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
 # ── Asset definitions ──────────────────────────────────────────
 HFT_ASSETS = {
     "BTC": {
-        "series_slug": "btc-up-or-down-5m",
+        "series_slug": "btc-up-or-down",
         "binance_symbol": "BTCUSDT",
         "name": "Bitcoin",
     },
     "ETH": {
-        "series_slug": "eth-up-or-down-5m",
+        "series_slug": "eth-up-or-down",
         "binance_symbol": "ETHUSDT",
         "name": "Ethereum",
     },
     "SOL": {
-        "series_slug": "sol-up-or-down-5m",
+        "series_slug": "sol-up-or-down",
         "binance_symbol": "SOLUSDT",
         "name": "Solana",
     },
     "XRP": {
-        "series_slug": "xrp-up-or-down-5m",
+        "series_slug": "xrp-up-or-down",
         "binance_symbol": "XRPUSDT",
         "name": "XRP",
     },

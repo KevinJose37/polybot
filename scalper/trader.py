@@ -671,10 +671,12 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
                         f"slip={slippage:.1%} pnl=${pnl_preview:+.2f}"
                     )
                 else:
+                    # No WS data = no orderbook visibility = can't sell (like live)
                     print(
                         f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                        f"No WS data → using Gamma price ${exit_price:.4f}"
+                        f"No WS data → cannot sell (no orderbook visibility), holding"
                     )
+                    return None
             except (ImportError, AttributeError) as e:
                 logger.debug("Paper liquidity check unavailable: %s", e)
 
@@ -908,7 +910,8 @@ def check_open_positions(signal_scores: dict[str, float] | None = None) -> list[
         elif gamma_bid and gamma_bid > 0.01:
             sell_price = gamma_bid
         else:
-            sell_price = current_price
+            # No bids available (WS or Gamma) — can't sell, hold for resolution
+            continue
 
         entry_price = trade["entry_price"]
 
@@ -1052,10 +1055,18 @@ def check_open_positions_profiled(
         elif gamma_bid and gamma_bid > 0.01:
             sell_price = gamma_bid
         else:
-            sell_price = current_price
+            # No bids available — can't sell in reality, hold for resolution
+            continue
 
         entry_price = trade["entry_price"]
         price_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+
+        # ── Hold-to-resolution: skip all early exits ─────────
+        hold = getattr(profile, "hold_to_resolution", False)
+        if hold:
+            # Only auto-resolution (market closed) is allowed — already
+            # handled above. Nothing more to do for this trade.
+            continue
 
         # ── Stop-loss ────────────────────────────────────────
         effective_sl = sl

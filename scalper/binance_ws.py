@@ -161,6 +161,60 @@ class BinanceTickManager:
             return False
         return buf.is_warm()
 
+    def get_velocity(self, asset: str, window_sec: int = 30) -> float:
+        """Compute absolute price change over the last `window_sec`."""
+        buf = self._buffers.get(asset)
+        if not buf:
+            return 0.0
+            
+        with buf._lock:
+            ticks = list(buf.ticks)
+            
+        if len(ticks) < 2:
+            return 0.0
+            
+        now = time.time()
+        cutoff = now - window_sec
+        
+        # Find the oldest tick within the window
+        oldest_price = ticks[-1].price
+        for tick in reversed(ticks):
+            if tick.timestamp >= cutoff:
+                oldest_price = tick.price
+            else:
+                break
+                
+        current_price = ticks[-1].price
+        return current_price - oldest_price
+
+    def get_price_change(self, asset: str, window_sec: int = 120) -> float:
+        """Compute % change over the last `window_sec`."""
+        buf = self._buffers.get(asset)
+        if not buf:
+            return 0.0
+            
+        with buf._lock:
+            ticks = list(buf.ticks)
+            
+        if len(ticks) < 2:
+            return 0.0
+            
+        now = time.time()
+        cutoff = now - window_sec
+        
+        oldest_price = ticks[-1].price
+        for tick in reversed(ticks):
+            if tick.timestamp >= cutoff:
+                oldest_price = tick.price
+            else:
+                break
+                
+        if oldest_price <= 0:
+            return 0.0
+            
+        current_price = ticks[-1].price
+        return (current_price - oldest_price) / oldest_price
+
     def is_all_warm(self) -> bool:
         """Check if all assets have enough ticks."""
         return all(buf.is_warm() for buf in self._buffers.values())

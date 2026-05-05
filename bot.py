@@ -186,9 +186,10 @@ def mode_scalp(
     hold_only: bool = False,
     live: bool = False,
     dry_run: bool = False,
+    duration: int = 5,
 ):
     """
-    Modo scalp: HFT scalper para mercados de 5 minutos.
+    Modo scalp: HFT scalper para mercados de corto plazo.
     Opera en loop continuo escaneando BTC/ETH/SOL/XRP.
 
     Strategies:
@@ -268,7 +269,11 @@ def mode_scalp(
         scalper_cfg.HOLD_ONLY = True
         print("  \U0001f512  Hold-only mode: ALL sells disabled (hold to resolution)")
 
-    run_scalper(target_assets=target_assets, strategy=strategy)
+    run_scalper(
+        target_assets=target_assets,
+        strategy=strategy,
+        duration_minutes=duration,
+    )
 
 
 def mode_live():
@@ -330,15 +335,22 @@ Ejemplos de uso:
     )
     parser.add_argument(
         "--strategy",
-        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4"],
+        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4", "v2opt2", "v2opt3", "v5"],
         default="v1",
-        help="Strategy: v1, v2, v3, v1opt, v2opt, v4 (ticks+polymarket)",
+        help="Strategy: v1, v2, v3, v1opt, v2opt, v4, v2opt2, v2opt3, v5",
     )
     parser.add_argument(
         "--interval",
         type=int,
         default=None,
         help="Poll interval in seconds for scalp mode (default: 10)",
+    )
+    parser.add_argument(
+        "--duration",
+        type=int,
+        choices=[5, 15],
+        default=5,
+        help="Market duration in minutes (5 or 15). Default: 5",
     )
     parser.add_argument(
         "--live",
@@ -405,6 +417,7 @@ Ejemplos de uso:
                 hold_only=args.hold_only,
                 live=args.live,
                 dry_run=args.dry_run,
+                duration=args.duration,
             )
         except KeyboardInterrupt:
             print("\n\n  ⛔ Interrumpido por el usuario.\n")
