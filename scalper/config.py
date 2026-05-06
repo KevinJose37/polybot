@@ -28,7 +28,7 @@ HFT_SESSION_STOP_LOSS = 0.20   # Stop trading at 20% session loss
 
 # ── REST orderbook filters ─────────────────────────────────────
 HFT_MAX_SPREAD = 0.03          # Max bid-ask spread for entry (skip if wider)
-HFT_TRADEABLE_ASSETS = ["BTC", "ETH", "SOL", "XRP"]  # REST spread filter handles liquidity
+HFT_TRADEABLE_ASSETS = ["BTC", "ETH", "XRP"]  # REST spread filter handles liquidity
 
 # ── Simulation flags ───────────────────────────────────────────
 HOLD_ONLY = False              # When True, skip all sells → hold to resolution
@@ -52,14 +52,9 @@ HFT_ASSETS = {
         "binance_symbol": "ETHUSDT",
         "name": "Ethereum",
     },
-    "SOL": {
-        "series_slug": "sol-up-or-down",
-        "binance_symbol": "SOLUSDT",
-        "name": "Solana",
-    },
     "XRP": {
         "series_slug": "xrp-up-or-down",
         "binance_symbol": "XRPUSDT",
-        "name": "XRP",
+        "name": "Ripple",
     },
 }

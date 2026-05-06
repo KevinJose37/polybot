@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolyBot Control Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Global Header -->
+        <header class="glass-panel main-header">
+            <div class="logo">
+                <i class="fa-solid fa-chart-network"></i>
+                <h1>POLY<span>BOT</span></h1>
+            </div>
+            <div class="global-stats">
+                <div class="stat-box">
+                    <span class="label">TOTAL P&L</span>
+                    <span class="value" id="global-pnl">$0.00</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">ACTIVE BOTS</span>
+                    <span class="value" id="global-active">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">OPEN POS</span>
+                    <span class="value" id="global-open">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content (Bots List) -->
+        <main class="bots-container" id="bots-container">
+            <!-- Loading indicator -->
+            <div class="loading-spinner">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> Loading strategies...
+            </div>
+        </main>
+    </div>
+
+    <!-- Template for a bot card (hidden) -->
+    <template id="bot-card-template">
+        <div class="bot-card glass-panel">
+            <div class="bot-header">
+                <div class="bot-title">
+                    <h2 class="strategy-name">V1</h2>
+                    <span class="status-badge stopped">STOPPED</span>
+                </div>
+                <div class="bot-controls">
+                    <button class="btn-start" title="Start Bot"><i class="fa-solid fa-play"></i></button>
+                    <button class="btn-stop hidden" title="Stop Bot"><i class="fa-solid fa-square"></i></button>
+                    <button class="btn-config" title="Settings"><i class="fa-solid fa-gear"></i></button>
+                </div>
+            </div>
+            
+            <div class="config-panel hidden">
+                <div class="input-group">
+                    <label>Stake ($)</label>
+                    <input type="number" class="config-stake" value="10">
+                </div>
+                <div class="input-group">
+                    <label>Interval (s)</label>
+                    <input type="number" class="config-interval" value="5">
+                </div>
+                <div class="input-group">
+                    <label>Duration (m)</label>
+                    <select class="config-duration">
+                        <option value="5" selected>5 Min</option>
+                        <option value="15">15 Min</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="bot-stats">
+                <div class="mini-stat"><span class="val pnl-val">$0.00</span><span class="lbl">P&L</span></div>
+                <div class="mini-stat"><span class="val wr-val">0%</span><span class="lbl">Win Rate</span></div>
+                <div class="mini-stat"><span class="val trades-val">0</span><span class="lbl">Trades</span></div>
+            </div>
+
+            <div class="positions-list">
+                <!-- Open positions and recent history will be injected here -->
+            </div>
+        </div>
+    </template>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

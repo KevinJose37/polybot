@@ -279,6 +279,76 @@ PROFILES: dict[str, StrategyProfile] = {
         penalty_per_failed_filter=0.15, # Deduct from signal score if a filter fails
         hold_to_resolution=True,
     ),
+
+    # ── COPY: Blind Copy Trading ──────────
+    "copy": StrategyProfile(
+        name="copy",
+        label="Copy Trading",
+        trades_file="hft_trades_copy.json",
+        signal_source="none",
+        signal_threshold=0.0,
+        entry_mode="anytime",
+        base_stake=1.0, 
+        poly_price_filter=False, 
+        max_signal_score=2.0,
+        hold_to_resolution=True,
+    ),
+    
+    # ── V6: Early Scalper (Quick Take Profit) ──────────
+    "v6": StrategyProfile(
+        name="v6",
+        label="V6 — Early Scalper (Poly Velocity)",
+        trades_file="hft_trades_v6.json",
+        signal_source="poly_velocity",   # Polymarket orderbook velocity (instant)
+        signal_threshold=0.15,           # $0.0075 mid-price move in 10s
+        entry_mode="late",
+        entry_window_start=5,            # Ready at second 5 (WS warms in ~3s)
+        entry_window_end=120,            # Strict 120s window
+        take_profit=0.08,                # Tighter TP: $0.50→$0.54 (achievable)
+        stop_loss=0.20,                  # Stop loss at 20%
+        signal_reversal=0.60,            # Reversal exit
+        trailing_stop=True,
+        trailing_trigger=0.05,           # Start trailing at +5%
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=2,            # Protect capital
+        best_signal_only=False,          # Enter the 2 best that pass
+        poly_price_filter=True,
+        poly_price_cap=0.55,             # Widened: velocity signal justifies more
+        min_entry_price=0.45,            # Widened: capture more opportunities
+        max_signal_score=2.0,
+        hold_to_resolution=False,        # Active trading (TP/SL)
+    ),
+
+    # ── V7: Production Bot (Data-Driven Optimal) ──────────
+    # Signal:   Polymarket velocity (fastest reaction to real market)
+    # Timing:   0-120s entry window (momentum is freshest here)
+    # Exit:     Hold-to-resolution (mathematically proven superior)
+    # Assets:   BTC, ETH, XRP only (SOL removed: net-negative)
+    # Risk:     Max 2 positions, best signal only, tight price band
+    "v7": StrategyProfile(
+        name="v7",
+        label="V7 — Production (Velocity + Hold-to-Resolution)",
+        trades_file="hft_trades_v7.json",
+        signal_source="poly_velocity",
+        signal_threshold=0.15,
+        entry_mode="late",
+        entry_window_start=5,
+        entry_window_end=120,
+        take_profit=99.0,               # Effectively disabled (hold to resolution)
+        stop_loss=99.0,                 # Effectively disabled (hold to resolution)
+        signal_reversal=99.0,           # Effectively disabled (hold to resolution)
+        trailing_stop=False,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=2,
+        best_signal_only=True,
+        poly_price_filter=True,
+        poly_price_cap=0.54,            # Max entry price (golden zone ceiling)
+        min_entry_price=0.46,           # Min entry price (golden zone floor)
+        max_signal_score=2.0,
+        hold_to_resolution=True,        # THE key insight: never sell early
+    ),
 }
 
 

@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  oracle-sniper:
+    build: .
+    image: polybot-oracle-sniper:latest
+    container_name: oracle_sniper
+    restart: unless-stopped
+    # Load your API keys from the .env file automatically
+    env_file:
+      - .env
+    # Here you can configure the exact command you want to run on the VPS
+    # We leave --live and --pre-seconds 5.0 activated for production performance
+    command: ["python", "-m", "scalper.oracle_sniper", "--stake", "1.0", "--live", "--pre-seconds", "5.0", "--max-price", "0.95"]
+    
+    # Ensures the Docker container shares the host network interface for lowest possible latency
+    network_mode: "host"

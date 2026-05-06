@@ -294,6 +294,58 @@ def _run_single_cycle_profiled(
     if not markets:
         print("  📡 No se encontraron mercados activos. Esperando...\n")
 
+    # Subscribe ONLY current market + open position + NEXT market tokens to WS.
+    # Uses replace_subscriptions to CLEAR stale tokens from resolved markets.
+    # Includes next-market tokens for proactive pre-warming (velocity from second 0).
+    all_needed_tokens = []
+
+    # Current market tokens
+    if markets:
+        for m in markets.values():
+            up_tid = m.get("up_token_id", "")
+            dn_tid = m.get("down_token_id", "")
+            if up_tid:
+                all_needed_tokens.append(up_tid)
+            if dn_tid:
+                all_needed_tokens.append(dn_tid)
+
+    # Open position tokens (may differ from current market if position spans cycles)
+    open_trades = [t for t in trades if t.get("status") == "open"]
+    for t in open_trades:
+        tid = t.get("token_id", "")
+        if tid and tid not in all_needed_tokens:
+            all_needed_tokens.append(tid)
+
+    # Proactive: prefetch NEXT market's tokens when next slot is <90s away.
+    # Only runs in the last ~90s of each 5-min window to avoid wasting API calls.
+    # Pre-warms the WS buffer so velocity is non-zero from cycle start.
+    import time as _time
+    _now_ts = int(_time.time())
+    _slot_sec = duration_minutes * 60
+    _next_slot = ((_now_ts // _slot_sec) + 1) * _slot_sec
+    _secs_to_next = _next_slot - _now_ts
+
+    if _secs_to_next <= 90:  # Only prefetch in the last 90s
+        try:
+            from scalper.market_scanner import prefetch_next_market_tokens
+            next_tokens = prefetch_next_market_tokens(
+                assets=assets, duration_minutes=duration_minutes,
+            )
+            for tid in next_tokens:
+                if tid and tid not in all_needed_tokens:
+                    all_needed_tokens.append(tid)
+            if next_tokens:
+                print(f"  [WS] Pre-warming {len(next_tokens)} tokens for next cycle ({_secs_to_next}s away)")
+        except Exception:
+            pass
+
+    if all_needed_tokens:
+        try:
+            from scalper.orderbook_ws import replace_subscriptions
+            replace_subscriptions(all_needed_tokens)
+        except Exception:
+            pass
+
     # ── 2. SIGNAL: Route by profile ──────────────────────────
     try:
         if profile.signal_source == "technical_v2":
@@ -329,6 +381,14 @@ def _run_single_cycle_profiled(
                         f"| score={sig_score} dir={sig_dir} "
                         f"| sustained={delta_info['sustained']} readings={delta_info['readings_count']}"
                     )
+        elif profile.signal_source == "poly_velocity":
+            from scalper.signals_v4 import compute_all_signals_poly_velocity
+
+            signals = compute_all_signals_poly_velocity(
+                assets=assets,
+                markets=markets,
+                tick_manager=tick_manager,  # Optional Binance confirmation
+            )
         elif profile.signal_source == "ticks_v4" and tick_manager:
             from scalper.signals_v4 import compute_all_signals_v4
 
@@ -370,16 +430,6 @@ def _run_single_cycle_profiled(
     for action in sync_actions:
         print_trade_action(action["type"], action["trade"])
 
-    # Ensure open position tokens are tracked by WS (scanner handles market tokens)
-    open_trades = [t for t in trades if t.get("status") == "open"]
-    if open_trades:
-        try:
-            from scalper.orderbook_ws import subscribe as ws_subscribe
-            token_ids = [t.get("token_id", "") for t in open_trades if t.get("token_id")]
-            if token_ids:
-                ws_subscribe(token_ids)
-        except Exception:
-            pass
 
     signal_scores = {k: s.score for k, s in signals.items()}
     actions = check_open_positions_profiled(signal_scores, profile=profile, markets_data=markets)
@@ -605,6 +655,16 @@ def _run_single_cycle_profiled(
         if entry_price >= 0.95 or entry_price <= 0.05:
             continue
 
+        # ── Re-apply profile filters against true REST price ──
+        if getattr(profile, "poly_price_filter", False):
+            if entry_price > profile.poly_price_cap:
+                print(f"  [REST-REJECT] {asset_key} {side}: true price ${entry_price:.2f} > cap ${profile.poly_price_cap:.2f} -> SKIP")
+                continue
+            min_price = getattr(profile, "min_entry_price", 0.0)
+            if min_price > 0 and entry_price < min_price:
+                print(f"  [REST-REJECT] {asset_key} {side}: true price ${entry_price:.2f} < floor ${min_price:.2f} -> SKIP")
+                continue
+
         # Sizing
         if profile.sizing == "kelly":
             stake = calculate_kelly_stake(
@@ -694,9 +754,9 @@ def run_scalper(
         from scalper.chainlink_delta import ChainlinkDeltaMonitor
         chainlink_monitor = ChainlinkDeltaMonitor()
 
-    # Initialize WebSocket tick manager for V4
+    # Initialize WebSocket tick manager for V4 and V6 (Binance confirmation)
     tick_manager = None
-    if profile.signal_source == "ticks_v4":
+    if profile.signal_source in ("ticks_v4", "poly_velocity"):
         from scalper.binance_ws import BinanceTickManager
         tick_manager = BinanceTickManager()
         tick_manager.start()

@@ -7,6 +7,7 @@ Modos de ejecución:
   python bot.py --mode paper   # Escanea y registra trades en papel
   python bot.py --mode report  # Muestra performance del portafolio
   python bot.py --mode scalp   # HFT scalper para mercados de 5 minutos
+  python bot.py --mode copy --target 0x...  # Copy-trading de wallet objetivo
 
 El bot opera en MODO PAPER por defecto — nunca ejecuta órdenes reales.
 """
@@ -291,6 +292,32 @@ def mode_live():
     sys.exit(0)
 
 
+def mode_copy(
+    target_wallet: str,
+    stake: float,
+    duration: int,
+    live: bool = False,
+    catch_up: int = 300,
+):
+    """
+    Modo copy: replica compras BUY de una wallet objetivo en mercados crypto (5m y 15m).
+    """
+    from copy_bot import run_copy_bot
+
+    if not target_wallet:
+        print("\n  ❌ Debes proporcionar --target 0x... para mode copy.\n")
+        sys.exit(1)
+
+    run_copy_bot(
+        target_wallet=target_wallet,
+        stake=stake,
+        duration_filter=duration,
+        is_live=live,
+        catch_up_seconds=catch_up,
+        allowed_durations=(5, 15),
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════
 # Entry point
 # ═══════════════════════════════════════════════════════════════════
@@ -306,12 +333,13 @@ Ejemplos de uso:
   python bot.py --mode paper      Escanea y registra trades en papel
   python bot.py --mode report     Muestra performance del portafolio
   python bot.py --mode scalp      HFT scalper para mercados de 5min
+  python bot.py --mode copy --target 0xABC... --stake 1
   python bot.py --mode scalp --assets BTC,ETH --stake 15
         """,
     )
     parser.add_argument(
         "--mode",
-        choices=["scan", "paper", "report", "scalp", "live"],
+        choices=["scan", "paper", "report", "scalp", "copy", "live"],
         default="scan",
         help="Modo de ejecución (default: scan)",
     )
@@ -335,9 +363,9 @@ Ejemplos de uso:
     )
     parser.add_argument(
         "--strategy",
-        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4", "v2opt2", "v2opt3", "v5"],
+        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4", "v2opt2", "v2opt3", "v5", "v6", "v7"],
         default="v1",
-        help="Strategy: v1, v2, v3, v1opt, v2opt, v4, v2opt2, v2opt3, v5",
+        help="Strategy: v1-v7. v7=Production (Velocity+Hold)",
     )
     parser.add_argument(
         "--interval",
@@ -350,7 +378,19 @@ Ejemplos de uso:
         type=int,
         choices=[5, 15],
         default=5,
-        help="Market duration in minutes (5 or 15). Default: 5",
+        help="Market duration in minutes (copy mode fixed to 5). Default: 5",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default=None,
+        help="Wallet objetivo para copy mode (e.g. 0x123...)",
+    )
+    parser.add_argument(
+        "--catch-up",
+        type=int,
+        default=300,
+        help="Copy mode: copiar trades de los ultimos N segundos al iniciar",
     )
     parser.add_argument(
         "--live",
@@ -402,23 +442,32 @@ Ejemplos de uso:
     logger.info("Bot iniciado en modo: %s", args.mode)
 
     # Scalp mode has its own banner and flow
-    if args.mode == "scalp":
+    if args.mode in {"scalp", "copy"}:
         try:
-            mode_scalp(
-                assets_filter=args.assets,
-                stake_override=args.stake,
-                strategy=args.strategy,
-                capital_override=args.capital,
-                interval_override=args.interval,
-                tp_override=args.tp,
-                sl_override=args.sl,
-                poly_cap_override=args.poly_cap,
-                no_protection=args.no_protection,
-                hold_only=args.hold_only,
-                live=args.live,
-                dry_run=args.dry_run,
-                duration=args.duration,
-            )
+            if args.mode == "scalp":
+                mode_scalp(
+                    assets_filter=args.assets,
+                    stake_override=args.stake,
+                    strategy=args.strategy,
+                    capital_override=args.capital,
+                    interval_override=args.interval,
+                    tp_override=args.tp,
+                    sl_override=args.sl,
+                    poly_cap_override=args.poly_cap,
+                    no_protection=args.no_protection,
+                    hold_only=args.hold_only,
+                    live=args.live,
+                    dry_run=args.dry_run,
+                    duration=args.duration,
+                )
+            else:
+                mode_copy(
+                    target_wallet=args.target,
+                    stake=args.stake if args.stake is not None else 1.0,
+                    duration=args.duration,
+                    live=args.live,
+                    catch_up=args.catch_up,
+                )
         except KeyboardInterrupt:
             print("\n\n  ⛔ Interrumpido por el usuario.\n")
             sys.exit(0)

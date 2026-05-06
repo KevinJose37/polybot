@@ -326,3 +326,226 @@ def compute_all_signals_v4(
             signals[asset_key] = signal
 
     return signals
+
+
+# ═══════════════════════════════════════════════════════════════
+# V6 Poly Velocity Signal Engine
+# ═══════════════════════════════════════════════════════════════
+
+
+def compute_all_signals_poly_velocity(
+    assets: dict,
+    markets: dict,
+    tick_manager=None,
+) -> dict[str, SignalResult]:
+    """
+    V6 signal engine: Polymarket orderbook velocity as primary signal.
+
+    Uses mid-price velocity from the WS orderbook — available within
+    5-10 seconds of market open (vs 30-60s for Binance tick warmup).
+
+    Signal flow:
+      1. Read mid-price velocity over 10s and 30s windows
+      2. Weighted combo: 70% short-term + 30% trend
+      3. Scale to [-1, 1] score
+      4. Optional: if Binance ticks are warm, halve score on disagreement
+
+    Args:
+        assets: Asset config dict (e.g. HFT_ASSETS)
+        markets: Market data dict with up_token_id, up_price, etc.
+        tick_manager: Optional BinanceTickManager for confirmation
+    """
+    from scalper.orderbook_ws import get_mid_velocity, get_price
+    from scalper.config import HFT_ASSETS
+
+    target_assets = assets or HFT_ASSETS
+    signals = {}
+
+    for asset_key in target_assets:
+        if asset_key not in markets:
+            continue
+
+        market = markets[asset_key]
+        up_token_id = market.get("up_token_id", "")
+
+        if not up_token_id:
+            continue
+
+        # ── Primary signal: Polymarket mid-price velocity ─────────
+        vel_10 = get_mid_velocity(up_token_id, window_sec=10)
+        vel_30 = get_mid_velocity(up_token_id, window_sec=30)
+
+        # Debug: show buffer state to diagnose velocity=0
+        from scalper.orderbook_ws import debug_mid_history
+        dbg = debug_mid_history(up_token_id)
+        if dbg["entries"] == 0:
+            print(f"  [V6-DBG] {asset_key}: NO BUFFER (token not in _mid_history) token={up_token_id[:20]}...")
+        else:
+            print(
+                f"  [V6-DBG] {asset_key}: buf={dbg['entries']} | "
+                f"10s={dbg['in_10s']}samples/{dbg['unique_prices_10s']}unique | "
+                f"30s={dbg['in_30s']} | mid=${dbg['latest_mid']:.4f} | "
+                f"age={dbg['age_newest_sec']}s"
+            )
+
+        # Weighted combo: react fast (70%) but confirm with trend (30%)
+        velocity = 0.7 * vel_10 + 0.3 * vel_30
+
+        # Scale to [-1, 1]:  $0.01 move → ~0.20,  $0.02 → ~0.40
+        score = float(np.clip(velocity * 20, -1.0, 1.0))
+
+        # ── Optional Binance confirmation ─────────────────────────
+        binance_agrees = None  # None = no data, True/False = verdict
+        if tick_manager and tick_manager.is_warm(asset_key):
+            ticks = tick_manager.get_ticks(asset_key, count=30)
+            if len(ticks) >= 10:
+                recent = np.mean([t.price for t in ticks[-10:]])
+                older = np.mean([t.price for t in ticks[:10]])
+                binance_dir = recent - older
+
+                # Disagreement: Poly says UP but Binance says DOWN (or vice versa)
+                if (score > 0 and binance_dir < 0) or (score < 0 and binance_dir > 0):
+                    score *= 0.5  # Halve confidence on conflict
+                    binance_agrees = False
+                else:
+                    binance_agrees = True
+
+        # ── Direction ─────────────────────────────────────────────
+        if score > 0.05:
+            direction = "UP"
+        elif score < -0.05:
+            direction = "DOWN"
+        else:
+            direction = "NEUTRAL"
+
+        # ── Confidence ────────────────────────────────────────────
+        abs_score = abs(score)
+        if abs_score >= 0.40 and binance_agrees is not False:
+            confidence = "HIGH"
+        elif abs_score >= 0.20:
+            confidence = "MEDIUM"
+        else:
+            confidence = "LOW"
+
+        current_price = get_price(up_token_id) or market.get("up_price", 0.5)
+
+        signals[asset_key] = SignalResult(
+            asset=asset_key,
+            direction=direction,
+            score=score,
+            ema_signal=float(vel_10),       # repurposed: 10s velocity
+            rsi_signal=float(vel_30),       # repurposed: 30s velocity
+            momentum_signal=float(velocity),
+            volume_signal=0.0,
+            vwap_signal=0.0,
+            rsi_value=50.0,
+            current_price=float(current_price),
+            ema_fast=0.0,
+            ema_slow=0.0,
+            confidence=confidence,
+        )
+
+        # ── Diagnostic print ─────────────────────────────────────
+        binance_str = (
+            "AGREE" if binance_agrees is True
+            else "DISAGREE (-50%)" if binance_agrees is False
+            else "N/A (cold)"
+        )
+        print(
+            f"  [V6-POLY] {asset_key}: "
+            f"vel10={vel_10:+.4f} vel30={vel_30:+.4f} → "
+            f"score={score:+.3f} dir={direction} "
+            f"| Binance={binance_str}"
+        )
+    # ── Quiet-market fallback ────────────────────────────────────
+    # If ALL velocities are zero after 45s, the market is quiet but
+    # in-band prices (0.45-0.55) are still tradeable. A quiet market
+    # at $0.50 means nobody knows the direction → coin flip with +10%
+    # TP is still +EV if spread is tight.
+    all_neutral = all(
+        s.direction == "NEUTRAL" for s in signals.values()
+    ) if signals else True
+
+    if all_neutral and markets:
+        from datetime import datetime, timezone
+
+        # Guard 1: require WS to have live prices — no blind entries
+        try:
+            from scalper.orderbook_ws import get_status as ws_status
+            ws_info = ws_status()
+            if ws_info.get("active_prices", 0) == 0:
+                print("  [V6-FALLBACK] BLOCKED: WS has 0 prices live → skipping")
+                return signals
+        except Exception:
+            pass
+
+        for asset_key in target_assets:
+            if asset_key not in markets or asset_key not in signals:
+                continue
+
+            market = markets[asset_key]
+            event_start = market.get("event_start")
+            if not event_start:
+                continue
+
+            elapsed = (datetime.now(timezone.utc) - event_start).total_seconds()
+            if elapsed < 45:
+                continue  # Too early for fallback
+
+            # Check if price is in the golden zone
+            up_price = market.get("up_price", 0.5)
+            if not (0.45 <= up_price <= 0.55):
+                continue
+
+            # Guard 2: reject if price drifted too far from 0.50
+            # A market that moved $0.03+ is NOT quiet — it chose a direction
+            drift = abs(up_price - 0.50)
+            if drift > 0.03:
+                print(
+                    f"  [V6-FALLBACK] {asset_key}: SKIP — price drifted "
+                    f"${drift:.2f} from $0.50 (now ${up_price:.2f})"
+                )
+                continue
+
+            # Use Binance ticks for direction if available (even partial)
+            fallback_dir = None
+            if tick_manager:
+                ticks = tick_manager.get_ticks(asset_key, count=20)
+                if len(ticks) >= 5:
+                    recent_avg = np.mean([t.price for t in ticks[-5:]])
+                    older_avg = np.mean([t.price for t in ticks[:5]])
+                    if recent_avg > older_avg:
+                        fallback_dir = "UP"
+                    elif recent_avg < older_avg:
+                        fallback_dir = "DOWN"
+
+            if not fallback_dir:
+                # No Binance data → use whichever side is cheaper (better R/R)
+                fallback_dir = "DOWN" if up_price >= 0.50 else "UP"
+
+            # Generate minimum-confidence signal (just above typical threshold)
+            fallback_score = 0.16 if fallback_dir == "UP" else -0.16
+
+            signals[asset_key] = SignalResult(
+                asset=asset_key,
+                direction=fallback_dir,
+                score=fallback_score,
+                ema_signal=0.0,
+                rsi_signal=0.0,
+                momentum_signal=0.0,
+                volume_signal=0.0,
+                vwap_signal=0.0,
+                rsi_value=50.0,
+                current_price=float(up_price),
+                ema_fast=0.0,
+                ema_slow=0.0,
+                confidence="LOW",
+            )
+
+            binance_tag = f"Binance={fallback_dir}" if tick_manager else "coin-flip"
+            print(
+                f"  [V6-FALLBACK] {asset_key}: quiet market @ ${up_price:.2f} "
+                f"after {elapsed:.0f}s → {fallback_dir} (score={fallback_score:+.2f}, {binance_tag})"
+            )
+
+    return signals

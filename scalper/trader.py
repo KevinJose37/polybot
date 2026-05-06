@@ -427,6 +427,7 @@ def open_trade(
     event_end: datetime,
     stake: float | None = None,
     token_id: str = "",
+    bypass_checks: bool = False,
 ) -> dict | None:
     """
     Open a new trade (paper + optional live).
@@ -436,16 +437,18 @@ def open_trade(
     """
     trades = load_trades()
 
-    ok, reason = can_open_trade(trades)
-    if not ok:
-        logger.info("Cannot open trade: %s", reason)
-        return None
+    if not bypass_checks:
+        ok, reason = can_open_trade(trades)
+        if not ok:
+            logger.info("Cannot open trade: %s", reason)
+            return None
 
     # Check if we already have a position for this specific market
-    for t in trades:
-        if t.get("market_slug") == market_slug and t.get("status") == "open":
-            logger.debug("Already have position in %s", market_slug)
-            return None
+    if not bypass_checks:
+        for t in trades:
+            if t.get("market_slug") == market_slug and t.get("status") == "open":
+                logger.debug("Already have position in %s", market_slug)
+                return None
 
     actual_stake = stake or _cfg.HFT_STAKE
 
@@ -671,12 +674,31 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
                         f"slip={slippage:.1%} pnl=${pnl_preview:+.2f}"
                     )
                 else:
-                    # No WS data = no orderbook visibility = can't sell (like live)
-                    print(
-                        f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                        f"No WS data → cannot sell (no orderbook visibility), holding"
-                    )
-                    return None
+                    # No WS data — try REST fallback (like entries use Gamma)
+                    try:
+                        from scalper.live_client import _get_best_bid_rest
+                        rest_bid = _get_best_bid_rest(token_id)
+                        if rest_bid and rest_bid > 0.01:
+                            exit_price = rest_bid
+                            pnl_preview = (rest_bid - entry_price) * shares
+                            print(
+                                f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                                f"No WS → REST fallback bid=${rest_bid:.4f} "
+                                f"pnl=${pnl_preview:+.2f}"
+                            )
+                        else:
+                            print(
+                                f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                                f"No WS/REST data → holding for resolution"
+                            )
+                            return None
+                    except (ImportError, Exception) as e:
+                        logger.debug("REST fallback sell failed: %s", e)
+                        print(
+                            f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                            f"No WS data → cannot sell, holding"
+                        )
+                        return None
             except (ImportError, AttributeError) as e:
                 logger.debug("Paper liquidity check unavailable: %s", e)
 
@@ -920,6 +942,10 @@ def check_open_positions(signal_scores: dict[str, float] | None = None) -> list[
         else:
             price_change = 0
 
+        import scalper.config as _cfg
+        if getattr(_cfg, "HOLD_ONLY", False):
+            continue
+
         # Stop-loss: cut losses early
         if price_change <= -HFT_STOP_LOSS:
             result = sell_trade(trade["id"], sell_price, reason="stop_loss")
@@ -1062,7 +1088,8 @@ def check_open_positions_profiled(
         price_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0
 
         # ── Hold-to-resolution: skip all early exits ─────────
-        hold = getattr(profile, "hold_to_resolution", False)
+        import scalper.config as _cfg
+        hold = getattr(profile, "hold_to_resolution", False) or getattr(_cfg, "HOLD_ONLY", False)
         if hold:
             # Only auto-resolution (market closed) is allowed — already
             # handled above. Nothing more to do for this trade.

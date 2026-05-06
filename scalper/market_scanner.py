@@ -10,6 +10,7 @@ Esto es mucho más fiable que buscar entre miles de eventos abiertos.
 import json
 import logging
 import math
+import re
 from datetime import datetime, timezone, timedelta
 
 import requests
@@ -99,6 +100,25 @@ def _extract_market_data(event: dict, asset: str) -> dict | None:
 
     market = markets[0]  # Single-market events for 5m up/down
 
+    # Safely parse outcomes array (sometimes ["Yes", "No"], sometimes ["No", "Yes"])
+    outcomes_raw = market.get("outcomes", "[\"Yes\", \"No\"]")
+    if isinstance(outcomes_raw, str):
+        try:
+            outcomes = json.loads(outcomes_raw)
+        except json.JSONDecodeError:
+            outcomes = ["Yes", "No"]
+    else:
+        outcomes = outcomes_raw
+
+    up_idx = 0
+    down_idx = 1
+    for i, o in enumerate(outcomes):
+        ol = str(o).lower()
+        if ol in ("yes", "up"):
+            up_idx = i
+        elif ol in ("no", "down"):
+            down_idx = i
+
     # Parse outcome prices
     try:
         outcome_prices_raw = market.get("outcomePrices", "[\"0.5\", \"0.5\"]")
@@ -106,8 +126,9 @@ def _extract_market_data(event: dict, asset: str) -> dict | None:
             outcome_prices = json.loads(outcome_prices_raw)
         else:
             outcome_prices = outcome_prices_raw
-        up_price = float(outcome_prices[0])
-        down_price = float(outcome_prices[1])
+        
+        up_price = float(outcome_prices[up_idx]) if len(outcome_prices) > up_idx else 0.5
+        down_price = float(outcome_prices[down_idx]) if len(outcome_prices) > down_idx else 0.5
     except (json.JSONDecodeError, IndexError, TypeError, ValueError):
         up_price = 0.5
         down_price = 0.5
@@ -127,17 +148,7 @@ def _extract_market_data(event: dict, asset: str) -> dict | None:
         return None
     event_end = _parse_iso(end_date_str)
 
-    # Extract best bid/ask (API returns these for the UP outcome)
-    up_best_bid = float(market.get("bestBid", 0) or 0)
-    up_best_ask = float(market.get("bestAsk", 0) or 0)
-
-    # Calculate DOWN-side bid/ask from UP-side (inverse relationship)
-    # DOWN best_bid ≈ 1 - UP best_ask
-    # DOWN best_ask ≈ 1 - UP best_bid
-    down_best_bid = round(1.0 - up_best_ask, 4) if up_best_ask > 0 else down_price
-    down_best_ask = round(1.0 - up_best_bid, 4) if up_best_bid > 0 else down_price
-
-    # Extract CLOB token IDs for live trading (UP=0, DOWN=1)
+    # Extract CLOB token IDs for live trading
     clob_token_ids_raw = market.get("clobTokenIds", "[]")
     if isinstance(clob_token_ids_raw, str):
         try:
@@ -147,8 +158,33 @@ def _extract_market_data(event: dict, asset: str) -> dict | None:
     else:
         clob_token_ids = clob_token_ids_raw or []
 
-    up_token_id = clob_token_ids[0] if len(clob_token_ids) > 0 else ""
-    down_token_id = clob_token_ids[1] if len(clob_token_ids) > 1 else ""
+    up_token_id = clob_token_ids[up_idx] if len(clob_token_ids) > up_idx else ""
+    down_token_id = clob_token_ids[down_idx] if len(clob_token_ids) > down_idx else ""
+
+    # Gamma API returns bestBid/bestAsk for outcome at index 0
+    raw_best_bid = float(market.get("bestBid", 0) or 0)
+    raw_best_ask = float(market.get("bestAsk", 0) or 0)
+
+    # Assign correctly based on which outcome is at index 0
+    if up_idx == 0:
+        up_best_bid = raw_best_bid
+        up_best_ask = raw_best_ask
+        down_best_bid = round(1.0 - up_best_ask, 4) if up_best_ask > 0 else down_price
+        down_best_ask = round(1.0 - up_best_bid, 4) if up_best_bid > 0 else down_price
+    else:
+        down_best_bid = raw_best_bid
+        down_best_ask = raw_best_ask
+        up_best_bid = round(1.0 - down_best_ask, 4) if down_best_ask > 0 else up_price
+        up_best_ask = round(1.0 - down_best_bid, 4) if down_best_bid > 0 else up_price
+
+    title = market.get("question", event.get("title", ""))
+    strike_price = 0.0
+    match = re.search(r'\$([\d,]+(?:\.\d+)?)', title)
+    if match:
+        try:
+            strike_price = float(match.group(1).replace(',', ''))
+        except ValueError:
+            pass
 
     return {
         "asset": asset,
@@ -156,6 +192,7 @@ def _extract_market_data(event: dict, asset: str) -> dict | None:
         "event_id": event.get("id", ""),
         "slug": market.get("slug", ""),
         "title": market.get("question", event.get("title", "")),
+        "strike_price": strike_price,
         "event_start": event_start,
         "event_end": event_end,
         "up_price": up_price,
@@ -223,23 +260,27 @@ def scan_active_markets(
             if not market_data:
                 continue
 
-            # Skip closed markets
-            if market_data["closed"]:
-                continue
-
             event_start = market_data["event_start"]
             event_end = market_data["event_end"]
+            
+            # Allow keeping markets that just closed (up to 30s ago)
+            # so the Oracle Sniper can catch them at the exact expiry second
+            time_since_end = (now - event_end).total_seconds()
+            if market_data["closed"] and time_since_end > 30:
+                continue
+
             time_to_start = (event_start - now).total_seconds()
 
             is_upcoming = time_to_start > 0
             is_in_progress = (event_start <= now <= event_end)
+            is_recently_ended = (0 < time_since_end <= 30)
 
-            if not (is_upcoming or is_in_progress):
+            if not (is_upcoming or is_in_progress or is_recently_ended):
                 continue
 
             # Pick the one closest to starting (or currently running)
-            if is_in_progress:
-                effective_time = -1  # Active market takes priority
+            if is_in_progress or is_recently_ended:
+                effective_time = -1  # Active/resolving market takes priority
             else:
                 effective_time = time_to_start
 
@@ -346,3 +387,62 @@ def get_market_current_price(gamma_id: str) -> dict | None:
     except (requests.RequestException, json.JSONDecodeError, ValueError) as exc:
         logger.warning("Error fetching market %s: %s", gamma_id, exc)
         return None
+
+
+def prefetch_next_market_tokens(
+    assets: dict | None = None,
+    duration_minutes: int = 5,
+) -> list[str]:
+    """
+    Proactively fetch token IDs for the NEXT market slot.
+
+    Called every cycle to pre-subscribe tokens to the WS ~60s before
+    the market opens. This eliminates the "cold start" problem where
+    velocity is always 0 because the WS has no history at cycle start.
+
+    Returns list of token_ids (up + down for each asset).
+    """
+    target_assets = assets or HFT_ASSETS
+    now = datetime.now(timezone.utc)
+    ts = int(now.timestamp())
+    slot_seconds = duration_minutes * 60
+
+    # Next slot = first boundary AFTER current time
+    next_slot = ((ts // slot_seconds) + 1) * slot_seconds
+
+    token_ids = []
+    duration_str = f"{duration_minutes}m"
+
+    for asset_key in target_assets:
+        slug = _slug_for_asset(asset_key, next_slot, duration_str=duration_str)
+        try:
+            event = _fetch_event_by_slug(slug)
+            if not event:
+                continue
+
+            markets = event.get("markets", [])
+            if not markets:
+                continue
+
+            market = markets[0]
+            clob_raw = market.get("clobTokenIds", "[]")
+            if isinstance(clob_raw, str):
+                clob_ids = json.loads(clob_raw)
+            else:
+                clob_ids = clob_raw or []
+
+            for tid in clob_ids:
+                if tid:
+                    token_ids.append(tid)
+        except Exception:
+            continue
+
+    if token_ids:
+        logger.info(
+            "Prefetched %d tokens for next slot %d (%ds ahead)",
+            len(token_ids), next_slot,
+            next_slot - ts,
+        )
+
+    return token_ids
+

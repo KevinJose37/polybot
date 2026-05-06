@@ -1,0 +1,32 @@
+[
+  {
+    "id": "hft_001",
+    "asset": "XRP",
+    "side": "DOWN",
+    "entry_price": 0.55,
+    "entry_time": "2026-05-06T19:46:55.163554+00:00",
+    "stake": 1.0,
+    "shares": 1.8182,
+    "signal_score": -0.5,
+    "status": "sold",
+    "exit_price": 0.6,
+    "exit_time": "2026-05-06T19:47:35.441323+00:00",
+    "pnl": 0.09,
+    "market_slug": "xrp-updown-5m-1778096700",
+    "gamma_id": "2168513",
+    "event_start": "2026-05-06T19:45:00+00:00",
+    "event_end": "2026-05-06T19:50:00+00:00",
+    "token_id": "95757791742106900951745250941294308177670063885950084847201083941924169904084",
+    "_high_watermark": 0.635,
+    "exit_reason": "take_profit",
+    "hindsight_reviewed": true,
+    "hindsight": {
+      "would_have_won": true,
+      "held_pnl": 0.82,
+      "actual_pnl": 0.09,
+      "decision": "BAD",
+      "difference": -0.73,
+      "resolution": "DOWN"
+    }
+  }
+]

@@ -104,6 +104,30 @@ def get_mid_velocity(token_id: str, window_sec: int = 30) -> float:
     return round(current_price - oldest_price, 4)
 
 
+def debug_mid_history(token_id: str) -> dict:
+    """Return debug info about the mid_history buffer for a token."""
+    with _lock:
+        history = _mid_history.get(token_id)
+        if not history:
+            return {"entries": 0, "in_prices": token_id in _prices}
+
+    now = time.time()
+    samples_10s = [(t, p) for t, p in history if t >= now - 10]
+    samples_30s = [(t, p) for t, p in history if t >= now - 30]
+
+    prices_10 = [p for _, p in samples_10s]
+    unique_10 = len(set(prices_10))
+
+    return {
+        "entries": len(history),
+        "in_10s": len(samples_10s),
+        "in_30s": len(samples_30s),
+        "unique_prices_10s": unique_10,
+        "latest_mid": history[-1][1] if history else 0,
+        "age_newest_sec": round(now - history[-1][0], 1) if history else -1,
+        "in_prices": token_id in _prices,
+    }
+
 def get_prices_for_market(up_token_id: str, down_token_id: str) -> dict | None:
     """
     Get both UP and DOWN prices for a market from WS buffer.
@@ -311,7 +335,7 @@ def check_sell_liquidity(
 
 def _parse_book_message(data: dict):
     """Parse a 'book' event: full orderbook snapshot."""
-    asset_id = data.get("asset_id", "")
+    asset_id = data.get("asset_id", data.get("market", ""))
     if asset_id not in _subscribed_tokens:
         return
 
@@ -351,7 +375,7 @@ def _parse_book_message(data: dict):
 
 def _parse_price_change(data: dict):
     """Parse 'price_change' event: incremental orderbook update."""
-    changes = data.get("changes", [])
+    changes = data.get("price_changes", data.get("changes", []))
     now = time.time()
 
     for change in changes:
@@ -362,6 +386,10 @@ def _parse_price_change(data: dict):
         price = float(change.get("price", 0))
         size = float(change.get("size", 0))
         side = change.get("side", "").lower()
+
+        # Server-provided best bid/ask (most reliable — always present)
+        msg_best_bid = float(change.get("best_bid", 0) or 0)
+        msg_best_ask = float(change.get("best_ask", 0) or 0)
 
         with _lock:
             if asset_id not in _orderbooks:
@@ -386,13 +414,19 @@ def _parse_price_change(data: dict):
 
             book["updated"] = now
 
-            # Update mid-price and history buffer
-            bids = book["bids"]
-            asks = book["asks"]
-            if bids and asks:
-                mid = (bids[0][0] + asks[0][0]) / 2.0
+            # Primary: use server's best_bid/best_ask for mid-price
+            if msg_best_bid > 0 and msg_best_ask > 0:
+                mid = (msg_best_bid + msg_best_ask) / 2.0
                 _prices[asset_id] = {"price": mid, "updated": now}
-                update_mid_history(asset_id, mid)  # feed velocity buffer
+                update_mid_history(asset_id, mid)
+            else:
+                # Fallback: reconstruct from local book
+                bids = book["bids"]
+                asks = book["asks"]
+                if bids and asks:
+                    mid = (bids[0][0] + asks[0][0]) / 2.0
+                    _prices[asset_id] = {"price": mid, "updated": now}
+                    update_mid_history(asset_id, mid)
 
 
 def _parse_last_trade_price(data: dict):
@@ -415,8 +449,10 @@ _pending_subscribe: list[str] = []
 
 
 async def _ws_main():
-    """Main WebSocket loop with auto-reconnection."""
+    """Main WebSocket loop with auto-reconnection and health-check recovery."""
     global _ws_running, _ws_connection
+
+    HEALTH_TIMEOUT = 30  # seconds without price data → force reconnect
 
     while _ws_running:
         try:
@@ -424,6 +460,7 @@ async def _ws_main():
                 WS_URL, ping_interval=20, ping_timeout=10
             ) as ws:
                 _ws_connection = ws
+                last_useful_msg = time.time()
                 logger.info("WS connected to %s", WS_URL)
 
                 # Subscribe to all tracked tokens
@@ -438,29 +475,42 @@ async def _ws_main():
                     logger.info("WS subscribed to %d tokens", len(tokens))
                     print(f"  [WS] Connected — tracking {len(tokens)} tokens")
 
-                async for raw_msg in ws:
-                    if not _ws_running:
-                        break
+                while _ws_running:
+                    # ── Health check: force reconnect if no useful data ──
+                    if time.time() - last_useful_msg > HEALTH_TIMEOUT:
+                        n_tokens = len(_subscribed_tokens)
+                        logger.warning(
+                            "WS health check FAILED — no data for %ds with %d tokens. Reconnecting.",
+                            HEALTH_TIMEOUT, n_tokens,
+                        )
+                        print(
+                            f"  [WS] ⚠️ No data for {HEALTH_TIMEOUT}s — forcing reconnect"
+                        )
+                        break  # exits inner while → closes ws → reconnects
 
-                    # Check for pending subscriptions (hot-add)
+                    # ── Check for pending subscriptions (hot-add / replace) ──
                     if _pending_subscribe:
-                        new_tokens = list(_pending_subscribe)
                         _pending_subscribe.clear()
+                        all_tokens = list(_subscribed_tokens)
                         sub_msg = {
-                            "assets_ids": new_tokens,
+                            "assets_ids": all_tokens,
                             "type": "market",
                             "custom_feature_enabled": True,
                         }
                         await ws.send(json.dumps(sub_msg))
-                        logger.info("WS hot-subscribed %d new tokens", len(new_tokens))
+                        logger.info("WS re-subscribed ALL %d tokens", len(all_tokens))
+
+                    # ── Wait for message with short timeout ──
+                    try:
+                        raw_msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                    except asyncio.TimeoutError:
+                        continue
 
                     try:
                         data = json.loads(raw_msg)
 
-                        # WS sends arrays (e.g. empty [] as subscription ACK)
                         if isinstance(data, list):
                             continue
-
                         if not isinstance(data, dict):
                             continue
 
@@ -486,11 +536,13 @@ async def _ws_main():
 
                         if event_type == "book":
                             _parse_book_message(data)
+                            last_useful_msg = time.time()
                         elif event_type == "price_change":
                             _parse_price_change(data)
+                            last_useful_msg = time.time()
                         elif event_type == "last_trade_price":
                             _parse_last_trade_price(data)
-                        # new_market, tick_size_change, market_resolved — ignored
+                            last_useful_msg = time.time()
                     except json.JSONDecodeError:
                         pass
 
@@ -549,6 +601,38 @@ def subscribe(token_ids: list[str]):
     _subscribed_tokens.update(new_tokens)
     _pending_subscribe.extend(new_tokens)
     logger.info("WS: queued %d tokens for subscription", len(new_tokens))
+
+
+def replace_subscriptions(token_ids: list[str]):
+    """
+    Replace the subscription set with only these tokens.
+    Only triggers a WS re-subscribe if the set actually changed.
+    Clears stale data for removed tokens.
+    """
+    new_set = set(t for t in token_ids if t)
+
+    # Fast path: no change → skip entirely (preserves existing data flow)
+    if new_set == _subscribed_tokens:
+        return
+
+    removed = _subscribed_tokens - new_set
+    added = new_set - _subscribed_tokens
+
+    # Clean up stale data for removed tokens
+    if removed:
+        with _lock:
+            for tid in removed:
+                _mid_history.pop(tid, None)
+                _prices.pop(tid, None)
+                _orderbooks.pop(tid, None)
+
+    _subscribed_tokens.clear()
+    _subscribed_tokens.update(new_set)
+
+    # Only re-subscribe if tokens actually changed
+    _pending_subscribe.append("__resub__")
+    logger.info("WS: subscription updated → %d tokens (+%d/-%d)",
+                len(new_set), len(added), len(removed))
 
 
 def stop():

@@ -1,0 +1,182 @@
+[
+  {
+    "wallet": "0xdf0d2ccfe3d7c2ef120395534e43afe283509f79",
+    "trades": 500,
+    "trades_per_day": 500.0,
+    "unique_markets": 490,
+    "avg_size": 361.96371999999997,
+    "max_size": 2000.0,
+    "categories": {
+      "HFT / Crypto Scalp": 478,
+      "Others (Pop Culture/Macro)": 21,
+      "Sports": 1
+    },
+    "diagnostic": "HFT Sniper / Market Maker (Crypto)",
+    "copyability": "MUY PELIGROSO de copiar (Latencia)",
+    "reason": "Hace demasiadas operaciones por dia en mercados de minutos. Probablemente caza liquidez.",
+    "performance": {
+      "resolved_trades": 239,
+      "unresolved_trades": 11,
+      "wins": 238,
+      "losses": 1,
+      "win_rate": 99.581589958159,
+      "spent_1usd_stake": 239.0,
+      "recovered_1usd_stake": 240.6431269798354,
+      "pnl_1usd_stake": 1.6431269798353867,
+      "avg_pnl_per_trade": 0.00687500828383007,
+      "profit_factor": 2.6431269798353925,
+      "std_pnl": 0.06564654676079643,
+      "max_drawdown_1usd": 1.0,
+      "stability_score": 99.50191634315478
+    }
+  },
+  {
+    "wallet": "0x9ac833e9cf85bb662cd4a0cfe3b3b4df7222d27c",
+    "trades": 199,
+    "trades_per_day": 57.77186403774041,
+    "unique_markets": 50,
+    "avg_size": 573.717907160804,
+    "max_size": 3392.1,
+    "categories": {
+      "HFT / Crypto Scalp": 199
+    },
+    "diagnostic": "Crypto Scalper",
+    "copyability": "Peligroso de copiar",
+    "reason": "Opera criptomonedas a corto plazo. Alta probabilidad de slippage.",
+    "performance": {
+      "resolved_trades": 199,
+      "unresolved_trades": 0,
+      "wins": 157,
+      "losses": 42,
+      "win_rate": 78.89447236180904,
+      "spent_1usd_stake": 199.0,
+      "recovered_1usd_stake": 261.7581941193485,
+      "pnl_1usd_stake": 62.7581941193485,
+      "avg_pnl_per_trade": 0.31536780964496736,
+      "profit_factor": 2.494242717127346,
+      "std_pnl": 0.8682812279477607,
+      "max_drawdown_1usd": 8.540231183885652,
+      "stability_score": 84.42760073678903
+    }
+  },
+  {
+    "wallet": "0x01ca5c77bf032f10b7cb5e3f730fbf497523200d",
+    "trades": 500,
+    "trades_per_day": 500.0,
+    "unique_markets": 51,
+    "avg_size": 667.8483898439999,
+    "max_size": 19695.89,
+    "categories": {
+      "HFT / Crypto Scalp": 500
+    },
+    "diagnostic": "HFT Sniper / Market Maker (Crypto)",
+    "copyability": "MUY PELIGROSO de copiar (Latencia)",
+    "reason": "Hace demasiadas operaciones por dia en mercados de minutos. Probablemente caza liquidez.",
+    "performance": {
+      "resolved_trades": 250,
+      "unresolved_trades": 0,
+      "wins": 160,
+      "losses": 90,
+      "win_rate": 64.0,
+      "spent_1usd_stake": 250.0,
+      "recovered_1usd_stake": 384.07104640631513,
+      "pnl_1usd_stake": 134.07104640631513,
+      "avg_pnl_per_trade": 0.5362841856252605,
+      "profit_factor": 2.4896782934035016,
+      "std_pnl": 2.12531331603824,
+      "max_drawdown_1usd": 23.297297294324324,
+      "stability_score": 50.67891240130798
+    }
+  },
+  {
+    "wallet": "0xb55fa1296e6ec55d0ce53d93b9237389f11764d4",
+    "trades": 500,
+    "trades_per_day": 500.0,
+    "unique_markets": 36,
+    "avg_size": 57.560903788000005,
+    "max_size": 2285.13,
+    "categories": {
+      "HFT / Crypto Scalp": 462,
+      "Others (Pop Culture/Macro)": 38
+    },
+    "diagnostic": "HFT Sniper / Market Maker (Crypto)",
+    "copyability": "MUY PELIGROSO de copiar (Latencia)",
+    "reason": "Hace demasiadas operaciones por dia en mercados de minutos. Probablemente caza liquidez.",
+    "performance": {
+      "resolved_trades": 95,
+      "unresolved_trades": 155,
+      "wins": 61,
+      "losses": 34,
+      "win_rate": 64.21052631578948,
+      "spent_1usd_stake": 95.0,
+      "recovered_1usd_stake": 117.85265137220992,
+      "pnl_1usd_stake": 22.85265137220992,
+      "avg_pnl_per_trade": 0.24055422497063073,
+      "profit_factor": 1.6721368050649978,
+      "std_pnl": 1.1434673658848706,
+      "max_drawdown_1usd": 11.666666666666666,
+      "stability_score": 33.17957998535947
+    }
+  },
+  {
+    "wallet": "0xe9076a87c5ed90ef16e6fe6529c943baeca0cff6",
+    "trades": 500,
+    "trades_per_day": 500.0,
+    "unique_markets": 60,
+    "avg_size": 73.940157556,
+    "max_size": 1986.311665,
+    "categories": {
+      "HFT / Crypto Scalp": 463,
+      "Others (Pop Culture/Macro)": 36,
+      "Sports": 1
+    },
+    "diagnostic": "HFT Sniper / Market Maker (Crypto)",
+    "copyability": "MUY PELIGROSO de copiar (Latencia)",
+    "reason": "Hace demasiadas operaciones por dia en mercados de minutos. Probablemente caza liquidez.",
+    "performance": {
+      "resolved_trades": 101,
+      "unresolved_trades": 149,
+      "wins": 60,
+      "losses": 41,
+      "win_rate": 59.4059405940594,
+      "spent_1usd_stake": 101.0,
+      "recovered_1usd_stake": 133.98812708068024,
+      "pnl_1usd_stake": 32.98812708068024,
+      "avg_pnl_per_trade": 0.3266151196106955,
+      "profit_factor": 1.8045884653824449,
+      "std_pnl": 1.4275197549178407,
+      "max_drawdown_1usd": 15.433416914527895,
+      "stability_score": 29.25959244415884
+    }
+  },
+  {
+    "wallet": "0xe1d6b51521bd4365769199f392f9818661bd907c",
+    "trades": 500,
+    "trades_per_day": 500.0,
+    "unique_markets": 31,
+    "avg_size": 72.99176361399999,
+    "max_size": 1860.294116,
+    "categories": {
+      "Others (Pop Culture/Macro)": 43,
+      "HFT / Crypto Scalp": 457
+    },
+    "diagnostic": "HFT Sniper / Market Maker (Crypto)",
+    "copyability": "MUY PELIGROSO de copiar (Latencia)",
+    "reason": "Hace demasiadas operaciones por dia en mercados de minutos. Probablemente caza liquidez.",
+    "performance": {
+      "resolved_trades": 247,
+      "unresolved_trades": 3,
+      "wins": 189,
+      "losses": 58,
+      "win_rate": 76.51821862348179,
+      "spent_1usd_stake": 247.0,
+      "recovered_1usd_stake": 258.73882635132117,
+      "pnl_1usd_stake": 11.738826351321165,
+      "avg_pnl_per_trade": 0.04752561275838529,
+      "profit_factor": 1.202393557781399,
+      "std_pnl": 0.6240208159429123,
+      "max_drawdown_1usd": 27.410607773699674,
+      "stability_score": 15.223278693003905
+    }
+  }
+]
