@@ -457,6 +457,10 @@ def _run_single_cycle_profiled(
         signal = signals[asset_key]
         if abs(signal.score) >= profile.signal_threshold:
             candidates.append((asset_key, signal))
+        else:
+            # Add debug for why signal failed (only print if score is notable or we are V7 to avoid spam, or just print at trace level. Actually, if we print every cycle it's spammy. We will print if score > 0.05)
+            if abs(signal.score) > 0.05:
+                print(f"  [SKIP] {asset_key}: Señal débil (score={signal.score:+.3f} < threshold={profile.signal_threshold})")
 
     # Best signal only: sort by strength and limit to available slots
     if profile.best_signal_only and len(candidates) > 1:
@@ -465,18 +469,16 @@ def _run_single_cycle_profiled(
             skipped = [c[0] for c in candidates[slots_available:]]
             candidates = candidates[:max(slots_available, 0)]
             if skipped:
-                print(f"  🎯 Best-signal filter: skipping {', '.join(skipped)}")
+                print(f"  [SKIP] {', '.join(skipped)}: Eliminados por filtro best_signal_only")
 
     for asset_key, signal in candidates:
         if entries_made >= slots_available:
             break
 
         market = markets[asset_key]
-
-        # Scale windows based on duration (e.g., 15m is 3x larger than 5m)
         time_multiplier = duration_minutes / 5.0
 
-        # Entry window: v3 "late" mode only enters in specified window
+        # Entry window check
         if profile.entry_mode == "late":
             scaled_start = profile.entry_window_start * time_multiplier
             scaled_end = profile.entry_window_end * time_multiplier
@@ -486,15 +488,15 @@ def _run_single_cycle_profiled(
                 now = datetime.now(timezone.utc)
                 elapsed = (now - event_start).total_seconds()
             else:
-                # Fallback: assume market is mid-progress
                 elapsed = scaled_start + 1
-                print(f"  [V3-WARN] {asset_key}: event_start ausente, usando fallback (elapsed={elapsed:.0f}s)")
 
             if elapsed < scaled_start or elapsed > scaled_end:
+                print(f"  [SKIP] {asset_key}: elapsed {elapsed:.0f}s fuera de ventana {scaled_start:.0f}-{scaled_end:.0f}s")
                 continue
         else:
             scaled_end = getattr(profile, "entry_window_end", 210) * time_multiplier
             if not _is_in_entry_window(market, max_elapsed=scaled_end, duration_minutes=duration_minutes):
+                print(f"  [SKIP] {asset_key}: fuera de ventana de entrada genérica")
                 continue
 
         ok, reason = can_open_trade()
@@ -505,23 +507,16 @@ def _run_single_cycle_profiled(
         if side == "NEUTRAL":
             continue
 
-        # Polymarket price filter (Form A): skip if market already priced in
+        # Polymarket price filter
         if profile.poly_price_filter:
             directional_price = market.get("up_price", 0.5) if side == "UP" else market.get("down_price", 0.5)
             if directional_price > profile.poly_price_cap:
-                print(
-                    f"  [POLY-FILTER] {asset_key} {side}: "
-                    f"price ${directional_price:.2f} > cap ${profile.poly_price_cap:.2f} -> SKIP"
-                )
+                print(f"  [SKIP] {asset_key} {side}: precio ${directional_price:.2f} > cap ${profile.poly_price_cap:.2f}")
                 continue
 
-            # ── Min price filter: block market-decided entries ────────────
             min_price = getattr(profile, "min_entry_price", 0.0)
             if min_price > 0 and directional_price < min_price:
-                print(
-                    f"  [PRICE-FLOOR] {asset_key} {side}: "
-                    f"price ${directional_price:.2f} < floor ${min_price:.2f} -> SKIP"
-                )
+                print(f"  [SKIP] {asset_key} {side}: precio ${directional_price:.2f} < floor ${min_price:.2f}")
                 continue
 
         # ── Score ceiling: block momentum-exhaustion entries ─────────────
@@ -537,36 +532,32 @@ def _run_single_cycle_profiled(
         # Get the correct CLOB token ID for this side
         token_id = market.get(f"{side.lower()}_token_id", "")
 
-        # ── Velocity confirmation gate (V2OPT3) ─────────────────────────
+        # ── Velocity confirmation gate ─────────────────────────────────
         if getattr(profile, "velocity_confirmation", False) and token_id:
             from scalper.orderbook_ws import get_mid_velocity
             vel_window = getattr(profile, "velocity_window_sec", 30)
-            vel_thresh = getattr(profile, "velocity_threshold", 0.02)
+            vel_thresh = getattr(profile, "velocity_threshold", 0.05)
             velocity = get_mid_velocity(token_id, window_sec=vel_window)
 
-            if velocity == 0.0:
-                # Not enough WS data yet — skip to avoid false entries
-                print(
-                    f"  [VELOCITY] {asset_key} {side}: "
-                    f"insufficient WS data (<3 samples in {vel_window}s) -> SKIP"
-                )
-                continue
+            # Only block if velocity STRONGLY DISAGREES with the signal.
+            # If velocity is 0.000 (no data), or weakly agrees/disagrees, let it pass.
+            vel_blocks = (
+                (side == "UP" and velocity <= -vel_thresh)
+                or (side == "DOWN" and velocity >= vel_thresh)
+            )
 
-            vel_confirms = (
-                (side == "UP" and velocity >= vel_thresh)
-                or (side == "DOWN" and velocity <= -vel_thresh)
-            )
-            if not vel_confirms:
+            if vel_blocks:
                 print(
-                    f"  [VELOCITY] {asset_key} {side}: "
-                    f"velocity={velocity:+.4f} does not confirm {side} "
-                    f"(need {'>' if side == 'UP' else '<'}{vel_thresh if side == 'UP' else -vel_thresh:.2f}) -> SKIP"
+                    f"  [VELOCITY-BLOCK] {asset_key} {side}: "
+                    f"velocity={velocity:+.4f} strongly opposes {side} "
+                    f"(thresh={vel_thresh}) -> SKIP"
                 )
                 continue
-            print(
-                f"  [VELOCITY] {asset_key} {side}: "
-                f"velocity={velocity:+.4f} confirms {side} ✔"
-            )
+            
+            if velocity == 0.0:
+                print(f"  [VELOCITY-PASS] {asset_key} {side}: velocity=0.000 (no data) -> PASS")
+            else:
+                print(f"  [VELOCITY-PASS] {asset_key} {side}: velocity={velocity:+.4f} no se opone -> PASS")
 
         # ── V5 Smart Execution Filters (Soft Penalties) ──────────────
         if token_id and getattr(profile, "penalty_per_failed_filter", 0) > 0:

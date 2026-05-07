@@ -320,20 +320,20 @@ PROFILES: dict[str, StrategyProfile] = {
         hold_to_resolution=False,        # Active trading (TP/SL)
     ),
 
-    # ── V7: Production Bot (Data-Driven Optimal) ──────────
-    # Signal:   Polymarket velocity (fastest reaction to real market)
+    # ── V7: Production Bot (Camino B: Binance-Guided + Poly Confirmation) ─
+    # Signal:   Binance Technical V2 (proven to generate reliable early signals)
+    # Filter:   Polymarket velocity (blocks entry ONLY if it strongly contradicts)
     # Timing:   0-120s entry window (momentum is freshest here)
     # Exit:     Hold-to-resolution (mathematically proven superior)
-    # Assets:   BTC, ETH, XRP only (SOL removed: net-negative)
-    # Risk:     Max 2 positions, best signal only, tight price band
     "v7": StrategyProfile(
         name="v7",
-        label="V7 — Production (Velocity + Hold-to-Resolution)",
+        label="V7 — Production (Binance Signal + Poly Confirm + Hold)",
         trades_file="hft_trades_v7.json",
-        signal_source="poly_velocity",
-        signal_threshold=0.15,
-        entry_mode="late",
-        entry_window_start=5,
+        signal_source="technical_v2",   # Primary signal
+        signal_threshold=0.16,          # Lowered from 0.40 to fit typical Binance EMA ranges
+        velocity_confirmation=True,     # Secondary filter
+        velocity_threshold=0.05,        # Low threshold (only block strong contradictions)
+        entry_mode="anytime",
         entry_window_end=120,
         take_profit=99.0,               # Effectively disabled (hold to resolution)
         stop_loss=99.0,                 # Effectively disabled (hold to resolution)

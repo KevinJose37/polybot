@@ -1,0 +1,12 @@
+{
+  "agents": {
+    "hft_reviewer": {
+      "model": "claude-opus-4-6",
+      "prompt_file": "agents/hft_reviewer.md",
+      "description": "Senior Python HFT engineer — reviews code changes for thread-safety, correctness, and regression against 7 known historical bugs.",
+      "skills": [
+        "skills/python_hft_best_practices.md"
+      ]
+    }
+  }
+}

@@ -1,0 +1,693 @@
+{
+  "timestamp": "2026-05-06 23:34:10",
+  "generated_at": "2026-05-07T04:34:10.822727+00:00",
+  "strategies": {
+    "V1": {
+      "name": "V1",
+      "total": 78,
+      "open": 1,
+      "won": 24,
+      "lost": 18,
+      "sold": 35,
+      "total_pnl": 10.01,
+      "total_stake": 77.0,
+      "roi_pct": 13.0,
+      "win_rate_resolved": 57.1,
+      "overall_win_rate": 57.1,
+      "pnl_from_resolution": 1.25,
+      "pnl_from_sells": 8.76,
+      "exit_reasons": {
+        "stop_loss": {
+          "count": 6,
+          "pnl": 2.09
+        },
+        "take_profit": {
+          "count": 29,
+          "pnl": 6.67
+        }
+      },
+      "assets": {
+        "BTC": {
+          "total": 28,
+          "won": 14,
+          "lost": 7,
+          "sold": 6,
+          "open": 1,
+          "pnl": 5.529999999999999,
+          "pnl_resolved": 3.9599999999999995,
+          "pnl_sold": 1.5699999999999998
+        },
+        "ETH": {
+          "total": 37,
+          "won": 7,
+          "lost": 7,
+          "sold": 23,
+          "open": 0,
+          "pnl": 5.04,
+          "pnl_resolved": -1.77,
+          "pnl_sold": 6.81
+        },
+        "XRP": {
+          "total": 13,
+          "won": 3,
+          "lost": 4,
+          "sold": 6,
+          "open": 0,
+          "pnl": -0.56,
+          "pnl_resolved": -0.94,
+          "pnl_sold": 0.38000000000000006
+        }
+      },
+      "sides": {
+        "UP": {
+          "total": 28,
+          "wins": 15,
+          "pnl": 2.7399999999999993
+        },
+        "DOWN": {
+          "total": 49,
+          "wins": 29,
+          "pnl": 7.270000000000004
+        }
+      },
+      "hindsight": {
+        "count": 35,
+        "actual_pnl": 8.76,
+        "held_pnl": 22.14,
+        "difference": -13.38,
+        "good_calls": 12,
+        "bad_calls": 23
+      },
+      "first_trade": "2026-05-06 23:26",
+      "last_trade": "2026-05-07 04:22",
+      "tp_negative_count": 12,
+      "tp_negative_pnl": -2.83
+    },
+    "V2": {
+      "name": "V2",
+      "total": 45,
+      "open": 0,
+      "won": 0,
+      "lost": 10,
+      "sold": 35,
+      "total_pnl": 6.29,
+      "total_stake": 47.08,
+      "roi_pct": 13.4,
+      "win_rate_resolved": 0.0,
+      "overall_win_rate": 66.7,
+      "pnl_from_resolution": -10.88,
+      "pnl_from_sells": 17.17,
+      "exit_reasons": {
+        "take_profit": {
+          "count": 30,
+          "pnl": 17.209999999999997
+        },
+        "stop_loss": {
+          "count": 5,
+          "pnl": -0.03999999999999998
+        }
+      },
+      "assets": {
+        "ETH": {
+          "total": 21,
+          "won": 0,
+          "lost": 5,
+          "sold": 16,
+          "open": 0,
+          "pnl": 1.93,
+          "pnl_resolved": -5.68,
+          "pnl_sold": 7.610000000000001
+        },
+        "BTC": {
+          "total": 15,
+          "won": 0,
+          "lost": 2,
+          "sold": 13,
+          "open": 0,
+          "pnl": 4.87,
+          "pnl_resolved": -2.2,
+          "pnl_sold": 7.07
+        },
+        "XRP": {
+          "total": 9,
+          "won": 0,
+          "lost": 3,
+          "sold": 6,
+          "open": 0,
+          "pnl": -0.5100000000000002,
+          "pnl_resolved": -3.0,
+          "pnl_sold": 2.4899999999999998
+        }
+      },
+      "sides": {
+        "DOWN": {
+          "total": 19,
+          "wins": 15,
+          "pnl": 5.309999999999999
+        },
+        "UP": {
+          "total": 26,
+          "wins": 15,
+          "pnl": 0.9799999999999998
+        }
+      },
+      "hindsight": {
+        "count": 32,
+        "actual_pnl": 17.39,
+        "held_pnl": 20.07,
+        "difference": -2.68,
+        "good_calls": 6,
+        "bad_calls": 26
+      },
+      "first_trade": "2026-05-06 23:26",
+      "last_trade": "2026-05-07 04:21",
+      "tp_negative_count": 2,
+      "tp_negative_pnl": -0.13
+    },
+    "V2OPT": {
+      "name": "V2OPT",
+      "total": 44,
+      "open": 0,
+      "won": 0,
+      "lost": 11,
+      "sold": 33,
+      "total_pnl": 4.18,
+      "total_stake": 46.6,
+      "roi_pct": 9.0,
+      "win_rate_resolved": 0.0,
+      "overall_win_rate": 65.9,
+      "pnl_from_resolution": -11.6,
+      "pnl_from_sells": 15.78,
+      "exit_reasons": {
+        "take_profit": {
+          "count": 28,
+          "pnl": 15.860000000000003
+        },
+        "stop_loss": {
+          "count": 5,
+          "pnl": -0.07999999999999996
+        }
+      },
+      "assets": {
+        "BTC": {
+          "total": 14,
+          "won": 0,
+          "lost": 3,
+          "sold": 11,
+          "open": 0,
+          "pnl": 0.4600000000000001,
+          "pnl_resolved": -3.4000000000000004,
+          "pnl_sold": 3.86
+        },
+        "XRP": {
+          "total": 11,
+          "won": 0,
+          "lost": 3,
+          "sold": 8,
+          "open": 0,
+          "pnl": 0.40000000000000024,
+          "pnl_resolved": -3.0,
+          "pnl_sold": 3.4000000000000004
+        },
+        "ETH": {
+          "total": 19,
+          "won": 0,
+          "lost": 5,
+          "sold": 14,
+          "open": 0,
+          "pnl": 3.3199999999999994,
+          "pnl_resolved": -5.2,
+          "pnl_sold": 8.520000000000001
+        }
+      },
+      "sides": {
+        "UP": {
+          "total": 28,
+          "wins": 17,
+          "pnl": -0.6200000000000012
+        },
+        "DOWN": {
+          "total": 16,
+          "wins": 12,
+          "pnl": 4.8
+        }
+      },
+      "hindsight": {
+        "count": 30,
+        "actual_pnl": 16.21,
+        "held_pnl": 19.62,
+        "difference": -3.41,
+        "good_calls": 4,
+        "bad_calls": 26
+      },
+      "first_trade": "2026-05-06 23:26",
+      "last_trade": "2026-05-07 04:22",
+      "tp_negative_count": 2,
+      "tp_negative_pnl": -0.58
+    },
+    "V2OPT2": {
+      "name": "V2OPT2",
+      "total": 20,
+      "open": 1,
+      "won": 15,
+      "lost": 4,
+      "sold": 0,
+      "total_pnl": 13.53,
+      "total_stake": 19.0,
+      "roi_pct": 71.2,
+      "win_rate_resolved": 78.9,
+      "overall_win_rate": 78.9,
+      "pnl_from_resolution": 13.53,
+      "pnl_from_sells": 0,
+      "exit_reasons": {},
+      "assets": {
+        "XRP": {
+          "total": 5,
+          "won": 3,
+          "lost": 2,
+          "sold": 0,
+          "open": 0,
+          "pnl": 1.87,
+          "pnl_resolved": 1.87,
+          "pnl_sold": 0.0
+        },
+        "BTC": {
+          "total": 5,
+          "won": 5,
+          "lost": 0,
+          "sold": 0,
+          "open": 0,
+          "pnl": 5.21,
+          "pnl_resolved": 5.21,
+          "pnl_sold": 0.0
+        },
+        "ETH": {
+          "total": 10,
+          "won": 7,
+          "lost": 2,
+          "sold": 0,
+          "open": 1,
+          "pnl": 6.450000000000001,
+          "pnl_resolved": 6.450000000000001,
+          "pnl_sold": 0.0
+        }
+      },
+      "sides": {
+        "UP": {
+          "total": 12,
+          "wins": 8,
+          "pnl": 4.35
+        },
+        "DOWN": {
+          "total": 7,
+          "wins": 7,
+          "pnl": 9.180000000000001
+        }
+      },
+      "hindsight": {
+        "count": 0,
+        "actual_pnl": 0,
+        "held_pnl": 0,
+        "difference": 0,
+        "good_calls": 0,
+        "bad_calls": 0
+      },
+      "first_trade": "2026-05-06 23:26",
+      "last_trade": "2026-05-07 04:20",
+      "tp_negative_count": 0,
+      "tp_negative_pnl": 0
+    },
+    "V2OPT3": {
+      "name": "V2OPT3",
+      "total": 4,
+      "open": 1,
+      "won": 3,
+      "lost": 0,
+      "sold": 0,
+      "total_pnl": 2.67,
+      "total_stake": 3.0,
+      "roi_pct": 89.0,
+      "win_rate_resolved": 100.0,
+      "overall_win_rate": 100.0,
+      "pnl_from_resolution": 2.67,
+      "pnl_from_sells": 0,
+      "exit_reasons": {},
+      "assets": {
+        "XRP": {
+          "total": 2,
+          "won": 2,
+          "lost": 0,
+          "sold": 0,
+          "open": 0,
+          "pnl": 1.4500000000000002,
+          "pnl_resolved": 1.4500000000000002,
+          "pnl_sold": 0.0
+        },
+        "ETH": {
+          "total": 2,
+          "won": 1,
+          "lost": 0,
+          "sold": 0,
+          "open": 1,
+          "pnl": 1.22,
+          "pnl_resolved": 1.22,
+          "pnl_sold": 0.0
+        }
+      },
+      "sides": {
+        "UP": {
+          "total": 2,
+          "wins": 2,
+          "pnl": 1.4500000000000002
+        },
+        "DOWN": {
+          "total": 1,
+          "wins": 1,
+          "pnl": 1.22
+        }
+      },
+      "hindsight": {
+        "count": 0,
+        "actual_pnl": 0,
+        "held_pnl": 0,
+        "difference": 0,
+        "good_calls": 0,
+        "bad_calls": 0
+      },
+      "first_trade": "2026-05-06 23:26",
+      "last_trade": "2026-05-07 04:21",
+      "tp_negative_count": 0,
+      "tp_negative_pnl": 0
+    },
+    "V4": {
+      "name": "V4",
+      "total": 55,
+      "open": 0,
+      "won": 0,
+      "lost": 7,
+      "sold": 48,
+      "total_pnl": 7.37,
+      "total_stake": 55.0,
+      "roi_pct": 13.4,
+      "win_rate_resolved": 0.0,
+      "overall_win_rate": 63.6,
+      "pnl_from_resolution": -7.0,
+      "pnl_from_sells": 14.37,
+      "exit_reasons": {
+        "take_profit": {
+          "count": 38,
+          "pnl": 14.860000000000003
+        },
+        "stop_loss": {
+          "count": 9,
+          "pnl": 0.21999999999999997
+        },
+        "trailing_stop": {
+          "count": 1,
+          "pnl": -0.71
+        }
+      },
+      "assets": {
+        "XRP": {
+          "total": 6,
+          "won": 0,
+          "lost": 0,
+          "sold": 6,
+          "open": 0,
+          "pnl": 3.14,
+          "pnl_resolved": 0.0,
+          "pnl_sold": 3.14
+        },
+        "ETH": {
+          "total": 18,
+          "won": 0,
+          "lost": 3,
+          "sold": 15,
+          "open": 0,
+          "pnl": 1.2599999999999998,
+          "pnl_resolved": -3.0,
+          "pnl_sold": 4.26
+        },
+        "BTC": {
+          "total": 31,
+          "won": 0,
+          "lost": 4,
+          "sold": 27,
+          "open": 0,
+          "pnl": 2.970000000000001,
+          "pnl_resolved": -4.0,
+          "pnl_sold": 6.970000000000001
+        }
+      },
+      "sides": {
+        "DOWN": {
+          "total": 28,
+          "wins": 20,
+          "pnl": 4.57
+        },
+        "UP": {
+          "total": 27,
+          "wins": 15,
+          "pnl": 2.8
+        }
+      },
+      "hindsight": {
+        "count": 47,
+        "actual_pnl": 14.15,
+        "held_pnl": 15.08,
+        "difference": -0.93,
+        "good_calls": 17,
+        "bad_calls": 30
+      },
+      "first_trade": "2026-05-06 23:26",
+      "last_trade": "2026-05-07 04:22",
+      "tp_negative_count": 7,
+      "tp_negative_pnl": -1.99
+    },
+    "V5": {
+      "name": "V5",
+      "total": 45,
+      "open": 1,
+      "won": 23,
+      "lost": 21,
+      "sold": 0,
+      "total_pnl": 4.4,
+      "total_stake": 44.0,
+      "roi_pct": 10.0,
+      "win_rate_resolved": 52.3,
+      "overall_win_rate": 52.3,
+      "pnl_from_resolution": 4.4,
+      "pnl_from_sells": 0,
+      "exit_reasons": {},
+      "assets": {
+        "XRP": {
+          "total": 2,
+          "won": 2,
+          "lost": 0,
+          "sold": 0,
+          "open": 0,
+          "pnl": 2.08,
+          "pnl_resolved": 2.08,
+          "pnl_sold": 0.0
+        },
+        "BTC": {
+          "total": 28,
+          "won": 13,
+          "lost": 14,
+          "sold": 0,
+          "open": 1,
+          "pnl": 1.5299999999999994,
+          "pnl_resolved": 1.5299999999999994,
+          "pnl_sold": 0.0
+        },
+        "ETH": {
+          "total": 15,
+          "won": 8,
+          "lost": 7,
+          "sold": 0,
+          "open": 0,
+          "pnl": 0.79,
+          "pnl_resolved": 0.79,
+          "pnl_sold": 0.0
+        }
+      },
+      "sides": {
+        "UP": {
+          "total": 20,
+          "wins": 10,
+          "pnl": 1.08
+        },
+        "DOWN": {
+          "total": 24,
+          "wins": 13,
+          "pnl": 3.3199999999999985
+        }
+      },
+      "hindsight": {
+        "count": 0,
+        "actual_pnl": 0,
+        "held_pnl": 0,
+        "difference": 0,
+        "good_calls": 0,
+        "bad_calls": 0
+      },
+      "first_trade": "2026-05-06 23:26",
+      "last_trade": "2026-05-07 04:22",
+      "tp_negative_count": 0,
+      "tp_negative_pnl": 0
+    },
+    "V6": {
+      "name": "V6",
+      "total": 4,
+      "open": 0,
+      "won": 0,
+      "lost": 0,
+      "sold": 4,
+      "total_pnl": 0.74,
+      "total_stake": 4.0,
+      "roi_pct": 18.5,
+      "win_rate_resolved": 0,
+      "overall_win_rate": 100.0,
+      "pnl_from_resolution": 0,
+      "pnl_from_sells": 0.74,
+      "exit_reasons": {
+        "take_profit": {
+          "count": 3,
+          "pnl": 0.62
+        },
+        "stop_loss": {
+          "count": 1,
+          "pnl": 0.12
+        }
+      },
+      "assets": {
+        "BTC": {
+          "total": 1,
+          "won": 0,
+          "lost": 0,
+          "sold": 1,
+          "open": 0,
+          "pnl": 0.15,
+          "pnl_resolved": 0.0,
+          "pnl_sold": 0.15
+        },
+        "ETH": {
+          "total": 2,
+          "won": 0,
+          "lost": 0,
+          "sold": 2,
+          "open": 0,
+          "pnl": 0.38,
+          "pnl_resolved": 0.0,
+          "pnl_sold": 0.38
+        },
+        "XRP": {
+          "total": 1,
+          "won": 0,
+          "lost": 0,
+          "sold": 1,
+          "open": 0,
+          "pnl": 0.21,
+          "pnl_resolved": 0.0,
+          "pnl_sold": 0.21
+        }
+      },
+      "sides": {
+        "DOWN": {
+          "total": 2,
+          "wins": 2,
+          "pnl": 0.27
+        },
+        "UP": {
+          "total": 2,
+          "wins": 2,
+          "pnl": 0.47
+        }
+      },
+      "hindsight": {
+        "count": 4,
+        "actual_pnl": 0.74,
+        "held_pnl": 3.7,
+        "difference": -2.96,
+        "good_calls": 0,
+        "bad_calls": 4
+      },
+      "first_trade": "2026-05-07 00:06",
+      "last_trade": "2026-05-07 04:16",
+      "tp_negative_count": 0,
+      "tp_negative_pnl": 0
+    },
+    "V7": {
+      "name": "V7",
+      "total": 4,
+      "open": 0,
+      "won": 4,
+      "lost": 0,
+      "sold": 0,
+      "total_pnl": 3.93,
+      "total_stake": 4.0,
+      "roi_pct": 98.2,
+      "win_rate_resolved": 100.0,
+      "overall_win_rate": 100.0,
+      "pnl_from_resolution": 3.93,
+      "pnl_from_sells": 0,
+      "exit_reasons": {},
+      "assets": {
+        "ETH": {
+          "total": 2,
+          "won": 2,
+          "lost": 0,
+          "sold": 0,
+          "open": 0,
+          "pnl": 1.85,
+          "pnl_resolved": 1.85,
+          "pnl_sold": 0.0
+        },
+        "XRP": {
+          "total": 1,
+          "won": 1,
+          "lost": 0,
+          "sold": 0,
+          "open": 0,
+          "pnl": 1.04,
+          "pnl_resolved": 1.04,
+          "pnl_sold": 0.0
+        },
+        "BTC": {
+          "total": 1,
+          "won": 1,
+          "lost": 0,
+          "sold": 0,
+          "open": 0,
+          "pnl": 1.04,
+          "pnl_resolved": 1.04,
+          "pnl_sold": 0.0
+        }
+      },
+      "sides": {
+        "UP": {
+          "total": 2,
+          "wins": 2,
+          "pnl": 2.04
+        },
+        "DOWN": {
+          "total": 2,
+          "wins": 2,
+          "pnl": 1.8900000000000001
+        }
+      },
+      "hindsight": {
+        "count": 0,
+        "actual_pnl": 0,
+        "held_pnl": 0,
+        "difference": 0,
+        "good_calls": 0,
+        "bad_calls": 0
+      },
+      "first_trade": "2026-05-07 02:55",
+      "last_trade": "2026-05-07 04:16",
+      "tp_negative_count": 0,
+      "tp_negative_pnl": 0
+    }
+  }
+}

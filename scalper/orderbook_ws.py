@@ -87,45 +87,53 @@ def get_mid_velocity(token_id: str, window_sec: int = 30) -> float:
 
     Thread-safe; can be called from any thread.
     """
+    now = time.time()
+    cutoff = now - window_sec
+
     with _lock:
         history = _mid_history.get(token_id)
         if not history:
             return 0.0
 
-    now = time.time()
-    cutoff = now - window_sec
-    window_samples = [(t, p) for t, p in history if t >= cutoff]
+        current_price = history[-1][1]
+        
+        # Find the last known price at or before cutoff
+        older_samples = [(t, p) for t, p in history if t <= cutoff]
+        if older_samples:
+            oldest_price = older_samples[-1][1]
+        else:
+            # If no samples before cutoff, the earliest sample we have is the oldest price
+            oldest_price = history[0][1]
 
-    if len(window_samples) < 3:
-        return 0.0  # too sparse to be meaningful
-
-    oldest_price = window_samples[0][1]
-    current_price = window_samples[-1][1]
     return round(current_price - oldest_price, 4)
 
 
 def debug_mid_history(token_id: str) -> dict:
     """Return debug info about the mid_history buffer for a token."""
+    now = time.time()
     with _lock:
         history = _mid_history.get(token_id)
+        in_prices = token_id in _prices
         if not history:
-            return {"entries": 0, "in_prices": token_id in _prices}
+            return {"entries": 0, "in_prices": in_prices}
 
-    now = time.time()
-    samples_10s = [(t, p) for t, p in history if t >= now - 10]
-    samples_30s = [(t, p) for t, p in history if t >= now - 30]
+        samples_10s = [(t, p) for t, p in history if t >= now - 10]
+        samples_30s = [(t, p) for t, p in history if t >= now - 30]
+        latest_mid = history[-1][1]
+        age_newest_sec = round(now - history[-1][0], 1)
+        entries = len(history)
 
     prices_10 = [p for _, p in samples_10s]
     unique_10 = len(set(prices_10))
 
     return {
-        "entries": len(history),
+        "entries": entries,
         "in_10s": len(samples_10s),
         "in_30s": len(samples_30s),
         "unique_prices_10s": unique_10,
-        "latest_mid": history[-1][1] if history else 0,
-        "age_newest_sec": round(now - history[-1][0], 1) if history else -1,
-        "in_prices": token_id in _prices,
+        "latest_mid": latest_mid,
+        "age_newest_sec": age_newest_sec,
+        "in_prices": in_prices,
     }
 
 def get_prices_for_market(up_token_id: str, down_token_id: str) -> dict | None:
@@ -264,6 +272,126 @@ def get_price_change(token_id: str, window_sec: int = 120) -> float:
     return round((current_price - oldest_price) / oldest_price, 4)
 
 
+def simulate_market_sell(token_id: str, shares: float) -> dict:
+    """
+    Walk the bid side of the orderbook to simulate a market sell (FOK).
+
+    Returns dict with:
+        can_fill:   bool — True if the full `shares` amount can be filled
+        vwap:       float — Volume-Weighted Average Price of the fill
+        best_bid:   float — Top-of-book bid price
+        filled_qty: float — How many shares could actually be filled
+        total_depth: float — Total bid depth on book
+        levels_used: int — How many price levels were consumed
+    """
+    with _lock:
+        book = _orderbooks.get(token_id)
+        if not book or (time.time() - book.get("updated", 0)) > 60:
+            return {
+                "can_fill": False, "vwap": 0.0, "best_bid": 0.0,
+                "filled_qty": 0.0, "total_depth": 0.0, "levels_used": 0,
+            }
+        # Copy bids to avoid holding the lock during computation
+        bids = list(book.get("bids", []))
+
+    if not bids:
+        return {
+            "can_fill": False, "vwap": 0.0, "best_bid": 0.0,
+            "filled_qty": 0.0, "total_depth": 0.0, "levels_used": 0,
+        }
+
+    best_bid = bids[0][0]
+    total_depth = sum(s for _, s in bids)
+
+    remaining = shares
+    cost_accum = 0.0  # sum of (price * qty_filled_at_that_level)
+    levels_used = 0
+
+    for price, size in bids:
+        if remaining <= 0:
+            break
+        fill_at_level = min(remaining, size)
+        cost_accum += price * fill_at_level
+        remaining -= fill_at_level
+        levels_used += 1
+
+    filled_qty = shares - remaining
+    vwap = cost_accum / filled_qty if filled_qty > 0 else 0.0
+
+    return {
+        "can_fill": remaining <= 0,
+        "vwap": round(vwap, 6),
+        "best_bid": best_bid,
+        "filled_qty": round(filled_qty, 4),
+        "total_depth": round(total_depth, 2),
+        "levels_used": levels_used,
+    }
+
+
+def simulate_market_buy(token_id: str, spend_usd: float) -> dict:
+    """
+    Walk the ask side of the orderbook to simulate a market buy (FOK).
+
+    Given a dollar amount to spend, walks through ask levels accumulating
+    shares until the budget is exhausted or the book runs out.
+
+    Returns dict with:
+        can_fill:    bool — True if the full budget could be deployed
+        vwap:        float — Volume-Weighted Average Price of the fill
+        best_ask:    float — Top-of-book ask price
+        shares:      float — Total shares acquired
+        total_depth: float — Total ask depth on book
+        levels_used: int
+    """
+    with _lock:
+        book = _orderbooks.get(token_id)
+        if not book or (time.time() - book.get("updated", 0)) > 60:
+            return {
+                "can_fill": False, "vwap": 0.0, "best_ask": 0.0,
+                "shares": 0.0, "total_depth": 0.0, "levels_used": 0,
+            }
+        asks = list(book.get("asks", []))
+
+    if not asks:
+        return {
+            "can_fill": False, "vwap": 0.0, "best_ask": 0.0,
+            "shares": 0.0, "total_depth": 0.0, "levels_used": 0,
+        }
+
+    best_ask = asks[0][0]
+    total_depth = sum(s for _, s in asks)
+
+    remaining_usd = spend_usd
+    shares_accum = 0.0
+    cost_accum = 0.0
+    levels_used = 0
+
+    for price, size in asks:
+        if remaining_usd <= 0 or price <= 0:
+            break
+        # Max shares we can buy at this level with remaining budget
+        max_shares_at_level = remaining_usd / price
+        fill_at_level = min(max_shares_at_level, size)
+        level_cost = fill_at_level * price
+        cost_accum += level_cost
+        shares_accum += fill_at_level
+        remaining_usd -= level_cost
+        levels_used += 1
+
+    vwap = cost_accum / shares_accum if shares_accum > 0 else 0.0
+    # "can_fill" = we deployed at least 95% of the budget (small rounding tolerance)
+    can_fill = remaining_usd <= spend_usd * 0.05
+
+    return {
+        "can_fill": can_fill,
+        "vwap": round(vwap, 6),
+        "best_ask": best_ask,
+        "shares": round(shares_accum, 4),
+        "total_depth": round(total_depth, 2),
+        "levels_used": levels_used,
+    }
+
+
 def check_sell_liquidity(
     token_id: str,
     shares: float,
@@ -271,60 +399,83 @@ def check_sell_liquidity(
     max_slippage: float = 0.15,
 ) -> dict:
     """
-    Check if there's enough liquidity to sell.
+    Check if there's enough liquidity to sell using orderbook walking.
+
+    Slippage is measured from the MID-PRICE (fair value), NOT from
+    entry_price (which would conflate drawdown with execution cost).
 
     Returns dict with:
-        can_sell, reason, best_bid, bid_depth, slippage_pct
+        can_sell, reason, best_bid, bid_depth, slippage_pct, vwap
     """
-    best = get_best_bid(token_id)
-    depth = get_total_bid_depth(token_id)
+    sim = simulate_market_sell(token_id, shares)
 
-    if best is None:
+    if sim["best_bid"] <= 0:
         return {
             "can_sell": False,
             "reason": "No orderbook data (WS not connected or no bids)",
             "best_bid": 0,
             "bid_depth": 0,
             "slippage_pct": 1.0,
+            "vwap": 0.0,
         }
 
-    bid_price, bid_size = best
-
-    if bid_price <= 0.01:
+    if sim["best_bid"] <= 0.01:
         return {
             "can_sell": False,
-            "reason": f"Best bid is dust (${bid_price:.2f})",
-            "best_bid": bid_price,
-            "bid_depth": depth,
+            "reason": f"Best bid is dust (${sim['best_bid']:.2f})",
+            "best_bid": sim["best_bid"],
+            "bid_depth": sim["total_depth"],
             "slippage_pct": 1.0,
+            "vwap": 0.0,
         }
 
-    slippage = (entry_price - bid_price) / entry_price if entry_price > 0 else 1.0
+    if not sim["can_fill"]:
+        return {
+            "can_sell": False,
+            "reason": (
+                f"Insufficient depth: need {shares:.1f} shares, "
+                f"book has {sim['total_depth']:.1f} (filled {sim['filled_qty']:.1f})"
+            ),
+            "best_bid": sim["best_bid"],
+            "bid_depth": sim["total_depth"],
+            "slippage_pct": 1.0,
+            "vwap": sim["vwap"],
+        }
+
+    # Slippage = distance from mid-price to VWAP execution price
+    # This correctly measures execution cost, NOT position P&L
+    summary = get_book_summary(token_id)
+    if summary and summary["best_ask"] > 0 and summary["best_bid"] > 0:
+        mid_price = (summary["best_bid"] + summary["best_ask"]) / 2.0
+    else:
+        mid_price = sim["best_bid"]  # fallback
+
+    slippage = (mid_price - sim["vwap"]) / mid_price if mid_price > 0 else 0.0
 
     if slippage > max_slippage:
         return {
             "can_sell": False,
-            "reason": f"Slippage too high ({slippage:.0%}): bid ${bid_price:.2f} vs entry ${entry_price:.2f}",
-            "best_bid": bid_price,
-            "bid_depth": depth,
+            "reason": (
+                f"Execution slippage too high ({slippage:.1%}): "
+                f"VWAP ${sim['vwap']:.4f} vs mid ${mid_price:.4f} "
+                f"({sim['levels_used']} levels consumed)"
+            ),
+            "best_bid": sim["best_bid"],
+            "bid_depth": sim["total_depth"],
             "slippage_pct": slippage,
-        }
-
-    if depth < shares * 0.5:
-        return {
-            "can_sell": False,
-            "reason": f"Thin depth ({depth:.1f} shares) vs sell size ({shares:.1f})",
-            "best_bid": bid_price,
-            "bid_depth": depth,
-            "slippage_pct": slippage,
+            "vwap": sim["vwap"],
         }
 
     return {
         "can_sell": True,
-        "reason": f"Bid ${bid_price:.2f} (depth {depth:.1f}) — OK",
-        "best_bid": bid_price,
-        "bid_depth": depth,
-        "slippage_pct": slippage,
+        "reason": (
+            f"VWAP ${sim['vwap']:.4f} ({sim['levels_used']} lvls, "
+            f"depth {sim['total_depth']:.1f}) — OK"
+        ),
+        "best_bid": sim["best_bid"],
+        "bid_depth": sim["total_depth"],
+        "slippage_pct": round(slippage, 4),
+        "vwap": sim["vwap"],
     }
 
 
@@ -367,10 +518,15 @@ def _parse_book_message(data: dict):
         if bids and asks:
             mid = (bids[0][0] + asks[0][0]) / 2.0
             _prices[asset_id] = {"price": mid, "updated": now}
+            update_mid_history(asset_id, mid)
         elif bids:
-            _prices[asset_id] = {"price": bids[0][0], "updated": now}
+            mid = bids[0][0]
+            _prices[asset_id] = {"price": mid, "updated": now}
+            update_mid_history(asset_id, mid)
         elif asks:
-            _prices[asset_id] = {"price": asks[0][0], "updated": now}
+            mid = asks[0][0]
+            _prices[asset_id] = {"price": mid, "updated": now}
+            update_mid_history(asset_id, mid)
 
 
 def _parse_price_change(data: dict):
@@ -419,12 +575,28 @@ def _parse_price_change(data: dict):
                 mid = (msg_best_bid + msg_best_ask) / 2.0
                 _prices[asset_id] = {"price": mid, "updated": now}
                 update_mid_history(asset_id, mid)
+            elif msg_best_bid > 0:
+                mid = msg_best_bid
+                _prices[asset_id] = {"price": mid, "updated": now}
+                update_mid_history(asset_id, mid)
+            elif msg_best_ask > 0:
+                mid = msg_best_ask
+                _prices[asset_id] = {"price": mid, "updated": now}
+                update_mid_history(asset_id, mid)
             else:
                 # Fallback: reconstruct from local book
                 bids = book["bids"]
                 asks = book["asks"]
                 if bids and asks:
                     mid = (bids[0][0] + asks[0][0]) / 2.0
+                    _prices[asset_id] = {"price": mid, "updated": now}
+                    update_mid_history(asset_id, mid)
+                elif bids:
+                    mid = bids[0][0]
+                    _prices[asset_id] = {"price": mid, "updated": now}
+                    update_mid_history(asset_id, mid)
+                elif asks:
+                    mid = asks[0][0]
                     _prices[asset_id] = {"price": mid, "updated": now}
                     update_mid_history(asset_id, mid)
 

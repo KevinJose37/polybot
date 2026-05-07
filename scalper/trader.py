@@ -451,6 +451,7 @@ def open_trade(
                 return None
 
     actual_stake = stake or _cfg.HFT_STAKE
+    _ws_filled = False  # Track if WS simulation already computed shares/price
 
     # ── Paper mode: realistic liquidity check via WS ─────────
     is_live_mode = False
@@ -462,56 +463,57 @@ def open_trade(
 
     if not is_live_mode and token_id:
         try:
-            from scalper.orderbook_ws import get_book_summary
+            from scalper.orderbook_ws import simulate_market_buy, get_book_summary
+            sim = simulate_market_buy(token_id, actual_stake)
+
+            if sim["best_ask"] <= 0 or sim["best_ask"] >= 0.99:
+                print(
+                    f"  [PAPER BUY] {asset} {side}: "
+                    f"No asks on book → skipping entry"
+                )
+                logger.info("PAPER BUY SKIPPED (no asks): %s %s", asset, side)
+                return None
+
+            if not sim["can_fill"]:
+                print(
+                    f"  [PAPER BUY] {asset} {side}: "
+                    f"Insufficient ask depth: ${actual_stake:.2f} needs "
+                    f"{actual_stake/sim['best_ask']:.1f} shares, "
+                    f"book has {sim['total_depth']:.1f} → skipping entry"
+                )
+                logger.info("PAPER BUY SKIPPED (depth): %s %s", asset, side)
+                return None
+
+            # Use VWAP as realistic entry price (orderbook walking)
+            original_price = entry_price
+            entry_price = sim["vwap"]
+            shares = sim["shares"]  # actual shares from simulation
+            _ws_filled = True
+
             book = get_book_summary(token_id)
-            if book:
-                best_ask = book["best_ask"]
-                ask_depth = book["ask_depth"]
-                best_bid = book["best_bid"]
-                spread = book.get("spread_pct", 0)
-
-                # Check if there are sellers
-                if best_ask >= 0.99 or best_ask <= 0.01:
-                    print(
-                        f"  [PAPER BUY] {asset} {side}: "
-                        f"No asks on book → skipping entry"
-                    )
-                    logger.info("PAPER BUY SKIPPED (no asks): %s %s", asset, side)
-                    return None
-
-                # Check depth
-                estimated_shares = actual_stake / best_ask
-                if ask_depth < estimated_shares * 0.5:
-                    print(
-                        f"  [PAPER BUY] {asset} {side}: "
-                        f"Thin ask depth ({ask_depth:.1f}) vs size ({estimated_shares:.1f}) → skipping entry"
-                    )
-                    logger.info("PAPER BUY SKIPPED (thin depth): %s %s", asset, side)
-                    return None
-
-                # Adjust entry price to the actual best ask from WS
-                original_price = entry_price
-                entry_price = best_ask
-                print(
-                    f"  [PAPER BUY] {asset} {side}: "
-                    f"ask=${best_ask:.4f} bid=${best_bid:.4f} "
-                    f"spread={spread:.1%} depth={ask_depth:.0f} "
-                    f"{'(price adj ' + f'${original_price:.4f}→${best_ask:.4f})' if abs(original_price - best_ask) > 0.005 else ''}"
-                )
-            else:
-                print(
-                    f"  [PAPER BUY] {asset} {side}: "
-                    f"No WS data → using Gamma price ${entry_price:.4f}"
-                )
+            spread_pct = book.get("spread_pct", 0) if book else 0
+            adj_str = ""
+            if abs(original_price - sim["vwap"]) > 0.005:
+                adj_str = f"  (adj ${original_price:.4f}->${sim['vwap']:.4f})"
+            print(
+                f"  [PAPER BUY] {asset} {side}: "
+                f"VWAP=${sim['vwap']:.4f} (best_ask=${sim['best_ask']:.4f}) "
+                f"spread={spread_pct:.1%} depth={sim['total_depth']:.0f} "
+                f"{sim['levels_used']}lvls shares={shares:.1f}{adj_str}"
+            )
         except (ImportError, AttributeError) as e:
             logger.debug("Paper liquidity check unavailable: %s", e)
 
     # Calculate shares (how many outcome tokens we buy)
+    # NOTE: if simulate_market_buy ran above, `shares` is already set from VWAP.
+    # This block only runs if WS was unavailable (fallback to simple division).
     if entry_price <= 0 or entry_price >= 1:
         logger.warning("Invalid entry price %.4f for %s", entry_price, asset)
         return None
 
-    shares = actual_stake / entry_price
+    if not _ws_filled:
+        # WS simulation didn't run — calculate shares from simple division
+        shares = actual_stake / entry_price
 
     trade = {
         "id": _next_trade_id(trades),
@@ -615,96 +617,120 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
             pass
 
         if not is_live_mode and token_id:
-            # Paper mode with WS data available — simulate realistic fill
+            # Paper mode with WS data available — simulate realistic FOK fill
             try:
-                from scalper.orderbook_ws import get_book_summary
-                book = get_book_summary(token_id)
-                if book:
-                    best_bid = book["best_bid"]
-                    bid_depth = book["bid_depth"]
-                    best_ask = book.get("best_ask", 0)
-                    spread = book.get("spread_pct", 0)
+                from scalper.orderbook_ws import simulate_market_sell, get_book_summary
+                sim = simulate_market_sell(token_id, shares)
 
-                    if best_bid <= 0.01:
-                        print(
-                            f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                            f"No bids on book (ask=${best_ask:.2f}) → holding for resolution"
-                        )
-                        logger.info(
-                            "PAPER SELL SKIPPED (no bids): %s %s",
-                            trade["asset"], trade["side"],
-                        )
-                        return None
-
-                    if bid_depth < shares * 0.5:
-                        print(
-                            f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                            f"Thin depth ({bid_depth:.1f}) vs size ({shares:.1f}) "
-                            f"bid=${best_bid:.2f} → holding for resolution"
-                        )
-                        logger.info(
-                            "PAPER SELL SKIPPED (thin depth): %s %s | "
-                            "depth=%.1f shares=%.1f",
-                            trade["asset"], trade["side"], bid_depth, shares,
-                        )
-                        return None
-
-                    slippage = (entry_price - best_bid) / entry_price if entry_price > 0 else 1.0
-                    if slippage > 0.15:
-                        print(
-                            f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                            f"Slippage {slippage:.0%} (bid ${best_bid:.2f} vs entry ${entry_price:.2f}) "
-                            f"→ holding for resolution"
-                        )
-                        logger.info(
-                            "PAPER SELL SKIPPED (slippage): %s %s | "
-                            "bid=$%.2f entry=$%.2f slippage=%.0f%%",
-                            trade["asset"], trade["side"],
-                            best_bid, entry_price, slippage * 100,
-                        )
-                        return None
-
-                    # Paper mode: use best bid as realistic exit price
-                    exit_price = best_bid
-                    pnl_preview = (best_bid - entry_price) * shares
+                if sim["best_bid"] <= 0.01:
                     print(
                         f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                        f"bid=${best_bid:.4f} ask=${best_ask:.4f} "
-                        f"spread={spread:.1%} depth={bid_depth:.0f} "
-                        f"slip={slippage:.1%} pnl=${pnl_preview:+.2f}"
+                        f"No bids on book → holding for resolution"
                     )
+                    logger.info(
+                        "PAPER SELL SKIPPED (no bids): %s %s",
+                        trade["asset"], trade["side"],
+                    )
+                    return None
+
+                if not sim["can_fill"]:
+                    print(
+                        f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                        f"Insufficient depth: need {shares:.1f}, "
+                        f"book has {sim['total_depth']:.1f} "
+                        f"(filled {sim['filled_qty']:.1f}) → holding"
+                    )
+                    logger.info(
+                        "PAPER SELL SKIPPED (depth): %s %s | "
+                        "need=%.1f have=%.1f",
+                        trade["asset"], trade["side"], shares, sim["total_depth"],
+                    )
+                    return None
+
+                # Slippage from mid-price (execution cost), NOT from entry (drawdown)
+                book = get_book_summary(token_id)
+                if book and book["best_ask"] > 0 and book["best_bid"] > 0:
+                    mid_price = (book["best_bid"] + book["best_ask"]) / 2.0
                 else:
-                    # No WS data — try REST fallback (like entries use Gamma)
-                    try:
-                        from scalper.live_client import _get_best_bid_rest
-                        rest_bid = _get_best_bid_rest(token_id)
-                        if rest_bid and rest_bid > 0.01:
-                            exit_price = rest_bid
-                            pnl_preview = (rest_bid - entry_price) * shares
-                            print(
-                                f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                                f"No WS → REST fallback bid=${rest_bid:.4f} "
-                                f"pnl=${pnl_preview:+.2f}"
-                            )
-                        else:
-                            print(
-                                f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                                f"No WS/REST data → holding for resolution"
-                            )
-                            return None
-                    except (ImportError, Exception) as e:
-                        logger.debug("REST fallback sell failed: %s", e)
+                    mid_price = sim["best_bid"]
+
+                exec_slippage = (mid_price - sim["vwap"]) / mid_price if mid_price > 0 else 0.0
+
+                if exec_slippage > 0.15:
+                    print(
+                        f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                        f"Execution slippage {exec_slippage:.1%} "
+                        f"(VWAP ${sim['vwap']:.4f} vs mid ${mid_price:.4f}) "
+                        f"→ holding for resolution"
+                    )
+                    logger.info(
+                        "PAPER SELL SKIPPED (slippage): %s %s | "
+                        "vwap=$%.4f mid=$%.4f slip=%.1f%%",
+                        trade["asset"], trade["side"],
+                        sim["vwap"], mid_price, exec_slippage * 100,
+                    )
+                    return None
+
+                # Paper mode: use VWAP as realistic exit price (orderbook walking)
+                exit_price = sim["vwap"]
+                pnl_preview = (sim["vwap"] - entry_price) * shares
+                spread_pct = book.get("spread_pct", 0) if book else 0
+                print(
+                    f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                    f"VWAP=${sim['vwap']:.4f} (best_bid=${sim['best_bid']:.4f}) "
+                    f"spread={spread_pct:.1%} depth={sim['total_depth']:.0f} "
+                    f"{sim['levels_used']}lvls slip={exec_slippage:.1%} "
+                    f"pnl=${pnl_preview:+.2f}"
+                )
+            except (ImportError, AttributeError) as e:
+                # No WS module available — try REST fallback
+                try:
+                    from scalper.live_client import _get_best_bid_rest
+                    rest_bid = _get_best_bid_rest(token_id)
+                    if rest_bid and rest_bid > 0.01:
+                        exit_price = rest_bid
+                        pnl_preview = (rest_bid - entry_price) * shares
                         print(
                             f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                            f"No WS data → cannot sell, holding"
+                            f"No WS → REST fallback bid=${rest_bid:.4f} "
+                            f"pnl=${pnl_preview:+.2f}"
+                        )
+                    else:
+                        print(
+                            f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                            f"No WS/REST data → holding for resolution"
                         )
                         return None
-            except (ImportError, AttributeError) as e:
-                logger.debug("Paper liquidity check unavailable: %s", e)
+                except (ImportError, Exception) as e2:
+                    logger.debug("REST fallback sell failed: %s", e2)
+                    print(
+                        f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
+                        f"No WS data → cannot sell, holding"
+                    )
+                    return None
 
         # Default paper P&L (used if no live data)
         pnl = (exit_price - entry_price) * shares
         actual_exit_price = exit_price
+
+        # ── TP consistency guard ──────────────────────────────
+        # If caller says "take_profit" but actual execution would be a LOSS,
+        # refuse the sell. This happens when the orderbook moves between
+        # the TP trigger check and the actual sell execution (race condition).
+        if reason == "take_profit" and pnl < 0:
+            print(
+                f"  [TP-GUARD] {trade['asset']} {trade['side']}: "
+                f"TP triggered but actual PnL would be ${pnl:+.2f} "
+                f"(exit=${exit_price:.4f} vs entry=${entry_price:.4f}) "
+                f"→ aborting sell, holding for resolution"
+            )
+            logger.info(
+                "SELL ABORTED (TP consistency): %s %s | "
+                "exit=$%.4f entry=$%.4f pnl=$%.2f",
+                trade["asset"], trade["side"],
+                exit_price, entry_price, pnl,
+            )
+            return None
 
         # ── Live mode: attempt real sell via CLOB (99% size workaround) ──
         token_id = trade.get("token_id", "")
@@ -1084,6 +1110,15 @@ def check_open_positions_profiled(
             sell_price = gamma_bid
         else:
             # No bids available — can't sell in reality, hold for resolution
+            entry_price = trade["entry_price"]
+            unrealized_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+            import scalper.config as _cfg
+            hold = getattr(profile, "hold_to_resolution", False) or getattr(_cfg, "HOLD_ONLY", False)
+            if unrealized_change >= tp and not hold:
+                print(
+                    f"  [⚠️ ILLUSION] {asset} {side} mid=${current_price:.2f} "
+                    f"(+{unrealized_change:.1%}) but NO BIDS on book — TP blocked!"
+                )
             continue
 
         entry_price = trade["entry_price"]
@@ -1131,6 +1166,11 @@ def check_open_positions_profiled(
                     "reason": f"Take profit ({realizable_change:.1%})",
                 })
             continue
+        elif unrealized_change >= tp:
+            print(
+                f"  [⚠️ LIQUIDITY] {asset} {side} mid=${current_price:.2f} (+{unrealized_change:.1%}) "
+                f"but real bid is ${sell_price:.2f} ({realizable_change:.1%}) — TP blocked!"
+            )
 
         # ── Signal reversal ──────────────────────────────────
         if signal_scores and asset in signal_scores:

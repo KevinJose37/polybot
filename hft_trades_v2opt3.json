@@ -1,21 +1,21 @@
 [
   {
     "id": "hft_001",
-    "asset": "XRP",
-    "side": "UP",
-    "entry_price": 0.64,
-    "entry_time": "2026-05-06T23:26:40.544220+00:00",
+    "asset": "ETH",
+    "side": "DOWN",
+    "entry_price": 0.62,
+    "entry_time": "2026-05-07T04:42:02.741855+00:00",
     "stake": 1.0,
-    "shares": 1.5625,
-    "signal_score": 0.6966,
-    "status": "won",
-    "exit_price": 1.0,
-    "exit_time": "2026-05-06T23:36:51.618501+00:00",
-    "pnl": 0.56,
-    "market_slug": "xrp-updown-5m-1778109900",
-    "gamma_id": "2169875",
-    "event_start": "2026-05-06T23:25:00+00:00",
-    "event_end": "2026-05-06T23:30:00+00:00",
-    "token_id": "37377210827882899712778461726124085052259899470128393816944270014267121107972"
+    "shares": 1.6129,
+    "signal_score": -0.5035,
+    "status": "open",
+    "exit_price": null,
+    "exit_time": null,
+    "pnl": null,
+    "market_slug": "eth-updown-5m-1778128800",
+    "gamma_id": "2171944",
+    "event_start": "2026-05-07T04:40:00+00:00",
+    "event_end": "2026-05-07T04:45:00+00:00",
+    "token_id": "61976630715128475590536775285319834300153857768333465959893105801010093613643"
   }
 ]
