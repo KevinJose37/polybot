@@ -1,0 +1,40 @@
+[
+  {
+    "id": "hft_001",
+    "asset": "BTC",
+    "side": "UP",
+    "entry_price": 0.63,
+    "entry_time": "2026-05-06T23:21:55.644386+00:00",
+    "stake": 1.0,
+    "shares": 1.5873,
+    "signal_score": 0.4933,
+    "status": "open",
+    "exit_price": null,
+    "exit_time": null,
+    "pnl": null,
+    "market_slug": "btc-updown-5m-1778109600",
+    "gamma_id": "2169829",
+    "event_start": "2026-05-06T23:20:00+00:00",
+    "event_end": "2026-05-06T23:25:00+00:00",
+    "token_id": "36407861242359804479608031163212391559585334691990803107483529096125093203334"
+  },
+  {
+    "id": "hft_002",
+    "asset": "ETH",
+    "side": "UP",
+    "entry_price": 0.62,
+    "entry_time": "2026-05-06T23:21:56.634300+00:00",
+    "stake": 1.0,
+    "shares": 1.6129,
+    "signal_score": 0.4613,
+    "status": "open",
+    "exit_price": null,
+    "exit_time": null,
+    "pnl": null,
+    "market_slug": "eth-updown-5m-1778109600",
+    "gamma_id": "2169827",
+    "event_start": "2026-05-06T23:20:00+00:00",
+    "event_end": "2026-05-06T23:25:00+00:00",
+    "token_id": "111694590074901342340327595294244358174333685841902405321988232814144511487203"
+  }
+]

@@ -938,33 +938,35 @@ def check_open_positions(signal_scores: dict[str, float] | None = None) -> list[
         entry_price = trade["entry_price"]
 
         if entry_price > 0:
-            price_change = (current_price - entry_price) / entry_price
+            unrealized_change = (current_price - entry_price) / entry_price
+            realizable_change = (sell_price - entry_price) / entry_price
         else:
-            price_change = 0
+            unrealized_change = 0
+            realizable_change = 0
 
         import scalper.config as _cfg
         if getattr(_cfg, "HOLD_ONLY", False):
             continue
 
         # Stop-loss: cut losses early
-        if price_change <= -HFT_STOP_LOSS:
+        if realizable_change <= -HFT_STOP_LOSS:
             result = sell_trade(trade["id"], sell_price, reason="stop_loss")
             if result:
                 actions.append({
                     "type": "sold",
                     "trade": result,
-                    "reason": f"Stop loss ({price_change:.1%})",
+                    "reason": f"Stop loss ({realizable_change:.1%})",
                 })
             continue
 
         # Take profit
-        if price_change >= HFT_EARLY_EXIT_PROFIT:
+        if realizable_change >= HFT_EARLY_EXIT_PROFIT:
             result = sell_trade(trade["id"], sell_price, reason="take_profit")
             if result:
                 actions.append({
                     "type": "sold",
                     "trade": result,
-                    "reason": f"Take profit ({price_change:.1%})",
+                    "reason": f"Take profit ({realizable_change:.1%})",
                 })
             continue
 
@@ -1085,7 +1087,9 @@ def check_open_positions_profiled(
             continue
 
         entry_price = trade["entry_price"]
-        price_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+        # Theoretical change (mid price) vs Actual change if we sell to the bid right now
+        unrealized_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+        realizable_change = (sell_price - entry_price) / entry_price if entry_price > 0 else 0
 
         # ── Hold-to-resolution: skip all early exits ─────────
         import scalper.config as _cfg
@@ -1099,7 +1103,8 @@ def check_open_positions_profiled(
         effective_sl = sl
 
         # Trailing stop: if position was up 20%+, move SL to break-even
-        if trailing and price_change >= trailing_trigger:
+        # (Use unrealized for the high watermark to track momentum)
+        if trailing and unrealized_change >= trailing_trigger:
             effective_sl = 0.0  # break-even = 0% loss
             # Track the high watermark for future trailing
             trade_high = trade.get("_high_watermark", entry_price)
@@ -1107,23 +1112,23 @@ def check_open_positions_profiled(
                 trade["_high_watermark"] = current_price
                 save_trades(trades)
 
-        if price_change <= -effective_sl:
+        if realizable_change <= -effective_sl:
             reason_str = "trailing_stop" if effective_sl < sl else "stop_loss"
             result = sell_trade(trade["id"], sell_price, reason=reason_str)
             if result:
                 actions.append({
                     "type": "sold", "trade": result,
-                    "reason": f"{reason_str} ({price_change:.1%})",
+                    "reason": f"{reason_str} ({realizable_change:.1%})",
                 })
             continue
 
         # ── Take profit ──────────────────────────────────────
-        if price_change >= tp:
+        if realizable_change >= tp:
             result = sell_trade(trade["id"], sell_price, reason="take_profit")
             if result:
                 actions.append({
                     "type": "sold", "trade": result,
-                    "reason": f"Take profit ({price_change:.1%})",
+                    "reason": f"Take profit ({realizable_change:.1%})",
                 })
             continue
 
