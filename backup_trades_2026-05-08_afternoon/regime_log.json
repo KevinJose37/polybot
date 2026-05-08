@@ -1,0 +1,4397 @@
+[
+  {
+    "timestamp": "2026-05-08T22:12:04.652375+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.635,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:04.668949+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.525,
+    "oscillation": 0.03,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:19.813641+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.905,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:19.830744+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.765,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:19.847510+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.525,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:34.555951+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.895,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:34.576588+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.755,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:34.597055+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.53,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:49.618964+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.895,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:49.643302+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.785,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:12:49.663643+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.58,
+    "oscillation": 0.06,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:05.176585+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.815,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:05.195733+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.785,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:05.214075+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.435,
+    "oscillation": 0.055,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:20.426099+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.83,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:20.443288+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.595,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:20.458846+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.26,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:37.138739+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.855,
+    "oscillation": 0.05,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:37.158767+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.515,
+    "oscillation": 0.04,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:37.177816+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.37,
+    "oscillation": 0.14,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:53.947328+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.88,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:53.968687+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.905,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:13:53.991313+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.43,
+    "oscillation": 0.05,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:10.659856+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.985,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:10.674948+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.965,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:10.693726+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.375,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:26.922503+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.975,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:26.942875+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.97,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:26.967838+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.475,
+    "oscillation": 0.13,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:43.260866+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:43.279662+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:43.297372+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.965,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:59.739573+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:59.764669+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:14:59.785612+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:15:14.590313+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0095,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:15:14.611550+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.9995,
+    "oscillation": 0.0095,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:15:14.628579+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:15:29.799690+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.9995,
+    "oscillation": 0.0005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:15:29.818698+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.9995,
+    "oscillation": 0.0095,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:15:29.833628+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:15:44.733392+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:15:44.749113+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:15:44.762935+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:15:59.763675+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:15:59.783728+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:15:59.802464+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:16:14.034702+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:16:14.052661+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.455,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:16:14.065696+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:16:28.825787+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:16:28.841316+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.455,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:16:28.856620+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:16:44.341190+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.495,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:16:44.363829+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.425,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:16:44.379806+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.165,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:16:59.639217+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.415,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:16:59.660859+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.425,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:16:59.676595+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.115,
+    "oscillation": 0.05,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:17:15.411002+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.455,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:17:15.429543+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.425,
+    "oscillation": 0.035,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:17:15.443270+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.125,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:17:31.030016+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.46499999999999997,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:17:31.057859+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.315,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:17:31.076510+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.095,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:17:46.004655+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.295,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:17:46.026100+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.165,
+    "oscillation": 0.035,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:17:46.048620+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.07,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:01.213677+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.245,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:01.235818+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.11499999999999999,
+    "oscillation": 0.05,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:01.257764+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.055,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:15.867897+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.20500000000000002,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:15.887421+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.08499999999999999,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:15.901536+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.045,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:29.935051+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.165,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:29.952803+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.055,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:29.970489+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:46.705905+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.035,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:46.724406+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.035,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:18:46.737276+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:03.781687+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.045,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:03.802783+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:03.818808+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:21.068999+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:21.086319+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:21.103030+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:37.530798+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:37.551839+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:37.571274+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:54.440654+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:54.456268+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:19:54.470637+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:09.029512+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:09.049926+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:09.068629+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:23.771342+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.009,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:23.786529+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.001,
+    "oscillation": 0.009,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:23.802655+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.001,
+    "oscillation": 0.009,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:38.481492+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:38.502467+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.001,
+    "oscillation": 0.009,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:38.517389+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.001,
+    "oscillation": 0.009,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:20:54.722500+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.485,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:20:54.738549+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:20:54.750690+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:10.037151+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.485,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:10.057378+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:10.076311+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:24.343837+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.485,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:24.363700+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:24.380206+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:39.054743+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.485,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:39.073996+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:39.090472+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:21:54.470382+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.11499999999999999,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:21:54.488460+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.175,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:21:54.503353+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.33499999999999996,
+    "oscillation": 0.03,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:09.786611+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.08499999999999999,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:09.807776+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.14500000000000002,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:09.827047+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.24,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:25.076758+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.065,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:25.098013+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.10500000000000001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:25.112911+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.245,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:40.331412+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.125,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:40.352626+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.065,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:40.368713+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.19,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:55.475947+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.07500000000000001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:55.497003+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.055,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:22:55.511631+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.14500000000000002,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:10.437232+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.08499999999999999,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:10.455878+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.045,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:10.473034+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.195,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:25.514248+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.08499999999999999,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:25.532516+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.045,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:25.549834+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.26,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:41.636233+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.08499999999999999,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:41.653567+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.035,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:41.670300+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.095,
+    "oscillation": 0.04,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:58.337054+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.08499999999999999,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:58.387997+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:23:58.404493+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.1,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:24:15.418754+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.14500000000000002,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:24:15.439611+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:24:15.457400+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.08,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:24:32.283257+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.11499999999999999,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:24:32.302719+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:24:32.322000+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.035,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:24:49.321445+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.155,
+    "oscillation": 0.03,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:24:49.337287+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:24:49.351065+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.034999999999999996,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:04.556110+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.055,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:04.572300+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:04.592396+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:18.839402+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:18.861374+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:18.882718+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:33.916113+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:33.933574+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:33.949192+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:25:49.163479+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:25:49.169076+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:25:49.194086+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:03.932805+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:03.948920+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:03.965207+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:19.730167+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:19.751464+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:19.770616+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:34.168946+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:34.191790+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.49,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:34.209091+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:26:48.769350+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.505,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:26:48.787966+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.325,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:26:48.804779+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.3,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:03.863698+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.435,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:03.881083+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.315,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:03.896844+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.30500000000000005,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:18.690980+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.455,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:18.713766+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.305,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:18.729902+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.335,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:33.948264+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.455,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:33.972687+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.415,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:33.994561+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.375,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:48.774628+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.495,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:48.796882+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.385,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:27:48.815605+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.20500000000000002,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:03.622545+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.495,
+    "oscillation": 0.095,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:03.639287+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.315,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:03.657200+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.1,
+    "oscillation": 0.05,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:18.557999+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.28500000000000003,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:18.605691+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.165,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:18.618753+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.075,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:35.140728+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.395,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:35.161835+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.14500000000000002,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:35.182841+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.06,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:52.152604+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.295,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:52.168779+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.10500000000000001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:28:52.186709+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.045,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:09.568848+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.07500000000000001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:09.584362+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.055,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:09.600161+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:26.250787+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.07500000000000001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:26.269587+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.035,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:26.288328+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:42.979265+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.045,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:42.999998+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:43.016464+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:59.552739+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.11499999999999999,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:59.573750+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:29:59.592581+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:30:14.373680+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:30:14.388415+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:30:14.402844+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:30:29.598460+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:30:29.614674+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:30:29.630638+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:30:44.359472+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:30:44.375742+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:30:44.390255+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:30:58.356139+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:30:58.373616+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:30:58.389878+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:13.420953+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:13.446189+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:13.463935+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:28.454535+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:28.472599+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:28.489604+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:43.182460+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:43.198887+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:43.236774+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:31:58.292698+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.275,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:31:58.313767+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.385,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:31:58.335166+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.275,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:12.797922+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.315,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:12.818914+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.385,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:12.836466+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.28,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:27.565733+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.405,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:27.585845+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.405,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:27.602751+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.365,
+    "oscillation": 0.05,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:42.930422+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.345,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:42.956027+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.455,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:42.977335+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.365,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:58.190835+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.435,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:58.206044+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.625,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:32:58.223151+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.365,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:33:13.692637+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.245,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:33:13.708122+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.665,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:33:13.721987+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.41000000000000003,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:33:29.202451+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.235,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:33:29.220706+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.545,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:33:29.237813+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.405,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:33:45.648211+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.275,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:33:45.671891+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.615,
+    "oscillation": 0.095,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:33:45.693446+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.395,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:02.402632+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.395,
+    "oscillation": 0.05,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:02.422313+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.885,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:02.442676+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.78,
+    "oscillation": 0.1,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:19.076148+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.335,
+    "oscillation": 0.03,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:19.095341+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.975,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:19.112436+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.585,
+    "oscillation": 0.065,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:35.529887+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.185,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:35.561739+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.985,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:35.578615+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.435,
+    "oscillation": 0.04,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:52.468073+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.060000000000000005,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:52.487516+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:34:52.502639+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.065,
+    "oscillation": 0.12,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:07.555691+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:07.580390+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:07.601271+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:22.334897+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:22.350676+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:22.370935+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:37.243470+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.009,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:37.263749+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0095,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:37.283282+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:35:52.363892+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:35:52.382979+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:35:52.396782+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.51,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:06.818737+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:06.834877+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:06.849962+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:21.396530+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:21.410667+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:21.425829+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:35.768581+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:35.786283+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:35.800080+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:36:50.580432+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.505,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:36:50.597619+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.745,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:36:50.615819+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.605,
+    "oscillation": 0.0,
+    "samples": 41
+  },
+  {
+    "timestamp": "2026-05-08T22:37:05.706037+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.565,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:05.759439+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.735,
+    "oscillation": 0.09,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:05.775707+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.585,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:21.048510+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.325,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:21.066920+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.545,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:21.084066+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.5449999999999999,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:37.449393+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.365,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:37.475389+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.555,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:37.497265+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.53,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:55.015957+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.435,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:55.036289+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.725,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:37:55.053653+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.5700000000000001,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:38:10.409463+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.395,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:38:10.431084+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.595,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:38:10.450949+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.5700000000000001,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:38:27.539321+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.225,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:38:27.566632+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.395,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:38:27.585075+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.32999999999999996,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:38:46.932729+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.08499999999999999,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:38:46.953540+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.165,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:38:46.971377+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.14,
+    "oscillation": 0.035,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:03.564978+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.065,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:03.593348+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.185,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:03.618896+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.1,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:21.275737+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.055,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:21.297317+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.175,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:21.315205+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.065,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:37.710339+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:37.727662+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.065,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:37.741720+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.04,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:54.892117+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:54.908486+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:39:54.922868+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:09.775118+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:09.790695+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:09.806777+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:24.275415+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:24.295562+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:24.318917+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:39.665462+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:39.682323+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:39.699389+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:40:54.133629+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:40:54.151841+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:40:54.165974+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.515,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:08.742144+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:08.761379+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:08.776980+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.515,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:23.491723+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:23.505918+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:23.517468+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.515,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:38.460846+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:38.474653+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:38.487227+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.56,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:41:55.728542+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.645,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:41:55.744029+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.46499999999999997,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:41:55.763020+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.5549999999999999,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:11.942338+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.535,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:11.964078+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.435,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:11.983499+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.505,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:28.238405+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.575,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:28.254317+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.415,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:28.268982+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.515,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:43.054785+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.575,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:43.069992+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.395,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:43.090591+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.52,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:56.780856+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.575,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:56.785526+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.395,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:42:56.808409+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.54,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:43:11.263638+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.42,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:43:11.277236+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.09,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:43:11.291345+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.51,
+    "oscillation": 0.03,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:43:26.063877+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.35,
+    "oscillation": 0.03,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:43:26.078966+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.065,
+    "oscillation": 0.02,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:43:26.093304+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.53,
+    "oscillation": 0.03,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:43:44.715625+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.315,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:43:44.735324+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.125,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:43:44.751930+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.54,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:01.908637+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.335,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:01.925769+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.07500000000000001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:01.941454+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.565,
+    "oscillation": 0.035,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:19.141583+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.495,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:19.166716+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.035,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:19.191444+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.5900000000000001,
+    "oscillation": 0.04,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:37.142165+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.485,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:37.161720+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:37.181960+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.7050000000000001,
+    "oscillation": 0.105,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:54.079740+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.795,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:54.098653+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:44:54.119011+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.7949999999999999,
+    "oscillation": 0.095,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:08.631844+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:08.650472+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:08.672471+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:23.305838+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.99,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:23.320215+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:23.335407+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:38.372977+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:38.392665+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:38.408295+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:45:53.608723+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:45:53.625963+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:45:53.642535+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:08.726573+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:08.741044+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:08.764735+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:22.868706+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:22.890457+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:22.906787+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.5,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:40.876426+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:40.899471+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:40.927211+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:57.750846+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:57.776170+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:46:57.797630+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.505,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:47:14.630630+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.505,
+    "oscillation": 0.025,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:47:14.659593+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.495,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:47:14.685208+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.905,
+    "oscillation": 0.0,
+    "samples": 40
+  },
+  {
+    "timestamp": "2026-05-08T22:47:30.801310+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.535,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:47:30.827020+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.715,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:47:30.851158+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.945,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:47:47.972329+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.525,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:47:47.997993+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.735,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:47:48.019665+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.945,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:05.228047+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.535,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:05.254987+00:00",
+    "asset": "ETH",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.735,
+    "oscillation": 0.03,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:05.278516+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.935,
+    "oscillation": 0.045,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:22.260745+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.4,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:22.281362+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.445,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:22.303652+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.895,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:38.277985+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.315,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:38.295659+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.445,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:38.315248+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.915,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:54.934453+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.5549999999999999,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:54.953422+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.945,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:48:54.967812+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.975,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:49:11.227976+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.7,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:49:11.246605+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.955,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:49:11.262683+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.975,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:49:29.536546+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.675,
+    "oscillation": 0.04,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:49:29.550545+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.965,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:49:29.571894+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.985,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:49:45.165638+00:00",
+    "asset": "BTC",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.745,
+    "oscillation": 0.03,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:49:45.192203+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.985,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:49:45.216253+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:00.193664+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.945,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:00.209202+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.99,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:00.221905+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:13.992032+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.99,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:14.005968+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:14.017902+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:27.724169+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:27.738342+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:27.748966+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.995,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:50:41.118916+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.365,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:50:41.133582+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.525,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:50:41.149407+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:50:55.908509+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.365,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:50:55.928834+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.525,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:50:55.944891+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:10.501317+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.365,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:10.522717+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.525,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:10.542660+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:26.642600+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.365,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:26.660773+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.525,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:26.677713+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:43.261388+00:00",
+    "asset": "BTC",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.365,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:43.284631+00:00",
+    "asset": "ETH",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.525,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:43.307757+00:00",
+    "asset": "XRP",
+    "regime": "UNKNOWN",
+    "method": "cold-start",
+    "mid_price": 0.495,
+    "cycles": 0
+  },
+  {
+    "timestamp": "2026-05-08T22:51:58.992366+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.155,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:51:59.012635+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.08499999999999999,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:51:59.034441+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.11499999999999999,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:52:14.458377+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.14500000000000002,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:52:14.480649+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.065,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:52:14.497266+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.105,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:52:30.519753+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.135,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:52:30.538362+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.055,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:52:30.558469+00:00",
+    "asset": "XRP",
+    "regime": "TRENDING",
+    "method": "realtime",
+    "mid_price": 0.045,
+    "oscillation": 0.015,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:52:47.838194+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.125,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:52:47.865640+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.045,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:52:47.890814+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.035,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:05.099939+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.10500000000000001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:05.120176+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:05.143322+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.035,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:19.865865+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.10500000000000001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:19.894006+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:19.913769+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:34.309640+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.035,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:34.326616+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:34.345228+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:51.305963+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:51.336382+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:53:51.365828+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.025,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:54:08.370870+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:54:08.392233+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:54:08.407320+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.01,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:54:26.222162+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:54:26.247539+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:54:26.268890+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:54:44.493205+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:54:44.511205+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.015,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:54:44.529311+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.005,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:55:01.456098+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:55:01.474147+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:55:01.488559+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.0045000000000000005,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:55:16.434973+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:55:16.451731+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:55:16.466824+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:55:31.924223+00:00",
+    "asset": "BTC",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.001,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:55:31.943600+00:00",
+    "asset": "ETH",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.01,
+    "oscillation": 0.0,
+    "samples": 120
+  },
+  {
+    "timestamp": "2026-05-08T22:55:31.959370+00:00",
+    "asset": "XRP",
+    "regime": "CHOPPY",
+    "method": "realtime",
+    "mid_price": 0.001,
+    "oscillation": 0.0,
+    "samples": 120
+  }
+]

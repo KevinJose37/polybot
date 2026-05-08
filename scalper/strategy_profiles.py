@@ -59,6 +59,9 @@ class StrategyProfile:
     # ── Signal score ceiling (v2opt3) ────────────────────────────
     max_signal_score: float = 1.0      # block entry if |score| above this (momentum exhausted)
 
+    # ── Smart Inversion (Falling Knife Protection) ─────────────
+    smart_invert_threshold: float = 0.0  # invert signal if original entry price is below this
+
     # ── Orderbook velocity confirmation (v2opt3) ───────────────────
     velocity_confirmation: bool = False  # require Polymarket book to move in signal direction
     velocity_window_sec: int = 30        # look-back window in seconds
@@ -74,6 +77,12 @@ class StrategyProfile:
     filter_reversal: bool = False
     penalty_per_failed_filter: float = 0.10
 
+    # ── V8 Choppy Mean Reversion ───────────────────────────────
+    regime_window: int = 5               # cycles to detect regime
+    regime_trending_threshold: int = 4   # of N cycles, how many same-dir = TRENDING
+    reversion_threshold: float = 0.008   # min deviation from MA to enter
+    ma_window_sec: int = 60              # SMA lookback in seconds
+    time_stop_sec: int = 0               # exit if not resolved in N seconds (0 = disabled)
 
 # ═══════════════════════════════════════════════════════════════
 # Strategy Profiles
@@ -134,6 +143,7 @@ PROFILES: dict[str, StrategyProfile] = {
         chainlink_confirm_readings=3,
         use_technical_confirmation=False,
         min_entry_price=0.30,
+        smart_invert_threshold=0.45,
     ),
 
     # ── Optimized variants (position limits + best signal) ────
@@ -344,10 +354,36 @@ PROFILES: dict[str, StrategyProfile] = {
         max_open_positions=2,
         best_signal_only=True,
         poly_price_filter=True,
-        poly_price_cap=0.54,            # Max entry price (golden zone ceiling)
-        min_entry_price=0.46,           # Min entry price (golden zone floor)
+        poly_price_cap=0.65,            # Max entry price (widened — 0.54 produced 0 trades overnight)
+        min_entry_price=0.35,           # Min entry price (widened — 0.46 too restrictive)
         max_signal_score=2.0,
         hold_to_resolution=True,        # THE key insight: never sell early
+    ),
+    "v8": StrategyProfile(
+        name="v8",
+        label="V8 — Choppy Mean Reversion",
+        trades_file="hft_trades_v8.json",
+        signal_source="mean_reversion_v8",
+        signal_threshold=0.20,           # Lower threshold (reversion signals are subtler)
+        entry_mode="anytime",
+        entry_window_end=120,            # Only first 2 min (fast entries)
+        take_profit=0.12,                # Tight TP (small moves in choppy)
+        stop_loss=0.15,                  # Tight SL (mandatory in choppy)
+        signal_reversal=0.60,
+        trailing_stop=False,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=2,
+        best_signal_only=True,
+        poly_price_filter=True,
+        poly_price_cap=0.65,             # Widened from 0.58 (too tight overnight)
+        min_entry_price=0.35,            # Widened from 0.42 (missed entries)
+        hold_to_resolution=False,        # NEVER hold in choppy — always TP/SL
+        regime_window=5,                 
+        regime_trending_threshold=4,
+        reversion_threshold=0.004,       # Relaxed from 0.008 (never triggered overnight)
+        ma_window_sec=60,
+        time_stop_sec=90,                # sell at market after 90s
     ),
 }
 

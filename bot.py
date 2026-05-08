@@ -363,7 +363,7 @@ Ejemplos de uso:
     )
     parser.add_argument(
         "--strategy",
-        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4", "v2opt2", "v2opt3", "v5", "v6", "v7"],
+        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4", "v2opt2", "v2opt3", "v5", "v6", "v7", "v8"],
         default="v1",
         help="Strategy: v1-v7. v7=Production (Velocity+Hold)",
     )

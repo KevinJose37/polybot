@@ -407,6 +407,16 @@ def _run_single_cycle_profiled(
                 assets=assets,
                 markets=markets,
             )
+        elif profile.signal_source == "mean_reversion_v8":
+            from scalper.signals_v8 import compute_all_signals_v8
+            signals = compute_all_signals_v8(
+                assets=assets,
+                markets=markets,
+                regime_window=getattr(profile, 'regime_window', 5),
+                regime_threshold=getattr(profile, 'regime_trending_threshold', 4),
+                reversion_threshold=getattr(profile, 'reversion_threshold', 0.008),
+                ma_window_sec=getattr(profile, 'ma_window_sec', 60),
+            )
         else:
             signals = compute_all_signals(assets)
     except Exception as exc:
@@ -506,6 +516,17 @@ def _run_single_cycle_profiled(
         side = signal.direction
         if side == "NEUTRAL":
             continue
+
+        # ── Smart Inversion (Falling Knife Protection) ─────────────────
+        smart_invert_thresh = getattr(profile, "smart_invert_threshold", 0.0)
+        if smart_invert_thresh > 0:
+            orig_price = market.get("up_price", 0.0) if side == "UP" else market.get("down_price", 0.0)
+            if 0 < orig_price < smart_invert_thresh:
+                old_side = side
+                side = "DOWN" if side == "UP" else "UP"
+                signal.direction = side
+                signal.score = -signal.score
+                print(f"  [SMART-INVERT] {asset_key}: Precio original ${orig_price:.2f} < ${smart_invert_thresh:.2f}. ¡Señal invertida a {side}!")
 
         # Polymarket price filter
         if profile.poly_price_filter:

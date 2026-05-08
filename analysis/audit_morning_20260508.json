@@ -1,0 +1,370 @@
+{
+  "session": "morning_may08_2026",
+  "period": "2026-05-08 08:00-12:00 CDT (13:00-17:00 UTC)",
+  "capital": 24.0,
+  "leaderboard": [
+    {
+      "name": "V2opt3",
+      "trades": 20,
+      "wins": 14,
+      "losses": 6,
+      "wr": 70.0,
+      "pnl": 6.06,
+      "roi": 25.2,
+      "by_asset": {
+        "XRP": {
+          "trades": 5,
+          "wins": 4,
+          "pnl": 2.37,
+          "wr": 80.0
+        },
+        "ETH": {
+          "trades": 6,
+          "wins": 3,
+          "pnl": -0.72,
+          "wr": 50.0
+        },
+        "BTC": {
+          "trades": 9,
+          "wins": 7,
+          "pnl": 4.41,
+          "wr": 77.8
+        }
+      },
+      "hindsight": {
+        "reviewed": 0,
+        "good_exits": 0,
+        "bad_exits": 0,
+        "hold_pnl": 6.06,
+        "sell_pnl": 6.06,
+        "hold_better": 0
+      }
+    },
+    {
+      "name": "V7",
+      "trades": 6,
+      "wins": 4,
+      "losses": 2,
+      "wr": 66.7,
+      "pnl": 2.34,
+      "roi": 9.7,
+      "by_asset": {
+        "ETH": {
+          "trades": 3,
+          "wins": 1,
+          "pnl": -1.04,
+          "wr": 33.3
+        },
+        "XRP": {
+          "trades": 1,
+          "wins": 1,
+          "pnl": 1.08,
+          "wr": 100.0
+        },
+        "BTC": {
+          "trades": 2,
+          "wins": 2,
+          "pnl": 2.3,
+          "wr": 100.0
+        }
+      },
+      "hindsight": {
+        "reviewed": 0,
+        "good_exits": 0,
+        "bad_exits": 0,
+        "hold_pnl": 2.34,
+        "sell_pnl": 2.34,
+        "hold_better": 0
+      }
+    },
+    {
+      "name": "V8",
+      "trades": 1,
+      "wins": 1,
+      "losses": 0,
+      "wr": 100.0,
+      "pnl": 0.19,
+      "roi": 0.8,
+      "by_asset": {
+        "ETH": {
+          "trades": 1,
+          "wins": 1,
+          "pnl": 0.19,
+          "wr": 100.0
+        }
+      },
+      "hindsight": {
+        "reviewed": 1,
+        "good_exits": 1,
+        "bad_exits": 0,
+        "hold_pnl": -1.0,
+        "sell_pnl": 0.19,
+        "hold_better": -1.19
+      }
+    },
+    {
+      "name": "V6",
+      "trades": 5,
+      "wins": 3,
+      "losses": 2,
+      "wr": 60.0,
+      "pnl": 0.01,
+      "roi": 0.0,
+      "by_asset": {
+        "XRP": {
+          "trades": 1,
+          "wins": 0,
+          "pnl": -0.48,
+          "wr": 0.0
+        },
+        "ETH": {
+          "trades": 3,
+          "wins": 2,
+          "pnl": 0.29,
+          "wr": 66.7
+        },
+        "BTC": {
+          "trades": 1,
+          "wins": 1,
+          "pnl": 0.2,
+          "wr": 100.0
+        }
+      },
+      "hindsight": {
+        "reviewed": 5,
+        "good_exits": 3,
+        "bad_exits": 2,
+        "hold_pnl": -0.96,
+        "sell_pnl": 0.01,
+        "hold_better": -0.97
+      }
+    },
+    {
+      "name": "V2",
+      "trades": 30,
+      "wins": 13,
+      "losses": 17,
+      "wr": 43.3,
+      "pnl": -0.16,
+      "roi": -0.7,
+      "by_asset": {
+        "XRP": {
+          "trades": 9,
+          "wins": 5,
+          "pnl": 0.56,
+          "wr": 55.6
+        },
+        "ETH": {
+          "trades": 11,
+          "wins": 4,
+          "pnl": -0.16,
+          "wr": 36.4
+        },
+        "BTC": {
+          "trades": 10,
+          "wins": 4,
+          "pnl": -0.56,
+          "wr": 40.0
+        }
+      },
+      "hindsight": {
+        "reviewed": 30,
+        "good_exits": 10,
+        "bad_exits": 20,
+        "hold_pnl": 11.23,
+        "sell_pnl": -0.16,
+        "hold_better": 11.39
+      }
+    },
+    {
+      "name": "V2opt2",
+      "trades": 4,
+      "wins": 2,
+      "losses": 2,
+      "wr": 50.0,
+      "pnl": -0.36,
+      "roi": -1.5,
+      "by_asset": {
+        "ETH": {
+          "trades": 3,
+          "wins": 1,
+          "pnl": -1.18,
+          "wr": 33.3
+        },
+        "XRP": {
+          "trades": 1,
+          "wins": 1,
+          "pnl": 0.82,
+          "wr": 100.0
+        }
+      },
+      "hindsight": {
+        "reviewed": 0,
+        "good_exits": 0,
+        "bad_exits": 0,
+        "hold_pnl": -0.36,
+        "sell_pnl": -0.36,
+        "hold_better": 0
+      }
+    },
+    {
+      "name": "V1",
+      "trades": 37,
+      "wins": 22,
+      "losses": 15,
+      "wr": 59.5,
+      "pnl": -0.41,
+      "roi": -1.7,
+      "by_asset": {
+        "XRP": {
+          "trades": 14,
+          "wins": 8,
+          "pnl": -0.66,
+          "wr": 57.1
+        },
+        "ETH": {
+          "trades": 23,
+          "wins": 14,
+          "pnl": 0.25,
+          "wr": 60.9
+        }
+      },
+      "hindsight": {
+        "reviewed": 37,
+        "good_exits": 15,
+        "bad_exits": 22,
+        "hold_pnl": 5.5,
+        "sell_pnl": -0.41,
+        "hold_better": 5.91
+      }
+    },
+    {
+      "name": "V2opt",
+      "trades": 39,
+      "wins": 18,
+      "losses": 21,
+      "wr": 46.2,
+      "pnl": -0.72,
+      "roi": -3.0,
+      "by_asset": {
+        "XRP": {
+          "trades": 10,
+          "wins": 6,
+          "pnl": 0.6,
+          "wr": 60.0
+        },
+        "ETH": {
+          "trades": 17,
+          "wins": 6,
+          "pnl": -1.6,
+          "wr": 35.3
+        },
+        "BTC": {
+          "trades": 12,
+          "wins": 6,
+          "pnl": 0.28,
+          "wr": 50.0
+        }
+      },
+      "hindsight": {
+        "reviewed": 39,
+        "good_exits": 14,
+        "bad_exits": 25,
+        "hold_pnl": 13.65,
+        "sell_pnl": -0.72,
+        "hold_better": 14.37
+      }
+    },
+    {
+      "name": "V3",
+      "trades": 37,
+      "wins": 16,
+      "losses": 21,
+      "wr": 43.2,
+      "pnl": -2.81,
+      "roi": -11.7,
+      "by_asset": {
+        "BTC": {
+          "trades": 37,
+          "wins": 16,
+          "pnl": -2.81,
+          "wr": 43.2
+        }
+      },
+      "hindsight": {
+        "reviewed": 31,
+        "good_exits": 12,
+        "bad_exits": 19,
+        "hold_pnl": 4.3,
+        "sell_pnl": -2.81,
+        "hold_better": 7.11
+      }
+    },
+    {
+      "name": "V5",
+      "trades": 15,
+      "wins": 4,
+      "losses": 11,
+      "wr": 26.7,
+      "pnl": -5.04,
+      "roi": -21.0,
+      "by_asset": {
+        "XRP": {
+          "trades": 3,
+          "wins": 2,
+          "pnl": 0.28,
+          "wr": 66.7
+        },
+        "BTC": {
+          "trades": 7,
+          "wins": 1,
+          "pnl": -4.18,
+          "wr": 14.3
+        },
+        "ETH": {
+          "trades": 5,
+          "wins": 1,
+          "pnl": -1.14,
+          "wr": 20.0
+        }
+      },
+      "hindsight": {
+        "reviewed": 0,
+        "good_exits": 0,
+        "bad_exits": 0,
+        "hold_pnl": -5.04,
+        "sell_pnl": -5.04,
+        "hold_better": 0
+      }
+    }
+  ],
+  "regime": {
+    "total_readings": 500,
+    "choppy": 244,
+    "trending": 111,
+    "unknown": 145,
+    "choppy_pct": 48.8,
+    "trending_pct": 22.2,
+    "by_asset": {
+      "ETH": {
+        "choppy": 92,
+        "trending": 27,
+        "unknown": 48,
+        "total": 167
+      },
+      "XRP": {
+        "choppy": 51,
+        "trending": 67,
+        "unknown": 49,
+        "total": 167
+      },
+      "BTC": {
+        "choppy": 101,
+        "trending": 17,
+        "unknown": 48,
+        "total": 166
+      }
+    }
+  },
+  "generated_at": "2026-05-08T17:20:15.030621+00:00"
+}

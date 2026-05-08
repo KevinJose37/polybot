@@ -1,0 +1,1198 @@
+{
+  "session": "afternoon_may08_2026",
+  "period": "2026-05-08 13:00-18:00 CDT (18:00-23:00 UTC)",
+  "capital": 24.0,
+  "leaderboard": [
+    {
+      "name": "V5",
+      "trades": 18,
+      "wins": 12,
+      "losses": 6,
+      "wr": 66.7,
+      "pnl": 8.07,
+      "roi": 33.6,
+      "by_asset": {
+        "ETH": {
+          "trades": 5,
+          "wins": 5,
+          "pnl": 4.91,
+          "wr": 100.0
+        },
+        "XRP": {
+          "trades": 4,
+          "wins": 3,
+          "pnl": 3.12,
+          "wr": 75.0
+        },
+        "BTC": {
+          "trades": 9,
+          "wins": 4,
+          "pnl": 0.04,
+          "wr": 44.4
+        }
+      },
+      "exit_reasons": {
+        "resolution": 18
+      },
+      "hindsight": {
+        "reviewed": 0,
+        "good_exits": 0,
+        "bad_exits": 0,
+        "hold_pnl": 8.07,
+        "sell_pnl": 8.07,
+        "hold_better": 0
+      },
+      "trade_details": [
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.45,
+          "pnl": 1.22,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.37,
+          "pnl": 1.7,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.55,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.47,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.53,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.57,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.49,
+          "pnl": 1.04,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.36,
+          "pnl": 1.78,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.31,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.6,
+          "pnl": 0.67,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.42,
+          "pnl": 1.38,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.61,
+          "pnl": 0.64,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.35,
+          "pnl": 1.86,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.56,
+          "pnl": 0.79,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.47,
+          "pnl": 1.13,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.55,
+          "pnl": 0.82,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.43,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.49,
+          "pnl": 1.04,
+          "exit_reason": "resolution",
+          "status": "won"
+        }
+      ]
+    },
+    {
+      "name": "V6",
+      "trades": 5,
+      "wins": 3,
+      "losses": 2,
+      "wr": 60.0,
+      "pnl": -0.01,
+      "roi": -0.0,
+      "by_asset": {
+        "BTC": {
+          "trades": 3,
+          "wins": 2,
+          "pnl": 0.18,
+          "wr": 66.7
+        },
+        "ETH": {
+          "trades": 1,
+          "wins": 0,
+          "pnl": -0.31,
+          "wr": 0.0
+        },
+        "XRP": {
+          "trades": 1,
+          "wins": 1,
+          "pnl": 0.12,
+          "wr": 100.0
+        }
+      },
+      "exit_reasons": {
+        "take_profit": 3,
+        "stop_loss": 2
+      },
+      "hindsight": {
+        "reviewed": 4,
+        "good_exits": 3,
+        "bad_exits": 1,
+        "hold_pnl": -2.14,
+        "sell_pnl": -0.01,
+        "hold_better": -2.13
+      },
+      "trade_details": [
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.54,
+          "pnl": 0.17,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.45,
+          "pnl": -0.31,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.48,
+          "pnl": 0.23,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 1.08
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.49,
+          "pnl": 0.12,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "BTC",
+          "side": "DOWN",
+          "entry": 0.51,
+          "pnl": -0.22,
+          "exit_reason": "stop_loss",
+          "status": "sold"
+        }
+      ]
+    },
+    {
+      "name": "V2",
+      "trades": 9,
+      "wins": 3,
+      "losses": 6,
+      "wr": 33.3,
+      "pnl": -2.4,
+      "roi": -10.0,
+      "by_asset": {
+        "ETH": {
+          "trades": 4,
+          "wins": 1,
+          "pnl": -1.36,
+          "wr": 25.0
+        },
+        "BTC": {
+          "trades": 4,
+          "wins": 1,
+          "pnl": -1.48,
+          "wr": 25.0
+        },
+        "XRP": {
+          "trades": 1,
+          "wins": 1,
+          "pnl": 0.44,
+          "wr": 100.0
+        }
+      },
+      "exit_reasons": {
+        "stop_loss": 6,
+        "take_profit": 3
+      },
+      "hindsight": {
+        "reviewed": 9,
+        "good_exits": 5,
+        "bad_exits": 4,
+        "hold_pnl": -2.53,
+        "sell_pnl": -2.4,
+        "hold_better": -0.13
+      },
+      "trade_details": [
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.62,
+          "pnl": -0.85,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.74
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.62,
+          "pnl": 0.52,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.61
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.43,
+          "pnl": -0.86,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.46,
+          "pnl": -0.65,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.49,
+          "pnl": -0.45,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.64,
+          "pnl": 0.44,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.56
+        },
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.48,
+          "pnl": -0.58,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.64,
+          "pnl": 0.41,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.56
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.39,
+          "pnl": -0.38,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        }
+      ]
+    },
+    {
+      "name": "V1",
+      "trades": 22,
+      "wins": 9,
+      "losses": 13,
+      "wr": 40.9,
+      "pnl": -2.95,
+      "roi": -12.3,
+      "by_asset": {
+        "ETH": {
+          "trades": 12,
+          "wins": 5,
+          "pnl": -1.85,
+          "wr": 41.7
+        },
+        "XRP": {
+          "trades": 10,
+          "wins": 4,
+          "pnl": -1.1,
+          "wr": 40.0
+        }
+      },
+      "exit_reasons": {
+        "stop_loss": 13,
+        "take_profit": 9
+      },
+      "hindsight": {
+        "reviewed": 22,
+        "good_exits": 12,
+        "bad_exits": 10,
+        "hold_pnl": -4.98,
+        "sell_pnl": -2.95,
+        "hold_better": -2.03
+      },
+      "trade_details": [
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.64,
+          "pnl": -0.45,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.54,
+          "pnl": 0.19,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.85
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.65,
+          "pnl": -0.37,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.54
+        },
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.66,
+          "pnl": 0.27,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.52
+        },
+        {
+          "asset": "XRP",
+          "side": "DOWN",
+          "entry": 0.54,
+          "pnl": 0.3,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.85
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.63,
+          "pnl": 0.27,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.59
+        },
+        {
+          "asset": "XRP",
+          "side": "DOWN",
+          "entry": 0.59,
+          "pnl": -0.34,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.69
+        },
+        {
+          "asset": "XRP",
+          "side": "DOWN",
+          "entry": 0.13,
+          "pnl": -0.31,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.44,
+          "pnl": 0.52,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.66,
+          "pnl": -0.36,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.43,
+          "pnl": -0.7,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.43,
+          "pnl": -0.47,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.41,
+          "pnl": 0.44,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.64,
+          "pnl": -0.64,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.49,
+          "pnl": -0.45,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.28,
+          "pnl": -0.75,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.53,
+          "pnl": 0.45,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.89
+        },
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.55,
+          "pnl": 0.2,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.82
+        },
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.66,
+          "pnl": -0.42,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.52
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.63,
+          "pnl": -0.41,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.57,
+          "pnl": 0.54,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.75
+        },
+        {
+          "asset": "XRP",
+          "side": "DOWN",
+          "entry": 0.48,
+          "pnl": -0.46,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        }
+      ]
+    },
+    {
+      "name": "V2opt",
+      "trades": 13,
+      "wins": 3,
+      "losses": 10,
+      "wr": 23.1,
+      "pnl": -3.77,
+      "roi": -15.7,
+      "by_asset": {
+        "ETH": {
+          "trades": 5,
+          "wins": 2,
+          "pnl": -0.44,
+          "wr": 40.0
+        },
+        "XRP": {
+          "trades": 5,
+          "wins": 1,
+          "pnl": -1.75,
+          "wr": 20.0
+        },
+        "BTC": {
+          "trades": 3,
+          "wins": 0,
+          "pnl": -1.58,
+          "wr": 0.0
+        }
+      },
+      "exit_reasons": {
+        "stop_loss": 10,
+        "take_profit": 3
+      },
+      "hindsight": {
+        "reviewed": 13,
+        "good_exits": 8,
+        "bad_exits": 5,
+        "hold_pnl": -4.38,
+        "sell_pnl": -3.77,
+        "hold_better": -0.61
+      },
+      "trade_details": [
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.65,
+          "pnl": -0.44,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.65
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.62,
+          "pnl": 0.45,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.61
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.54,
+          "pnl": -0.41,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.85
+        },
+        {
+          "asset": "XRP",
+          "side": "DOWN",
+          "entry": 0.24,
+          "pnl": -0.5,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.66,
+          "pnl": -0.58,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.16
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.4,
+          "pnl": -0.62,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.47,
+          "pnl": -0.4,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.46,
+          "pnl": -0.65,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.63,
+          "pnl": -0.63,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.49,
+          "pnl": -0.45,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.61,
+          "pnl": 0.36,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 0.63
+        },
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.49,
+          "pnl": 0.41,
+          "exit_reason": "take_profit",
+          "status": "sold",
+          "hindsight": "BAD",
+          "held_pnl": 1.04
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.45,
+          "pnl": -0.31,
+          "exit_reason": "stop_loss",
+          "status": "sold",
+          "hindsight": "GOOD",
+          "held_pnl": -1.0
+        }
+      ]
+    },
+    {
+      "name": "V7",
+      "trades": 7,
+      "wins": 2,
+      "losses": 5,
+      "wr": 28.6,
+      "pnl": -3.83,
+      "roi": -16.0,
+      "by_asset": {
+        "ETH": {
+          "trades": 3,
+          "wins": 1,
+          "pnl": -1.39,
+          "wr": 33.3
+        },
+        "BTC": {
+          "trades": 3,
+          "wins": 0,
+          "pnl": -3.0,
+          "wr": 0.0
+        },
+        "XRP": {
+          "trades": 1,
+          "wins": 1,
+          "pnl": 0.56,
+          "wr": 100.0
+        }
+      },
+      "exit_reasons": {
+        "resolution": 7
+      },
+      "hindsight": {
+        "reviewed": 0,
+        "good_exits": 0,
+        "bad_exits": 0,
+        "hold_pnl": -3.83,
+        "sell_pnl": -3.83,
+        "hold_better": 0
+      },
+      "trade_details": [
+        {
+          "asset": "ETH",
+          "side": "UP",
+          "entry": 0.63,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.62,
+          "pnl": 0.61,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.44,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.54,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "BTC",
+          "side": "DOWN",
+          "entry": 0.44,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.64,
+          "pnl": 0.56,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.39,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        }
+      ]
+    },
+    {
+      "name": "V2opt2",
+      "trades": 4,
+      "wins": 0,
+      "losses": 4,
+      "wr": 0.0,
+      "pnl": -4.0,
+      "roi": -16.7,
+      "by_asset": {
+        "BTC": {
+          "trades": 3,
+          "wins": 0,
+          "pnl": -3.0,
+          "wr": 0.0
+        },
+        "ETH": {
+          "trades": 1,
+          "wins": 0,
+          "pnl": -1.0,
+          "wr": 0.0
+        }
+      },
+      "exit_reasons": {
+        "resolution": 4
+      },
+      "hindsight": {
+        "reviewed": 0,
+        "good_exits": 0,
+        "bad_exits": 0,
+        "hold_pnl": -4.0,
+        "sell_pnl": -4.0,
+        "hold_better": 0
+      },
+      "trade_details": [
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.39,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.53,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "BTC",
+          "side": "DOWN",
+          "entry": 0.41,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.55,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        }
+      ]
+    },
+    {
+      "name": "V2opt3",
+      "trades": 9,
+      "wins": 3,
+      "losses": 6,
+      "wr": 33.3,
+      "pnl": -4.19,
+      "roi": -17.5,
+      "by_asset": {
+        "ETH": {
+          "trades": 3,
+          "wins": 2,
+          "pnl": 0.25,
+          "wr": 66.7
+        },
+        "BTC": {
+          "trades": 4,
+          "wins": 0,
+          "pnl": -4.0,
+          "wr": 0.0
+        },
+        "XRP": {
+          "trades": 2,
+          "wins": 1,
+          "pnl": -0.44,
+          "wr": 50.0
+        }
+      },
+      "exit_reasons": {
+        "resolution": 9
+      },
+      "hindsight": {
+        "reviewed": 0,
+        "good_exits": 0,
+        "bad_exits": 0,
+        "hold_pnl": -4.19,
+        "sell_pnl": -4.19,
+        "hold_better": 0
+      },
+      "trade_details": [
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.61,
+          "pnl": 0.64,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.62,
+          "pnl": 0.61,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.4,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.42,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.46,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "ETH",
+          "side": "DOWN",
+          "entry": 0.54,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "BTC",
+          "side": "DOWN",
+          "entry": 0.44,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        },
+        {
+          "asset": "XRP",
+          "side": "UP",
+          "entry": 0.64,
+          "pnl": 0.56,
+          "exit_reason": "resolution",
+          "status": "won"
+        },
+        {
+          "asset": "BTC",
+          "side": "UP",
+          "entry": 0.4,
+          "pnl": -1.0,
+          "exit_reason": "resolution",
+          "status": "lost"
+        }
+      ]
+    }
+  ],
+  "day_totals": {
+    "V1": {
+      "pnl": -5.52,
+      "trades": 102
+    },
+    "V2": {
+      "pnl": -6.73,
+      "trades": 70
+    },
+    "V2opt": {
+      "pnl": -7.67,
+      "trades": 83
+    },
+    "V2opt2": {
+      "pnl": -1.97,
+      "trades": 15
+    },
+    "V2opt3": {
+      "pnl": 11.01,
+      "trades": 51
+    },
+    "V3": {
+      "pnl": -2.31,
+      "trades": 104
+    },
+    "V5": {
+      "pnl": 20.5,
+      "trades": 75
+    },
+    "V6": {
+      "pnl": 0.18,
+      "trades": 15
+    },
+    "V7": {
+      "pnl": -1.49,
+      "trades": 13
+    },
+    "V8": {
+      "pnl": 0.19,
+      "trades": 1
+    }
+  },
+  "regime": {
+    "total_readings": 500,
+    "choppy": 308,
+    "trending": 87,
+    "unknown": 105,
+    "choppy_pct": 61.6,
+    "trending_pct": 17.4,
+    "by_asset": {
+      "ETH": {
+        "choppy": 117,
+        "trending": 15,
+        "unknown": 35,
+        "total": 167
+      },
+      "XRP": {
+        "choppy": 77,
+        "trending": 55,
+        "unknown": 35,
+        "total": 167
+      },
+      "BTC": {
+        "choppy": 114,
+        "trending": 17,
+        "unknown": 35,
+        "total": 166
+      }
+    }
+  },
+  "generated_at": "2026-05-08T22:57:57.649869+00:00"
+}

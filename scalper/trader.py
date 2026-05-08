@@ -1157,6 +1157,24 @@ def check_open_positions_profiled(
                 })
             continue
 
+        # ── Time stop ──────────────────────────────────────────
+        time_stop = getattr(profile, "time_stop_sec", 0)
+        if time_stop > 0:
+            try:
+                entry_dt = datetime.fromisoformat(trade["entry_time"].replace("Z", "+00:00"))
+                elapsed = (now - entry_dt).total_seconds()
+                if elapsed >= time_stop:
+                    result = sell_trade(trade["id"], sell_price, reason="time_stop")
+                    if result:
+                        actions.append({
+                            "type": "sold", "trade": result,
+                            "reason": f"time_stop ({elapsed:.0f}s elapsed, {realizable_change:.1%})",
+                        })
+                    continue
+            except Exception:
+                pass
+
+
         # ── Take profit ──────────────────────────────────────
         if realizable_change >= tp:
             result = sell_trade(trade["id"], sell_price, reason="take_profit")

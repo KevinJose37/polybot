@@ -1,0 +1,31 @@
+[
+  {
+    "id": "hft_001",
+    "asset": "ETH",
+    "side": "UP",
+    "entry_price": 0.63,
+    "entry_time": "2026-05-08T16:51:55.824304+00:00",
+    "stake": 1.0,
+    "shares": 1.5873,
+    "signal_score": 0.37,
+    "status": "sold",
+    "exit_price": 0.75,
+    "exit_time": "2026-05-08T16:52:47.282156+00:00",
+    "pnl": 0.19,
+    "market_slug": "eth-updown-5m-1778259000",
+    "gamma_id": "2183015",
+    "event_start": "2026-05-08T16:50:00+00:00",
+    "event_end": "2026-05-08T16:55:00+00:00",
+    "token_id": "89916091704749187761362731998441315861799231620610508478540421145392849283251",
+    "exit_reason": "take_profit",
+    "hindsight_reviewed": true,
+    "hindsight": {
+      "would_have_won": false,
+      "held_pnl": -1.0,
+      "actual_pnl": 0.19,
+      "decision": "GOOD",
+      "difference": 1.19,
+      "resolution": "DOWN"
+    }
+  }
+]
