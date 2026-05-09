@@ -321,7 +321,7 @@ PROFILES: dict[str, StrategyProfile] = {
         trailing_trigger=0.05,           # Start trailing at +5%
         sizing="flat",
         base_stake=10.0,
-        max_open_positions=2,            # Protect capital
+        max_open_positions=99,           # No limit on positions
         best_signal_only=False,          # Enter the 2 best that pass
         poly_price_filter=True,
         poly_price_cap=0.55,             # Widened: velocity signal justifies more
@@ -381,9 +381,42 @@ PROFILES: dict[str, StrategyProfile] = {
         hold_to_resolution=False,        # NEVER hold in choppy — always TP/SL
         regime_window=5,                 
         regime_trending_threshold=4,
-        reversion_threshold=0.004,       # Relaxed from 0.008 (never triggered overnight)
+        reversion_threshold=0.002,       # Relaxed from 0.004 to catch "trending-within-choppy"
         ma_window_sec=60,
         time_stop_sec=90,                # sell at market after 90s
+    ),
+
+    # ── V9: Meta Strategy (Context-Aware Selector) ─────────────
+    # Uses V2opt3's execution engine but adds a historical lookup gate.
+    # Signal:  technical_v2 (same as V2opt3) + V9 context-aware confidence gate
+    # Gate:    Lookup table built from ~1,100 historical trades
+    # Action:  BLOCK entries in historically bad contexts, PENALIZE marginal ones
+    # Fallback: V2opt3 behavior when lookup has insufficient data
+    "v9": StrategyProfile(
+        name="v9",
+        label="V9 — Meta Strategy (Context-Aware Selector)",
+        trades_file="hft_trades_v9.json",
+        signal_source="meta_v9",           # Routes to signals_v9.py
+        signal_threshold=0.35,             # Same as V2opt3
+        entry_mode="late",
+        entry_window_start=20,
+        entry_window_end=180,
+        take_profit=0.35,
+        stop_loss=0.30,
+        signal_reversal=0.60,
+        trailing_stop=False,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=2,              # Conservative: 2 instead of 3
+        best_signal_only=True,
+        poly_price_filter=True,
+        poly_price_cap=0.65,
+        min_entry_price=0.32,
+        max_signal_score=0.80,
+        velocity_confirmation=True,
+        velocity_window_sec=30,
+        velocity_threshold=0.02,
+        hold_to_resolution=True,
     ),
 }
 

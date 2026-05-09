@@ -10,20 +10,25 @@ venv/
 .env
 
 # Logs
+logs/*.log
 *.log
 
-# Trade data (regenerable)
-hft_trades.json
-hft_trades_v2.json
-hft_trades_v3.json
-paper_trades.json
+# Trade data (regenerable, lives in data/trades/)
+data/trades/*.json
+data/regime/*.json
+
+# Wallet data (regenerable)
+data/wallets/*.json
+
+# Backup data
+data/backups/
+
+# Large data files
+data/*.jsonl
+data/*.json
 
 # Credential scripts (sensitive)
 polybot.py
-
-# Debug scripts
-debug_*.py
-test_*.py
 
 # IDE
 .vscode/
@@ -34,3 +39,6 @@ test_*.py
 # OS
 .DS_Store
 Thumbs.db
+
+# Gemini
+.gemini/

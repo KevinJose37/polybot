@@ -46,7 +46,7 @@ _resolution_history: dict[str, deque] = {}
 _regime_cache: dict[str, str] = {}
 
 # Regime log file
-REGIME_LOG_FILE = "regime_log.json"
+REGIME_LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "regime", "regime_log.json")
 
 
 def record_resolution(asset: str, won_side: str):

@@ -417,6 +417,12 @@ def _run_single_cycle_profiled(
                 reversion_threshold=getattr(profile, 'reversion_threshold', 0.008),
                 ma_window_sec=getattr(profile, 'ma_window_sec', 60),
             )
+        elif profile.signal_source == "meta_v9":
+            from scalper.signals_v9 import compute_all_signals_v9
+            signals = compute_all_signals_v9(
+                assets=assets,
+                markets=markets,
+            )
         else:
             signals = compute_all_signals(assets)
     except Exception as exc:

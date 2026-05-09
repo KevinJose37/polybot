@@ -1,0 +1,1765 @@
+{
+  "afternoon|BTC|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -0.655,
+    "sharpe": -0.0,
+    "sample_size": 4,
+    "total_trades_in_context": 4,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V3": {
+        "n": 2,
+        "wr": 0.0
+      }
+    }
+  },
+  "afternoon|BTC|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 16.7,
+    "avg_pnl": -0.51,
+    "sharpe": -0.085,
+    "sample_size": 6,
+    "total_trades_in_context": 6,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 5,
+        "wr": 20.0
+      },
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "afternoon|BTC|golden": {
+    "winner": "V2opt3",
+    "wr": 49.0,
+    "avg_pnl": -0.1202,
+    "sharpe": -0.05892,
+    "sample_size": 51,
+    "total_trades_in_context": 51,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2opt2": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V2opt": {
+        "n": 4,
+        "wr": 50.0
+      },
+      "V1": {
+        "n": 6,
+        "wr": 50.0
+      },
+      "V2": {
+        "n": 6,
+        "wr": 33.3
+      },
+      "V4": {
+        "n": 9,
+        "wr": 55.6
+      },
+      "V5": {
+        "n": 11,
+        "wr": 45.5
+      },
+      "V6": {
+        "n": 7,
+        "wr": 85.7
+      },
+      "V2opt3": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V3": {
+        "n": 2,
+        "wr": 0.0
+      }
+    }
+  },
+  "afternoon|BTC|high": {
+    "winner": "V2opt3",
+    "wr": 59.6,
+    "avg_pnl": 0.0232,
+    "sharpe": 0.013813,
+    "sample_size": 57,
+    "total_trades_in_context": 57,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 6,
+        "wr": 50.0
+      },
+      "V4": {
+        "n": 7,
+        "wr": 57.1
+      },
+      "V2": {
+        "n": 13,
+        "wr": 61.5
+      },
+      "V5": {
+        "n": 14,
+        "wr": 57.1
+      },
+      "V2opt": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V2opt2": {
+        "n": 4,
+        "wr": 75.0
+      },
+      "V3": {
+        "n": 6,
+        "wr": 83.3
+      },
+      "V2opt3": {
+        "n": 4,
+        "wr": 50.0
+      }
+    }
+  },
+  "afternoon|BTC|low": {
+    "winner": "V2opt3",
+    "wr": 41.1,
+    "avg_pnl": -0.0713,
+    "sharpe": -0.029263,
+    "sample_size": 56,
+    "total_trades_in_context": 56,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 9,
+        "wr": 66.7
+      },
+      "V1": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V2opt2": {
+        "n": 6,
+        "wr": 33.3
+      },
+      "V2opt": {
+        "n": 8,
+        "wr": 37.5
+      },
+      "V2": {
+        "n": 8,
+        "wr": 37.5
+      },
+      "V5": {
+        "n": 14,
+        "wr": 42.9
+      },
+      "V2opt3": {
+        "n": 4,
+        "wr": 25.0
+      },
+      "V3": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V7": {
+        "n": 3,
+        "wr": 0.0
+      }
+    }
+  },
+  "afternoon|ETH|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 66.7,
+    "avg_pnl": 0.1233,
+    "sharpe": 0.082222,
+    "sample_size": 3,
+    "total_trades_in_context": 3,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2opt": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V1": {
+        "n": 2,
+        "wr": 50.0
+      }
+    }
+  },
+  "afternoon|ETH|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 41.2,
+    "avg_pnl": 0.2182,
+    "sharpe": 0.089862,
+    "sample_size": 17,
+    "total_trades_in_context": 17,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2opt": {
+        "n": 4,
+        "wr": 100.0
+      },
+      "V3": {
+        "n": 10,
+        "wr": 20.0
+      },
+      "V1": {
+        "n": 3,
+        "wr": 33.3
+      }
+    }
+  },
+  "afternoon|ETH|golden": {
+    "winner": "V2opt3",
+    "wr": 51.1,
+    "avg_pnl": 0.0589,
+    "sharpe": 0.030099,
+    "sample_size": 45,
+    "total_trades_in_context": 45,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V2": {
+        "n": 10,
+        "wr": 50.0
+      },
+      "V1": {
+        "n": 5,
+        "wr": 60.0
+      },
+      "V5": {
+        "n": 12,
+        "wr": 50.0
+      },
+      "V2opt": {
+        "n": 6,
+        "wr": 33.3
+      },
+      "V2opt2": {
+        "n": 3,
+        "wr": 66.7
+      },
+      "V3": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V6": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V2opt3": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V7": {
+        "n": 2,
+        "wr": 50.0
+      }
+    }
+  },
+  "afternoon|ETH|high": {
+    "winner": "V2",
+    "wr": 50.0,
+    "avg_pnl": -0.1031,
+    "sharpe": -0.051562,
+    "sample_size": 16,
+    "total_trades_in_context": 68,
+    "is_fallback": false,
+    "alternatives": {}
+  },
+  "afternoon|ETH|low": {
+    "winner": "V2opt3",
+    "wr": 34.7,
+    "avg_pnl": -0.1155,
+    "sharpe": -0.040075,
+    "sample_size": 49,
+    "total_trades_in_context": 49,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 5,
+        "wr": 20.0
+      },
+      "V4": {
+        "n": 5,
+        "wr": 40.0
+      },
+      "V2opt": {
+        "n": 6,
+        "wr": 50.0
+      },
+      "V2": {
+        "n": 13,
+        "wr": 30.8
+      },
+      "V5": {
+        "n": 9,
+        "wr": 44.4
+      },
+      "V2opt2": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V3": {
+        "n": 6,
+        "wr": 16.7
+      },
+      "V2opt3": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V6": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "afternoon|XRP|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 40.0,
+    "avg_pnl": -0.18,
+    "sharpe": -0.072,
+    "sample_size": 5,
+    "total_trades_in_context": 5,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2opt": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V1": {
+        "n": 3,
+        "wr": 33.3
+      }
+    }
+  },
+  "afternoon|XRP|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -0.6033,
+    "sharpe": -0.0,
+    "sample_size": 3,
+    "total_trades_in_context": 3,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "afternoon|XRP|golden": {
+    "winner": "V2opt3",
+    "wr": 86.4,
+    "avg_pnl": 0.6309,
+    "sharpe": 0.544876,
+    "sample_size": 22,
+    "total_trades_in_context": 22,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2": {
+        "n": 6,
+        "wr": 100.0
+      },
+      "V1": {
+        "n": 7,
+        "wr": 85.7
+      },
+      "V2opt": {
+        "n": 5,
+        "wr": 60.0
+      },
+      "V5": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V4": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V2opt2": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V6": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "afternoon|XRP|high": {
+    "winner": "V2opt3",
+    "wr": 67.5,
+    "avg_pnl": 0.1245,
+    "sharpe": 0.084038,
+    "sample_size": 40,
+    "total_trades_in_context": 40,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 7,
+        "wr": 28.6
+      },
+      "V2": {
+        "n": 13,
+        "wr": 69.2
+      },
+      "V2opt": {
+        "n": 7,
+        "wr": 71.4
+      },
+      "V4": {
+        "n": 4,
+        "wr": 75.0
+      },
+      "V6": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V5": {
+        "n": 5,
+        "wr": 80.0
+      },
+      "V2opt2": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V2opt3": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V7": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "afternoon|XRP|low": {
+    "winner": "V2opt3",
+    "wr": 44.4,
+    "avg_pnl": -0.0433,
+    "sharpe": -0.019259,
+    "sample_size": 18,
+    "total_trades_in_context": 18,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2": {
+        "n": 6,
+        "wr": 66.7
+      },
+      "V2opt2": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 4,
+        "wr": 50.0
+      },
+      "V5": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V2opt3": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "evening|BTC|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 50.0,
+    "avg_pnl": 0.195,
+    "sharpe": 0.0975,
+    "sample_size": 2,
+    "total_trades_in_context": 2,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V3": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "evening|BTC|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -0.86,
+    "sharpe": -0.0,
+    "sample_size": 1,
+    "total_trades_in_context": 1,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "evening|BTC|golden": {
+    "winner": "V2opt3",
+    "wr": 10.5,
+    "avg_pnl": -0.57,
+    "sharpe": -0.06,
+    "sample_size": 19,
+    "total_trades_in_context": 19,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2opt2": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V6": {
+        "n": 3,
+        "wr": 0.0
+      },
+      "V3": {
+        "n": 6,
+        "wr": 16.7
+      },
+      "V5": {
+        "n": 6,
+        "wr": 16.7
+      }
+    }
+  },
+  "evening|BTC|high": {
+    "winner": "V2opt3",
+    "wr": 61.5,
+    "avg_pnl": 0.1108,
+    "sharpe": 0.068166,
+    "sample_size": 26,
+    "total_trades_in_context": 26,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V2opt": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V5": {
+        "n": 5,
+        "wr": 80.0
+      },
+      "V3": {
+        "n": 9,
+        "wr": 77.8
+      },
+      "V1": {
+        "n": 3,
+        "wr": 66.7
+      },
+      "V2opt3": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V2": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V6": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "evening|BTC|low": {
+    "winner": "V2opt3",
+    "wr": 36.4,
+    "avg_pnl": -0.1527,
+    "sharpe": -0.055537,
+    "sample_size": 11,
+    "total_trades_in_context": 11,
+    "is_fallback": true,
+    "all_strategies": {
+      "V5": {
+        "n": 4,
+        "wr": 25.0
+      },
+      "V3": {
+        "n": 6,
+        "wr": 50.0
+      },
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "evening|ETH|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -1.0,
+    "sharpe": -0.0,
+    "sample_size": 1,
+    "total_trades_in_context": 1,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "evening|ETH|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -0.4433,
+    "sharpe": -0.0,
+    "sample_size": 3,
+    "total_trades_in_context": 3,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "evening|ETH|golden": {
+    "winner": "V2opt3",
+    "wr": 30.0,
+    "avg_pnl": -0.365,
+    "sharpe": -0.1095,
+    "sample_size": 10,
+    "total_trades_in_context": 10,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2opt": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt2": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V5": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V2opt3": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V3": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V6": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 2,
+        "wr": 50.0
+      }
+    }
+  },
+  "evening|ETH|high": {
+    "winner": "V2opt3",
+    "wr": 60.7,
+    "avg_pnl": 0.07,
+    "sharpe": 0.0425,
+    "sample_size": 28,
+    "total_trades_in_context": 28,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2": {
+        "n": 7,
+        "wr": 42.9
+      },
+      "V6": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V5": {
+        "n": 4,
+        "wr": 50.0
+      },
+      "V1": {
+        "n": 5,
+        "wr": 100.0
+      },
+      "V2opt3": {
+        "n": 6,
+        "wr": 66.7
+      },
+      "V3": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V2opt": {
+        "n": 2,
+        "wr": 100.0
+      }
+    }
+  },
+  "evening|ETH|low": {
+    "winner": "V2opt3",
+    "wr": 33.3,
+    "avg_pnl": -0.1667,
+    "sharpe": -0.055556,
+    "sample_size": 3,
+    "total_trades_in_context": 3,
+    "is_fallback": true,
+    "all_strategies": {
+      "V5": {
+        "n": 3,
+        "wr": 33.3
+      }
+    }
+  },
+  "evening|XRP|golden": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -1.0,
+    "sharpe": -0.0,
+    "sample_size": 2,
+    "total_trades_in_context": 2,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 2,
+        "wr": 0.0
+      }
+    }
+  },
+  "evening|XRP|high": {
+    "winner": "V2opt3",
+    "wr": 14.3,
+    "avg_pnl": -0.5843,
+    "sharpe": -0.083469,
+    "sample_size": 7,
+    "total_trades_in_context": 7,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2opt": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2": {
+        "n": 3,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2opt3": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "evening|XRP|low": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -1.0,
+    "sharpe": -0.0,
+    "sample_size": 1,
+    "total_trades_in_context": 1,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "morning|BTC|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 33.3,
+    "avg_pnl": -0.25,
+    "sharpe": -0.083333,
+    "sample_size": 3,
+    "total_trades_in_context": 3,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V2opt": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "morning|BTC|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 42.9,
+    "avg_pnl": -0.2514,
+    "sharpe": -0.107755,
+    "sample_size": 7,
+    "total_trades_in_context": 7,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V3": {
+        "n": 4,
+        "wr": 25.0
+      },
+      "V2opt": {
+        "n": 2,
+        "wr": 100.0
+      }
+    }
+  },
+  "morning|BTC|golden": {
+    "winner": "V2opt3",
+    "wr": 61.5,
+    "avg_pnl": 0.2704,
+    "sharpe": 0.166391,
+    "sample_size": 26,
+    "total_trades_in_context": 26,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V2opt": {
+        "n": 4,
+        "wr": 50.0
+      },
+      "V2": {
+        "n": 4,
+        "wr": 50.0
+      },
+      "V1": {
+        "n": 4,
+        "wr": 75.0
+      },
+      "V7": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V5": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2opt3": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V3": {
+        "n": 5,
+        "wr": 60.0
+      },
+      "V6": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "morning|BTC|high": {
+    "winner": "V3",
+    "wr": 56.2,
+    "avg_pnl": 0.0025,
+    "sharpe": 0.001406,
+    "sample_size": 16,
+    "total_trades_in_context": 43,
+    "is_fallback": false,
+    "alternatives": {}
+  },
+  "morning|BTC|low": {
+    "winner": "V2opt3",
+    "wr": 26.5,
+    "avg_pnl": -0.28,
+    "sharpe": -0.074118,
+    "sample_size": 34,
+    "total_trades_in_context": 34,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V4": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 7,
+        "wr": 28.6
+      },
+      "V2": {
+        "n": 8,
+        "wr": 25.0
+      },
+      "V5": {
+        "n": 3,
+        "wr": 0.0
+      },
+      "V2opt3": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V3": {
+        "n": 9,
+        "wr": 33.3
+      }
+    }
+  },
+  "morning|ETH|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -0.47,
+    "sharpe": -0.0,
+    "sample_size": 2,
+    "total_trades_in_context": 2,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "morning|ETH|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -0.7933,
+    "sharpe": -0.0,
+    "sample_size": 3,
+    "total_trades_in_context": 3,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "morning|ETH|golden": {
+    "winner": "V2opt3",
+    "wr": 38.7,
+    "avg_pnl": -0.2506,
+    "sharpe": -0.097024,
+    "sample_size": 31,
+    "total_trades_in_context": 31,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V1opt": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V2opt": {
+        "n": 8,
+        "wr": 25.0
+      },
+      "V1": {
+        "n": 6,
+        "wr": 50.0
+      },
+      "V2": {
+        "n": 5,
+        "wr": 20.0
+      },
+      "V2opt2": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V7": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V2opt3": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V6": {
+        "n": 2,
+        "wr": 100.0
+      }
+    }
+  },
+  "morning|ETH|high": {
+    "winner": "V2opt3",
+    "wr": 71.4,
+    "avg_pnl": 0.146,
+    "sharpe": 0.104286,
+    "sample_size": 35,
+    "total_trades_in_context": 35,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 14,
+        "wr": 78.6
+      },
+      "V2opt": {
+        "n": 8,
+        "wr": 75.0
+      },
+      "V2": {
+        "n": 5,
+        "wr": 80.0
+      },
+      "V1opt": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt3": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V7": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V6": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V5": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt2": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V8": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "morning|ETH|low": {
+    "winner": "V2opt3",
+    "wr": 26.5,
+    "avg_pnl": -0.3456,
+    "sharpe": -0.091479,
+    "sample_size": 34,
+    "total_trades_in_context": 34,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V4": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 12,
+        "wr": 41.7
+      },
+      "V1opt": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 5,
+        "wr": 20.0
+      },
+      "V2": {
+        "n": 7,
+        "wr": 28.6
+      },
+      "V5": {
+        "n": 4,
+        "wr": 25.0
+      },
+      "V2opt3": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2opt2": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "morning|SOL|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 100.0,
+    "avg_pnl": 0.52,
+    "sharpe": 0.52,
+    "sample_size": 2,
+    "total_trades_in_context": 2,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V2": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "morning|SOL|golden": {
+    "winner": "V2opt3",
+    "wr": 25.0,
+    "avg_pnl": -0.525,
+    "sharpe": -0.13125,
+    "sample_size": 8,
+    "total_trades_in_context": 8,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1opt": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V1": {
+        "n": 3,
+        "wr": 33.3
+      }
+    }
+  },
+  "morning|SOL|high": {
+    "winner": "V2opt3",
+    "wr": 26.7,
+    "avg_pnl": -0.564,
+    "sharpe": -0.1504,
+    "sample_size": 15,
+    "total_trades_in_context": 15,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 4,
+        "wr": 50.0
+      },
+      "V3": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V2": {
+        "n": 5,
+        "wr": 20.0
+      },
+      "V1opt": {
+        "n": 2,
+        "wr": 0.0
+      }
+    }
+  },
+  "morning|SOL|low": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -1.0,
+    "sharpe": -0.0,
+    "sample_size": 1,
+    "total_trades_in_context": 1,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "morning|XRP|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 100.0,
+    "avg_pnl": 0.405,
+    "sharpe": 0.405,
+    "sample_size": 2,
+    "total_trades_in_context": 2,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2opt": {
+        "n": 2,
+        "wr": 100.0
+      }
+    }
+  },
+  "morning|XRP|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -1.0,
+    "sharpe": -0.0,
+    "sample_size": 1,
+    "total_trades_in_context": 1,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "morning|XRP|golden": {
+    "winner": "V2opt3",
+    "wr": 70.6,
+    "avg_pnl": 0.4318,
+    "sharpe": 0.304775,
+    "sample_size": 17,
+    "total_trades_in_context": 17,
+    "is_fallback": true,
+    "all_strategies": {
+      "V4": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V1opt": {
+        "n": 3,
+        "wr": 100.0
+      },
+      "V2opt": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V2": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V1": {
+        "n": 6,
+        "wr": 66.7
+      },
+      "V7": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V6": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V5": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  },
+  "morning|XRP|high": {
+    "winner": "V2opt3",
+    "wr": 56.4,
+    "avg_pnl": 0.0613,
+    "sharpe": 0.034569,
+    "sample_size": 39,
+    "total_trades_in_context": 39,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 11,
+        "wr": 45.5
+      },
+      "V3": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 10,
+        "wr": 50.0
+      },
+      "V1opt": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V2": {
+        "n": 9,
+        "wr": 44.4
+      },
+      "V2opt3": {
+        "n": 3,
+        "wr": 100.0
+      },
+      "V5": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V2opt2": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "morning|XRP|low": {
+    "winner": "V2opt3",
+    "wr": 61.1,
+    "avg_pnl": 0.1683,
+    "sharpe": 0.10287,
+    "sample_size": 18,
+    "total_trades_in_context": 18,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2opt": {
+        "n": 4,
+        "wr": 75.0
+      },
+      "V1opt": {
+        "n": 1,
+        "wr": 100.0
+      },
+      "V2": {
+        "n": 5,
+        "wr": 40.0
+      },
+      "V4": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 5,
+        "wr": 80.0
+      },
+      "V2opt3": {
+        "n": 2,
+        "wr": 50.0
+      }
+    }
+  },
+  "overnight|BTC|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -0.705,
+    "sharpe": -0.0,
+    "sample_size": 2,
+    "total_trades_in_context": 2,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 2,
+        "wr": 0.0
+      }
+    }
+  },
+  "overnight|BTC|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -0.7933,
+    "sharpe": -0.0,
+    "sample_size": 3,
+    "total_trades_in_context": 3,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt": {
+        "n": 2,
+        "wr": 0.0
+      }
+    }
+  },
+  "overnight|BTC|golden": {
+    "winner": "V2opt3",
+    "wr": 71.4,
+    "avg_pnl": 0.3029,
+    "sharpe": 0.216327,
+    "sample_size": 21,
+    "total_trades_in_context": 21,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 5,
+        "wr": 60.0
+      },
+      "V2opt3": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V2opt": {
+        "n": 3,
+        "wr": 66.7
+      },
+      "V5": {
+        "n": 7,
+        "wr": 85.7
+      },
+      "V6": {
+        "n": 2,
+        "wr": 100.0
+      }
+    }
+  },
+  "overnight|BTC|high": {
+    "winner": "V3",
+    "wr": 43.8,
+    "avg_pnl": -0.1631,
+    "sharpe": -0.071367,
+    "sample_size": 16,
+    "total_trades_in_context": 30,
+    "is_fallback": false,
+    "alternatives": {}
+  },
+  "overnight|BTC|low": {
+    "winner": "V2opt3",
+    "wr": 48.6,
+    "avg_pnl": 0.3063,
+    "sharpe": 0.148767,
+    "sample_size": 35,
+    "total_trades_in_context": 35,
+    "is_fallback": true,
+    "all_strategies": {
+      "V5": {
+        "n": 9,
+        "wr": 44.4
+      },
+      "V3": {
+        "n": 9,
+        "wr": 33.3
+      },
+      "V2opt": {
+        "n": 5,
+        "wr": 40.0
+      },
+      "V2opt3": {
+        "n": 6,
+        "wr": 83.3
+      },
+      "V2opt2": {
+        "n": 2,
+        "wr": 100.0
+      },
+      "V2": {
+        "n": 4,
+        "wr": 25.0
+      }
+    }
+  },
+  "overnight|ETH|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 100.0,
+    "avg_pnl": 0.165,
+    "sharpe": 0.165,
+    "sample_size": 2,
+    "total_trades_in_context": 2,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 2,
+        "wr": 100.0
+      }
+    }
+  },
+  "overnight|ETH|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 50.0,
+    "avg_pnl": -0.085,
+    "sharpe": -0.0425,
+    "sample_size": 2,
+    "total_trades_in_context": 2,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "overnight|ETH|golden": {
+    "winner": "V2opt3",
+    "wr": 48.3,
+    "avg_pnl": 0.0548,
+    "sharpe": 0.026468,
+    "sample_size": 29,
+    "total_trades_in_context": 29,
+    "is_fallback": true,
+    "all_strategies": {
+      "V6": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V5": {
+        "n": 7,
+        "wr": 71.4
+      },
+      "V2opt3": {
+        "n": 4,
+        "wr": 50.0
+      },
+      "V2": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V2opt": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V1": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V3": {
+        "n": 6,
+        "wr": 33.3
+      },
+      "V2opt2": {
+        "n": 2,
+        "wr": 50.0
+      }
+    }
+  },
+  "overnight|ETH|high": {
+    "winner": "V2opt3",
+    "wr": 54.5,
+    "avg_pnl": -0.0545,
+    "sharpe": -0.029752,
+    "sample_size": 22,
+    "total_trades_in_context": 22,
+    "is_fallback": true,
+    "all_strategies": {
+      "V5": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V1": {
+        "n": 7,
+        "wr": 71.4
+      },
+      "V2": {
+        "n": 4,
+        "wr": 25.0
+      },
+      "V2opt": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V3": {
+        "n": 7,
+        "wr": 57.1
+      }
+    }
+  },
+  "overnight|ETH|low": {
+    "winner": "V2opt3",
+    "wr": 58.3,
+    "avg_pnl": 0.4967,
+    "sharpe": 0.289722,
+    "sample_size": 24,
+    "total_trades_in_context": 24,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 6,
+        "wr": 66.7
+      },
+      "V3": {
+        "n": 5,
+        "wr": 40.0
+      },
+      "V5": {
+        "n": 10,
+        "wr": 70.0
+      },
+      "V2opt": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V2opt3": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "overnight|XRP|extreme_high": {
+    "winner": "V2opt3",
+    "wr": 50.0,
+    "avg_pnl": -0.2275,
+    "sharpe": -0.11375,
+    "sample_size": 4,
+    "total_trades_in_context": 4,
+    "is_fallback": true,
+    "all_strategies": {
+      "V1": {
+        "n": 3,
+        "wr": 33.3
+      },
+      "V3": {
+        "n": 1,
+        "wr": 100.0
+      }
+    }
+  },
+  "overnight|XRP|extreme_low": {
+    "winner": "V2opt3",
+    "wr": 0.0,
+    "avg_pnl": -0.99,
+    "sharpe": -0.0,
+    "sample_size": 2,
+    "total_trades_in_context": 2,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 2,
+        "wr": 0.0
+      }
+    }
+  },
+  "overnight|XRP|golden": {
+    "winner": "V2opt3",
+    "wr": 22.2,
+    "avg_pnl": -0.11,
+    "sharpe": -0.024444,
+    "sample_size": 9,
+    "total_trades_in_context": 9,
+    "is_fallback": true,
+    "all_strategies": {
+      "V2": {
+        "n": 3,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2opt3": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V3": {
+        "n": 3,
+        "wr": 66.7
+      }
+    }
+  },
+  "overnight|XRP|high": {
+    "winner": "V2opt3",
+    "wr": 50.0,
+    "avg_pnl": -0.1064,
+    "sharpe": -0.053214,
+    "sample_size": 28,
+    "total_trades_in_context": 28,
+    "is_fallback": true,
+    "all_strategies": {
+      "V3": {
+        "n": 6,
+        "wr": 50.0
+      },
+      "V2": {
+        "n": 4,
+        "wr": 25.0
+      },
+      "V2opt": {
+        "n": 4,
+        "wr": 50.0
+      },
+      "V2opt2": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2opt3": {
+        "n": 4,
+        "wr": 75.0
+      },
+      "V1": {
+        "n": 8,
+        "wr": 62.5
+      }
+    }
+  },
+  "overnight|XRP|low": {
+    "winner": "V2opt3",
+    "wr": 12.5,
+    "avg_pnl": -0.3463,
+    "sharpe": -0.043281,
+    "sample_size": 8,
+    "total_trades_in_context": 8,
+    "is_fallback": true,
+    "all_strategies": {
+      "V5": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V3": {
+        "n": 2,
+        "wr": 50.0
+      },
+      "V2opt": {
+        "n": 2,
+        "wr": 0.0
+      },
+      "V2": {
+        "n": 1,
+        "wr": 0.0
+      },
+      "V1": {
+        "n": 1,
+        "wr": 0.0
+      }
+    }
+  }
+}

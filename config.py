@@ -43,7 +43,7 @@ FNG_URL = "https://api.alternative.me/fng/"
 
 # ── Archivos locales ────────────────────────────────────────────
 PAPER_TRADES_FILE = "paper_trades.json"
-LOG_FILE = "bot.log"
+LOG_FILE = "logs/bot.log"
 
 # ── Crypto keywords para filtrar mercados ───────────────────────
 CRYPTO_KEYWORDS = ["BTC", "ETH", "bitcoin", "ethereum", "price"]

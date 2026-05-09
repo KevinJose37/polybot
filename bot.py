@@ -270,6 +270,16 @@ def mode_scalp(
         scalper_cfg.HOLD_ONLY = True
         print("  \U0001f512  Hold-only mode: ALL sells disabled (hold to resolution)")
 
+    # ── V10 has its own independent runner ─────────────────
+    if strategy == "v10":
+        from scalper.runner_v10 import run_v10_scalper
+        run_v10_scalper(
+            capital=capital_override or 20.0,
+            stake=stake_override or 2.0,
+            interval=interval_override or 300,
+        )
+        return
+
     run_scalper(
         target_assets=target_assets,
         strategy=strategy,
@@ -363,7 +373,7 @@ Ejemplos de uso:
     )
     parser.add_argument(
         "--strategy",
-        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4", "v2opt2", "v2opt3", "v5", "v6", "v7", "v8"],
+        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4", "v2opt2", "v2opt3", "v5", "v6", "v7", "v8", "v9", "v10"],
         default="v1",
         help="Strategy: v1-v7. v7=Production (Velocity+Hold)",
     )

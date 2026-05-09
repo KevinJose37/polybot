@@ -48,7 +48,7 @@ def set_active_trades_file(filename: str) -> None:
 
 def _trades_path() -> Path:
     """Get the absolute path to the trades file."""
-    return Path(__file__).parent.parent / _active_trades_file
+    return Path(__file__).parent.parent / "data" / "trades" / _active_trades_file
 
 
 def load_trades() -> list[dict]:

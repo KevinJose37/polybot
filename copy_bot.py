@@ -25,7 +25,7 @@ from scalper.trader import set_active_trades_file, load_trades
 from scalper.config import GAMMA_API_BASE
 
 # Tracking file for processed transactions
-SEEN_FILE = Path("copy_bot_seen.json")
+SEEN_FILE = Path("data/trades/copy_bot_seen.json")
 
 def load_seen():
     if SEEN_FILE.exists():
