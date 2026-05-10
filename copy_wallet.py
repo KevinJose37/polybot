@@ -25,7 +25,9 @@ import json
 import logging
 import os
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -44,13 +46,26 @@ GAMMA_EVENTS_URL = f"{GAMMA_API_BASE}/events"
 
 # ── Default fleet wallets ────────────────────────────────────────
 FLEET_WALLETS = [
-    {"address": "0x5d0f03cf1243a3e21262d6cf844795afd9fff0ad", "name": "EB99999",       "cat": "GEO",   "wr": 94.1},
-    {"address": "0xdb15fbbcc1a8d1cbe112f7a2d74f6f752f2314f1", "name": "memain",        "cat": "SPORT", "wr": 85.7},
-    {"address": "0xe7348e92f76c26e879a9d0c1ff37cdbc4a926a78", "name": "bobthetradoor", "cat": "GEO",   "wr": 41.7},
-    {"address": "0xd7f85d0eb0fe0732ca38d9107ad0d4d01b1289e4", "name": "tdrhrhhd",      "cat": "POL",   "wr": 39.7},
-    {"address": "0xf989bd9c62b1eae2c388515fcc766527a8b147cc", "name": "vovatoxic",     "cat": "GEO",   "wr": 61.4},
-    {"address": "0x5490687ee61406afbb1fd887937fdbb7fe1cb051", "name": "crypto",        "cat": "CRYP", "wr": 84.2},
-    {"address": "0xed107a85a4585a381e48c7f7ca4144909e7dd2e5", "name": "bobe2",         "cat": "GEO",  "wr": 87.9}
+    # ── Original fleet (verified active) ──
+    # {"address": "0x5d0f03cf1243a3e21262d6cf844795afd9fff0ad", "name": "EB99999",        "cat": "GEO",   "wr": 94.1},
+    # {"address": "0xdb15fbbcc1a8d1cbe112f7a2d74f6f752f2314f1", "name": "memain",         "cat": "SPORT", "wr": 85.7},
+    # {"address": "0xe7348e92f76c26e879a9d0c1ff37cdbc4a926a78", "name": "bobthetradoor",  "cat": "GEO",   "wr": 41.7},
+    # {"address": "0xd7f85d0eb0fe0732ca38d9107ad0d4d01b1289e4", "name": "tdrhrhhd",       "cat": "POL",   "wr": 39.7},
+    # {"address": "0x5490687ee61406afbb1fd887937fdbb7fe1cb051", "name": "snqwqkozmqoc",   "cat": "CRYP",  "wr": 84.2},
+    # {"address": "0xed107a85a4585a381e48c7f7ca4144909e7dd2e5", "name": "bobe2",          "cat": "GEO",   "wr": 87.9},
+    # ── Gravia top scorers (active <24h) ──
+    # {"address": "0xae7f00473f325d2eda0813cee59006d48951d4fe", "name": "h00ch",          "cat": "CRYP",  "wr": 64.7},
+    # {"address": "0x88c4919de76e526d55a32c1f8afb439dd1f1129a", "name": "QuietRisk",      "cat": "GEO",   "wr": 76.9},
+    # {"address": "0xbef5ab169458cb47c5d233e067dff4447fad1c5a", "name": "StoneMarble",    "cat": "GEO",   "wr": 58.3},
+    # {"address": "0xa80e3fe5e7a445fa047fe6de1e27f9a15217b94b", "name": "bin8888",         "cat": "FIN",   "wr": 70.0},
+    # {"address": "0x2974bd0059e48f215c391882976e0f1b4c8c9c23", "name": "65765757",       "cat": "GEO",   "wr": 80.1},
+    # ── Gravia recent (<7d) ──
+    # {"address": "0xf6891d5f12873776e4dc7c38fe586219a09b9d83", "name": "hhhhhcgg",       "cat": "SPORT", "wr": 80.0},
+    # {"address": "0x7f9e2d1df78614564a70becc7fa14aa9a6623a0e", "name": "nojnn",          "cat": "GEO",   "wr": 74.2},
+    # ── Active CRYP wallets ──
+    # {"address": "0x55e2436d747835c7e40b0c6cf92f632bf1215fc9", "name": "Rhabarber",      "cat": "CRYP",  "wr": 50.0},
+    {"address": "0x89b5cdaaa4866c1e738406712012a630b4078beb", "name": "ohanism",        "cat": "CRYP",  "wr": 55.1},
+    # {"address": "0x101888282092fb5be3764b1c615200b2f14a23fe", "name": "OhioOhio",       "cat": "CRYP",  "wr": 50.0},
 ]
 
 
@@ -142,11 +157,82 @@ def _check_resolution(slug: str) -> dict | None:
 
 
 # ══════════════════════════════════════════════════════════════════
+#  REALISTIC FILL SIMULATION (VWAP book-walk)
+# ══════════════════════════════════════════════════════════════════
+
+_CLOB_BOOK_URL = "https://clob.polymarket.com/book"
+
+
+def _simulate_fill(asks: list, order_usd: float) -> dict:
+    """
+    Walk the ask side of the book to calculate a realistic fill.
+    Returns dict with vwap, filled_usd, filled_shares, levels_consumed, fully_filled.
+    """
+    sorted_asks = sorted(asks, key=lambda a: float(a.get("price", 0)))
+    filled_usd = 0.0
+    filled_shares = 0.0
+    levels_consumed = 0
+
+    for level in sorted_asks:
+        px = float(level.get("price", 0))
+        sz = float(level.get("size", 0))
+        if px <= 0 or sz <= 0:
+            continue
+        available_usd = px * sz
+        remaining = order_usd - filled_usd
+        levels_consumed += 1
+
+        if available_usd >= remaining:
+            shares_here = remaining / px
+            filled_shares += shares_here
+            filled_usd += remaining
+            break
+        else:
+            filled_shares += sz
+            filled_usd += available_usd
+
+    vwap = round(filled_usd / filled_shares, 6) if filled_shares > 0 else 0.0
+    return {
+        "vwap": vwap,
+        "filled_usd": round(filled_usd, 4),
+        "filled_shares": round(filled_shares, 4),
+        "levels_consumed": levels_consumed,
+        "fully_filled": filled_usd >= order_usd * 0.95,
+    }
+
+
+def _get_live_mid(token_id: str) -> float | None:
+    """
+    Fetch current mid price from REST book for TP/SL monitoring.
+    Returns mid price or None if unavailable.
+    """
+    try:
+        resp = requests.get(_CLOB_BOOK_URL, params={"token_id": token_id}, timeout=3)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        bids = data.get("bids", [])
+        asks = data.get("asks", [])
+        if not bids or not asks:
+            return None
+        best_bid = max(float(b.get("price", 0)) for b in bids)
+        best_ask = min(float(a.get("price", 0)) for a in asks)
+        if best_bid <= 0 or best_ask <= 0:
+            return None
+        return round((best_bid + best_ask) / 2, 4)
+    except Exception:
+        return None
+
+
+# ══════════════════════════════════════════════════════════════════
 #  WALLET TRACKER STATE
 # ══════════════════════════════════════════════════════════════════
 
 class WalletTracker:
     """Tracks one wallet: its trades, capital, seen txs."""
+
+    # Category-based poll intervals (seconds)
+    _POLL_INTERVALS = {"CRYP": 10.0, "SPORT": 30.0, "GEO": 30.0, "POL": 30.0, "FIN": 30.0}
 
     def __init__(self, address: str, name: str, cat: str, wr: float,
                  capital: float, stake: float,
@@ -155,7 +241,7 @@ class WalletTracker:
         self.name = name
         self.cat = cat
         self.wr = wr
-        self.capital = capital
+        self.capital = capital  # In live mode: max budget cap; in paper: simulated capital
         self.stake = stake
         self.tp_pct = tp_pct
         self.sl_pct = sl_pct
@@ -165,6 +251,15 @@ class WalletTracker:
         self.last_event = ""
         self.polls = 0
         self.skipped_no_liq = 0  # Tracks how many trades we skipped (realism)
+        # Per-wallet session (avoids connection pool contention in threads)
+        self._session = requests.Session()
+        # Category-based poll interval
+        self.poll_interval = self._POLL_INTERVALS.get(cat, 30.0)
+        self.next_poll_at = 0.0  # Poll immediately on first cycle
+        # Live balance cache (refreshed every 30s)
+        self._live_balance: float | None = None
+        self._cold_started = False  # Will pre-seed seen on first poll
+        self._live_balance_ts: float = 0.0
 
     @property
     def ws(self) -> str:
@@ -188,7 +283,12 @@ class WalletTracker:
 
     @property
     def available(self) -> float:
-        return self.capital - self.exposure
+        if self.is_live:
+            # In live mode: use --capital as budget cap
+            # Real USDC balance is enforced at order execution level
+            return self.capital - self.exposure
+        # Paper mode: simulated capital + earned P&L - exposure
+        return self.capital + self.total_pnl - self.exposure
 
     @property
     def total_pnl(self) -> float:
@@ -202,13 +302,14 @@ class WalletTracker:
         wins = sum(1 for t in res if (t.get("pnl", 0) or 0) > 0)
         return wins / len(res) * 100
 
-    def poll_and_copy(self, session: requests.Session) -> list[str]:
+    def poll_and_copy(self, session: requests.Session | None = None) -> list[str]:
         """Poll wallet for new trades, copy any BUYs. Returns list of event strings."""
         events = []
         self.polls += 1
+        s = session or self._session
 
         try:
-            resp = session.get(
+            resp = s.get(
                 DATA_TRADES_URL,
                 params={"user": self.address, "limit": 20},
                 timeout=15,
@@ -222,6 +323,21 @@ class WalletTracker:
             api_trades = [t for t in api_trades if t.get("type") == "TRADE"]
         except Exception as e:
             events.append(f"[{self.name}] API error: {e}")
+            return events
+
+        # ── Cold start: on first poll, pre-seed seen set ──
+        # This prevents copying the entire history when starting fresh
+        if not self._cold_started:
+            self._cold_started = True
+            pre_count = len(self.seen)
+            for t in api_trades:
+                tx = t.get("transactionHash", "")
+                if tx:
+                    self.seen.add(tx)
+            new_marked = len(self.seen) - pre_count
+            if new_marked > 0:
+                save_seen(self.address, self.seen)
+                events.append(f"[{self.name}] Cold start: marked {new_marked} existing txs as seen")
             return events
 
         for t in reversed(api_trades):
@@ -257,23 +373,29 @@ class WalletTracker:
                 continue
 
             # ── Capital check ──
-            if self.exposure + self.stake > self.capital:
-                avail = self.capital - self.exposure
-                events.append(f"[{self.name}] SKIP no capital (${avail:.0f}) {title[:30]}")
+            if self.available < self.stake:
+                events.append(f"[{self.name}] SKIP no capital (${self.available:.0f}) {title[:30]}")
                 continue
 
             # ── Duplicate check ──
             if any(tr.get("slug") == slug and tr.get("side") == outcome for tr in self.open_trades):
                 continue
 
-            # ── REALISTIC: Verify orderbook (spread + liquidity only, NO R/R filter) ──
-            # We trust the target wallet's conviction — only check the book is tradeable
+            # ── Signal delay tracking ──
+            now_ts = int(time.time())
+            signal_delay_s = now_ts - trade_ts if trade_ts > 0 else 0
+
+            # ── REALISTIC: Verify orderbook + VWAP fill simulation ──
             entry_price = price  # Default to API price
             entry_source = "API"
+            fill_meta = {}  # Execution quality metrics
             if token_id:
                 try:
                     from scalper.live_client import _fetch_rest_book
+                    t0_book = time.perf_counter()
                     book = _fetch_rest_book(token_id)
+                    book_latency_ms = (time.perf_counter() - t0_book) * 1000
+
                     if book:
                         bids = book.get("bids", [])
                         asks = book.get("asks", [])
@@ -282,30 +404,69 @@ class WalletTracker:
                             sorted_bids = sorted(bids, key=lambda b: float(b.get("price", 0)), reverse=True)
                             best_ask = float(sorted_asks[0]["price"])
                             best_bid = float(sorted_bids[0]["price"])
-                            ask_size = float(sorted_asks[0].get("size", 0))
                             spread = round(best_ask - best_bid, 4)
 
+                            # Total book depth in USD (top 10 ask levels)
+                            total_depth_usd = sum(
+                                float(a.get("price", 0)) * float(a.get("size", 0))
+                                for a in sorted_asks[:10]
+                            )
+
+                            # ── Spread gate ──
                             if spread > 0.08:
-                                # Wide spread = risky execution
                                 self.skipped_no_liq += 1
                                 events.append(f"[{self.name}] SKIP spread ${spread:.3f} {title[:30]}")
                                 continue
-                            if ask_size < 1.0:
+
+                            # ── Depth gate: book must absorb 150% of order ──
+                            if total_depth_usd < self.stake * 1.5:
                                 self.skipped_no_liq += 1
-                                events.append(f"[{self.name}] SKIP thin ask ({ask_size:.0f}) {title[:30]}")
+                                events.append(f"[{self.name}] SKIP depth ${total_depth_usd:.0f}<${self.stake*1.5:.0f} {title[:25]}")
                                 continue
 
-                            # Use REAL best_ask as entry (what we'd actually pay)
-                            entry_price = best_ask
-                            entry_source = f"BOOK ask=${best_ask:.3f} bid=${best_bid:.3f} spr=${spread:.4f}"
+                            # ── VWAP book-walk: simulate realistic fill ──
+                            sim = _simulate_fill(asks, self.stake)
+                            if not sim["fully_filled"]:
+                                self.skipped_no_liq += 1
+                                events.append(
+                                    f"[{self.name}] SKIP partial fill "
+                                    f"(${sim['filled_usd']:.1f}/${self.stake:.0f}) {title[:25]}"
+                                )
+                                continue
+
+                            # Use VWAP as entry (accounts for depth/slippage)
+                            entry_price = sim["vwap"]
+                            slippage = round(sim["vwap"] - best_ask, 4)
+                            entry_source = (
+                                f"VWAP ${sim['vwap']:.4f} "
+                                f"(ask=${best_ask:.3f} slip=${slippage:+.4f} "
+                                f"lvl={sim['levels_consumed']} spr=${spread:.3f})"
+                            )
+
+                            # Execution quality metrics
+                            fill_meta = {
+                                "signal_delay_s": signal_delay_s,
+                                "book_spread": spread,
+                                "book_depth_usd": round(total_depth_usd, 2),
+                                "best_ask": best_ask,
+                                "best_bid": best_bid,
+                                "vwap": sim["vwap"],
+                                "slippage": slippage,
+                                "levels_consumed": sim["levels_consumed"],
+                                "book_latency_ms": round(book_latency_ms, 0),
+                                "filled_shares": sim["filled_shares"],
+                            }
                         else:
                             # One-sided book → use API price
                             entry_source = "API (one-sided book)"
                     else:
-                        # Book fetch failed (404 for resolved/sports) → use API price
+                        # Book unavailable (404 for resolved/sports)
                         entry_source = "API (no book)"
+                        # Apply pessimistic adjustment for stale signal
+                        if signal_delay_s > 120:
+                            entry_price = round(price * 1.02, 4)
+                            entry_source += f" +2% stale({signal_delay_s}s)"
                 except Exception:
-                    # Network error → use API price as fallback
                     entry_source = "API (error)"
 
             # ── Sanity: don't buy at extremes ──
@@ -314,7 +475,8 @@ class WalletTracker:
                 continue
 
             # ── LIVE: Execute real order via CLOB ──
-            actual_shares = self.stake / entry_price if entry_price > 0 else 0
+            # In paper mode, use VWAP shares from simulation
+            actual_shares = fill_meta.get("filled_shares", self.stake / entry_price) if entry_price > 0 else 0
             actual_stake = self.stake
             live_result = None
             if self.is_live and token_id:
@@ -332,11 +494,16 @@ class WalletTracker:
                         continue
                     # Use on-chain verified data
                     if isinstance(live_result, dict):
+                        if live_result.get("already_held"):
+                            events.append(f"[{self.name}] SKIP already holding {title[:30]}")
+                            continue
                         actual_shares = live_result.get("shares", actual_shares)
                         if "actual_entry_price" in live_result:
                             entry_price = live_result["actual_entry_price"]
                         if "actual_cost" in live_result:
                             actual_stake = live_result["actual_cost"]
+                            if actual_stake <= 0:
+                                actual_stake = self.stake
                 except Exception as e:
                     events.append(f"[{self.name}] LIVE BUY ERROR: {e}")
                     continue
@@ -360,6 +527,10 @@ class WalletTracker:
                 "original_price": round(price, 4),
                 "status": "open",
                 "mode": "LIVE" if (self.is_live and live_result) else "PAPER",
+                # Execution quality metrics
+                "signal_delay_s": signal_delay_s,
+                "fill_meta": fill_meta if fill_meta else None,
+                # Exit fields
                 "exit_price": None,
                 "exit_time": None,
                 "exit_reason": None,
@@ -405,6 +576,119 @@ class WalletTracker:
 
             icon = "WIN" if won else "LOSS"
             msg = f"[{self.name}] {icon} P&L ${pnl:+.2f} | {t['question'][:40]}"
+            events.append(msg)
+            self.last_event = msg
+
+        if changed:
+            save_trades(self.address, trades)
+        return events
+
+    def check_tp_sl(self) -> list[str]:
+        """
+        Monitor open positions for TP/SL exits using live book prices.
+        TP/SL are based on the OUTCOME PRICE movement, not P&L percentage.
+
+        For a BUY at entry_price:
+          - TP triggers when mid_price >= entry_price + (1 - entry_price) * tp_pct
+          - SL triggers when mid_price <= entry_price * (1 - sl_pct)
+
+        Exit is simulated at best_bid (what you'd actually get selling).
+        """
+        events = []
+        trades = self.trades
+        changed = False
+
+        for t in trades:
+            if t.get("status") != "open":
+                continue
+            token_id = t.get("token_id", "")
+            if not token_id:
+                continue
+
+            entry_px = t.get("entry_price", 0)
+            if entry_px <= 0:
+                continue
+
+            # Calculate TP/SL thresholds
+            upside = 1.0 - entry_px
+            tp_target = entry_px + upside * self.tp_pct  # e.g. 0.64 + 0.36*0.5 = 0.82
+            sl_target = entry_px * (1.0 - self.sl_pct)    # e.g. 0.64 * 0.75 = 0.48
+
+            # Get live mid price from orderbook
+            mid = _get_live_mid(token_id)
+            if mid is None:
+                continue
+
+            exit_reason = None
+            if mid >= tp_target:
+                exit_reason = f"TP hit (mid=${mid:.3f} >= ${tp_target:.3f})"
+            elif mid <= sl_target and self.cat != "CRYP":
+                # SL disabled for CRYP — 5min binary markets have 30-50% swings
+                # that resolve favorably. SL only active for slow markets (GEO/SPORT/etc)
+                exit_reason = f"SL hit (mid=${mid:.3f} <= ${sl_target:.3f})"
+
+            if not exit_reason:
+                continue
+
+            # Simulate exit at best_bid (realistic sell price)
+            try:
+                from scalper.live_client import _fetch_rest_book
+                book = _fetch_rest_book(token_id)
+                if book:
+                    bids = book.get("bids", [])
+                    if bids:
+                        # Walk bid side for sell simulation
+                        sorted_bids = sorted(bids, key=lambda b: float(b.get("price", 0)), reverse=True)
+                        exit_price = float(sorted_bids[0]["price"])
+
+                        # Simulate sell VWAP if we have enough shares
+                        shares = t.get("shares", 0)
+                        sell_usd = shares * exit_price
+                        total_bid_depth = sum(
+                            float(b.get("price", 0)) * float(b.get("size", 0))
+                            for b in sorted_bids[:10]
+                        )
+                        # If book can't absorb our sell, use pessimistic exit
+                        if total_bid_depth < sell_usd * 0.5:
+                            exit_price *= 0.97  # 3% slippage penalty
+                    else:
+                        exit_price = mid * 0.98  # No bids, estimate
+                else:
+                    exit_price = mid * 0.98
+            except Exception:
+                exit_price = mid * 0.98
+
+            # Calculate P&L
+            pnl = (exit_price - entry_px) * t.get("shares", 0)
+
+            # Execute live sell if in live mode
+            if self.is_live and token_id:
+                try:
+                    from scalper.live_client import sell_outcome
+                    sell_result = sell_outcome(
+                        token_id=token_id,
+                        price=exit_price,
+                        size=t.get("shares", 0),
+                        asset=t.get("slug", "")[:10],
+                        side=t.get("side", ""),
+                    )
+                    if sell_result and isinstance(sell_result, dict):
+                        actual_proceeds = sell_result.get("actual_proceeds", 0)
+                        pnl = actual_proceeds - t.get("stake", 0)
+                        exit_price = actual_proceeds / t.get("shares", 1) if t.get("shares", 0) > 0 else exit_price
+                except Exception as e:
+                    events.append(f"[{self.name}] LIVE SELL ERROR: {e}")
+                    continue
+
+            t["status"] = "sold"
+            t["exit_price"] = round(exit_price, 4)
+            t["exit_reason"] = exit_reason
+            t["exit_time"] = datetime.now(timezone.utc).isoformat()
+            t["pnl"] = round(pnl, 2)
+            changed = True
+
+            icon = "TP ✅" if "TP" in exit_reason else "SL ❌"
+            msg = f"[{self.name}] {icon} P&L ${pnl:+.2f} exit@${exit_price:.3f} | {t['question'][:35]}"
             events.append(msg)
             self.last_event = msg
 
@@ -505,7 +789,9 @@ def render_dashboard(trackers: list[WalletTracker], event_log: list[str], cycle:
         print("    Waiting for new transactions from tracked wallets...")
 
     # ── Footer ──
-    print(f"\n  [Ctrl+C to stop]  |  Poll: {poll_interval:.0f}s  |  {len(trackers)} independent strategies")
+    n_cryp = sum(1 for t in trackers if t.cat == "CRYP")
+    n_other = len(trackers) - n_cryp
+    print(f"\n  [Ctrl+C to stop]  |  CRYP: {n_cryp}×10s  |  Other: {n_other}×30s  |  Concurrent  |  {len(trackers)} strategies")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -526,11 +812,13 @@ def run_fleet(
 
     # Initialize live client if requested
     if is_live:
-        from scalper.live_client import init_live_client
+        from scalper.live_client import init_live_client, get_balance
         if not init_live_client(dry_run=False):
             print("  ** LIVE init failed. Check .env credentials. **")
             return
-        print("  ** LIVE MODE ACTIVE - Real orders will be placed **")
+        real_bal = get_balance() or 0.0
+        print(f"  ** LIVE MODE ACTIVE — Real orders will be placed **")
+        print(f"  ** Wallet USDC: ${real_bal:.2f} | Budget cap: ${capital_per_wallet:.2f}/wallet | Stake: ${stake:.2f}/trade **")
 
     # Create trackers — each wallet gets FULL capital independently
     trackers = []
@@ -548,12 +836,66 @@ def run_fleet(
         )
         trackers.append(tr)
 
-    session = requests.Session()
+    # ── Thread-safe event log ──
     event_log: list[str] = []
-    cycle = 0
-
-    # Keep last 100 events max
+    _log_lock = threading.Lock()
     MAX_LOG = 100
+
+    def _log_event(msg: str):
+        """Thread-safe append to event log."""
+        with _log_lock:
+            event_log.append(msg)
+
+    def _log_events(msgs: list[str]):
+        """Thread-safe batch append."""
+        if not msgs:
+            return
+        with _log_lock:
+            event_log.extend(msgs)
+
+    def _trim_log():
+        """Thread-safe log trimming."""
+        nonlocal event_log
+        with _log_lock:
+            if len(event_log) > MAX_LOG:
+                event_log = event_log[-MAX_LOG:]
+
+    def _snapshot_log() -> list[str]:
+        """Thread-safe snapshot for rendering."""
+        with _log_lock:
+            return list(event_log)
+
+    # ── Worker function for concurrent execution ──
+    def _poll_worker(tr: WalletTracker, ts: str, cycle: int) -> list[str]:
+        """Poll one wallet + TP/SL + resolutions. Returns events."""
+        evts = []
+        try:
+            poll_evts = tr.poll_and_copy()  # Uses per-wallet session
+            for e in poll_evts:
+                evts.append(f"{ts} {e}")
+
+            # Check TP/SL every 3 cycles
+            if cycle % 3 == 0 and tr.open_trades:
+                tpsl_evts = tr.check_tp_sl()
+                for e in tpsl_evts:
+                    evts.append(f"{ts} {e}")
+
+            # Check resolutions every 5 cycles
+            if cycle % 5 == 0:
+                res_evts = tr.check_resolutions()
+                for e in res_evts:
+                    evts.append(f"{ts} {e}")
+
+            # Schedule next poll
+            tr.next_poll_at = time.time() + tr.poll_interval
+
+        except Exception as exc:
+            evts.append(f"{ts} [{tr.name}] Worker error: {exc}")
+        return evts
+
+    cycle = 0
+    TICK_INTERVAL = 5.0  # Main loop tick (fast enough for 10s CRYP polls)
+    MAX_WORKERS = 8  # Parallel poll threads
 
     # Initial render
     render_dashboard(trackers, event_log, cycle, poll_interval)
@@ -562,30 +904,42 @@ def run_fleet(
         try:
             cycle += 1
             ts = datetime.now().strftime("%H:%M:%S")
+            now = time.time()
 
-            # ── Poll each wallet ──
-            for tr in trackers:
-                evts = tr.poll_and_copy(session)
-                for e in evts:
-                    event_log.append(f"{ts} {e}")
+            # ── Select wallets due for polling ──
+            due = [tr for tr in trackers if now >= tr.next_poll_at]
 
-                # Check resolutions every 5 cycles
-                if cycle % 5 == 0:
-                    res_evts = tr.check_resolutions()
-                    for e in res_evts:
-                        event_log.append(f"{ts} {e}")
+            if due:
+                # ── Concurrent polling with ThreadPoolExecutor ──
+                t0_poll = time.perf_counter()
+                with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(due))) as executor:
+                    futures = {
+                        executor.submit(_poll_worker, tr, ts, cycle): tr
+                        for tr in due
+                    }
+                    try:
+                        for future in as_completed(futures, timeout=45):
+                            tr = futures[future]
+                            try:
+                                worker_evts = future.result()
+                                _log_events(worker_evts)
+                            except Exception as exc:
+                                _log_event(f"{ts} [{tr.name}] Future error: {exc}")
+                    except TimeoutError:
+                        # Some futures timed out — collect what we can
+                        timed_out = [tr.name for f, tr in futures.items() if not f.done()]
+                        _log_event(f"{ts} [FLEET] Timeout: {', '.join(timed_out)}")
 
-                time.sleep(0.5)
+                poll_ms = (time.perf_counter() - t0_poll) * 1000
+                if poll_ms > 15000:
+                    _log_event(f"{ts} [FLEET] Slow poll: {len(due)} wallets in {poll_ms:.0f}ms")
 
-            # Trim log
-            if len(event_log) > MAX_LOG:
-                event_log = event_log[-MAX_LOG:]
+            # Trim & render
+            _trim_log()
+            render_dashboard(trackers, _snapshot_log(), cycle, poll_interval)
 
-            # ── Re-render dashboard ──
-            render_dashboard(trackers, event_log, cycle, poll_interval)
-
-            # ── Sleep ──
-            time.sleep(poll_interval)
+            # ── Sleep until next tick ──
+            time.sleep(TICK_INTERVAL)
 
         except KeyboardInterrupt:
             clear_screen()
@@ -610,7 +964,7 @@ def run_fleet(
             return
         except Exception as e:
             logger.error("Fleet loop error: %s", e)
-            time.sleep(poll_interval)
+            time.sleep(TICK_INTERVAL)
 
 
 def run_single(target: str, capital: float, stake: float,

@@ -1,0 +1,17 @@
+{
+  "uptime_s": 1149.0,
+  "polling_active": true,
+  "polls_total": 272,
+  "rpc_errors": 60,
+  "events_received": 0,
+  "events_processed": 0,
+  "events_buy": 0,
+  "events_sell": 0,
+  "events_duplicated": 0,
+  "callback_errors": 0,
+  "avg_detection_latency_s": 0.0,
+  "avg_callback_ms": 0.0,
+  "last_event_age_s": null,
+  "last_block": 86636329,
+  "saved_at": "2026-05-09T19:01:27.324563+00:00"
+}

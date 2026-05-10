@@ -128,13 +128,13 @@
     "momentum_score": 0.685,
     "momentum_1h": -0.105,
     "momentum_1d": 0.13,
-    "status": "open",
+    "status": "sold",
     "tp_price": 0.407,
     "sl_price": 0.2775,
-    "exit_price": null,
-    "exit_time": null,
-    "exit_reason": null,
-    "pnl": null,
+    "exit_price": 0.42,
+    "exit_time": "2026-05-09T21:10:57.961293+00:00",
+    "exit_reason": "take_profit (+13.5%)",
+    "pnl": 0.27,
     "gamma_id": "540817"
   },
   {
@@ -228,5 +228,28 @@
     "exit_reason": null,
     "pnl": null,
     "gamma_id": "553828"
+  },
+  {
+    "id": "v10_011",
+    "market_id": "566187",
+    "question": "Will Arsenal win the 2025\u201326 English Premier League?",
+    "slug": "will-arsenal-win-the-202526-english-premier-league",
+    "side": "NO",
+    "token_id": "110702402419434606997240498590139657923776420245193392095489394526960556962226",
+    "entry_price": 0.27,
+    "entry_time": "2026-05-09T21:11:19.723085+00:00",
+    "stake": 2.0,
+    "shares": 7.4074,
+    "momentum_score": 0.712,
+    "momentum_1h": 0.0,
+    "momentum_1d": -0.06,
+    "status": "open",
+    "tp_price": 0.297,
+    "sl_price": 0.2025,
+    "exit_price": null,
+    "exit_time": null,
+    "exit_reason": null,
+    "pnl": null,
+    "gamma_id": "566187"
   }
 ]
