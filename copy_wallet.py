@@ -402,6 +402,15 @@ class WalletTracker:
             if action != "BUY":
                 continue
 
+            # ── Coin Filter (Disabled per user request) ──
+            # if self.cat == "CRYP":
+            #     slug_lower = slug.lower()
+            #     is_eth_btc = ("btc" in slug_lower or "bitcoin" in slug_lower or 
+            #                   "eth" in slug_lower or "ethereum" in slug_lower)
+            #     if not is_eth_btc:
+            #         events.append(f"[{self.name}] SKIP non-BTC/ETH coin {title[:25]}")
+            #         continue
+
             # ── Capital check ──
             if self.available < self.stake:
                 events.append(f"[{self.name}] SKIP no capital (${self.available:.0f}) {title[:30]}")
