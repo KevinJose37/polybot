@@ -28,10 +28,16 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import requests
+
+# Optimization: Import ChainListener (deferred to avoid circular imports)
+try:
+    from chain_listener import ChainListener
+except ImportError:
+    ChainListener = None
 
 # ── Project imports ──────────────────────────────────────────────
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -201,16 +207,40 @@ def _simulate_fill(asks: list, order_usd: float) -> dict:
     }
 
 
+# ══════════════════════════════════════════════════════════════════
+#  ORDERBOOK CACHE (Shared across all trackers)
+# ══════════════════════════════════════════════════════════════════
+
+_BOOK_CACHE = {}  # {token_id: {"data": dict, "ts": float}}
+_CACHE_TTL = 3.0  # seconds
+
+def _get_cached_book(token_id: str) -> dict | None:
+    """Get orderbook from cache or fetch fresh if expired."""
+    now = time.time()
+    if token_id in _BOOK_CACHE:
+        entry = _BOOK_CACHE[token_id]
+        if now - entry["ts"] < _CACHE_TTL:
+            return entry["data"]
+    
+    # Fetch fresh
+    try:
+        from scalper.live_client import _fetch_rest_book
+        book = _fetch_rest_book(token_id)
+        if book:
+            _BOOK_CACHE[token_id] = {"data": book, "ts": now}
+            return book
+    except Exception:
+        pass
+    return None
+
 def _get_live_mid(token_id: str) -> float | None:
     """
-    Fetch current mid price from REST book for TP/SL monitoring.
-    Returns mid price or None if unavailable.
+    Fetch current mid price from cached REST book for TP/SL monitoring.
     """
+    data = _get_cached_book(token_id)
+    if not data:
+        return None
     try:
-        resp = requests.get(_CLOB_BOOK_URL, params={"token_id": token_id}, timeout=3)
-        if resp.status_code != 200:
-            return None
-        data = resp.json()
         bids = data.get("bids", [])
         asks = data.get("asks", [])
         if not bids or not asks:
@@ -393,7 +423,7 @@ class WalletTracker:
                 try:
                     from scalper.live_client import _fetch_rest_book
                     t0_book = time.perf_counter()
-                    book = _fetch_rest_book(token_id)
+                    book = _get_cached_book(token_id)
                     book_latency_ms = (time.perf_counter() - t0_book) * 1000
 
                     if book:
@@ -632,8 +662,7 @@ class WalletTracker:
 
             # Simulate exit at best_bid (realistic sell price)
             try:
-                from scalper.live_client import _fetch_rest_book
-                book = _fetch_rest_book(token_id)
+                book = _get_cached_book(token_id)
                 if book:
                     bids = book.get("bids", [])
                     if bids:
@@ -674,8 +703,11 @@ class WalletTracker:
                     )
                     if sell_result and isinstance(sell_result, dict):
                         actual_proceeds = sell_result.get("actual_proceeds", 0)
-                        pnl = actual_proceeds - t.get("stake", 0)
-                        exit_price = actual_proceeds / t.get("shares", 1) if t.get("shares", 0) > 0 else exit_price
+                        rem_shares = sell_result.get("remaining_shares", 0)
+                        sold_shares = max(t.get("shares", 0) - rem_shares, 0.01)
+                        exit_price = actual_proceeds / sold_shares
+                        # Calculate P&L using the true average exit price over all shares
+                        pnl = (exit_price - entry_px) * t.get("shares", 0)
                 except Exception as e:
                     events.append(f"[{self.name}] LIVE SELL ERROR: {e}")
                     continue
@@ -822,6 +854,7 @@ def run_fleet(
 
     # Create trackers — each wallet gets FULL capital independently
     trackers = []
+    tracker_map = {}  # address -> tracker
     for w in wallets:
         tr = WalletTracker(
             address=w["address"],
@@ -835,6 +868,28 @@ def run_fleet(
             is_live=is_live,
         )
         trackers.append(tr)
+        tracker_map[tr.address.lower()] = tr
+
+    # ── Chain Listener Integration ──
+    listener = None
+    if ChainListener:
+        def _on_chain_event(event: dict):
+            ts = datetime.now().strftime("%H:%M:%S")
+            addr = event.get("wallet", "").lower()
+            tr = tracker_map.get(addr)
+            if tr:
+                # Force an immediate poll to catch the new trade via REST
+                # (The Activity API is sometimes delayed, but ChainListener
+                # tells us exactly WHEN to look).
+                tr.next_poll_at = time.time() - 1
+                _log_event(f"{ts} [CHAIN] Signal from {tr.name}: {event['direction']} detected on-chain")
+
+        listener = ChainListener(
+            watched_wallets=list(tracker_map.keys()),
+            on_buy=_on_chain_event,
+            on_sell=_on_chain_event,
+        )
+        listener.start()
 
     # ── Thread-safe event log ──
     event_log: list[str] = []
@@ -942,6 +997,8 @@ def run_fleet(
             time.sleep(TICK_INTERVAL)
 
         except KeyboardInterrupt:
+            if listener:
+                listener.stop()
             clear_screen()
             print("\n  COPY FLEET — FINAL LEADERBOARD")
             print("=" * 75)

@@ -506,7 +506,11 @@ def sell_outcome(
 
         # ── Calculate limit_price from REAL best_bid ──────────────
         if best_bid and best_bid > 0.01:
-            limit_price = max(round(best_bid - 0.01, 4), 0.01)
+            # Sell up to 3 cents below the lower of best_bid or requested price
+            base_price = min(best_bid, price) if price > 0.01 else best_bid
+            limit_price = max(round(base_price - 0.03, 4), 0.01)
+        elif price > 0.01:
+            limit_price = max(round(price - 0.03, 4), 0.01)
         else:
             limit_price = None
 
