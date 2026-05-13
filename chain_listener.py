@@ -47,7 +47,7 @@ RPC_URL = f"https://polygon-mainnet.g.alchemy.com/v2/{_ALCHEMY_KEY}"
 CTF_CONTRACT = "0x4d97dcd97ec945f40cf65f87097ace5ea0476045"
 
 # TransferSingle(address operator, address from, address to, uint256 id, uint256 value)
-TRANSFER_SINGLE_TOPIC = "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c583259e236544146039"
+TRANSFER_SINGLE_TOPIC = "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62"
 
 # Polling config
 POLL_INTERVAL = 4.0  # seconds between getLogs calls
@@ -437,7 +437,9 @@ class ChainListener:
 
         # Dedup
         tx_hash = event["tx_hash"]
-        if not tx_hash or not self.dedup.is_new(tx_hash):
+        log_index = event.get("log_index", 0)
+        dedup_key = f"{tx_hash}_{log_index}"
+        if not tx_hash or not self.dedup.is_new(dedup_key):
             self.metrics.record_duplicate()
             return
 
