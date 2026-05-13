@@ -86,7 +86,13 @@ class PnLEngine:
             buy = buys[0]
             sell = sells[0]
 
-            match_size = min(buy.size, sell.size)
+            # Reduce matched amounts by tracking remaining sizes
+            if not hasattr(buy, "remaining_size"):
+                buy.remaining_size = buy.size
+            if not hasattr(sell, "remaining_size"):
+                sell.remaining_size = sell.size
+
+            match_size = min(buy.remaining_size, sell.remaining_size)
             spread_profit = (sell.price - buy.price) * match_size
 
             self.pnl.spread_pnl += spread_profit
@@ -102,7 +108,6 @@ class PnLEngine:
             self.total_closed_trades_by_asset[asset] += match_size
             
             # Record the exit (sell) for hold vs sold tracking
-            # We "sold" the long position at sell.price
             self.sold_positions.append({
                 "market_key": market_key,
                 "asset": asset,
@@ -111,13 +116,12 @@ class PnLEngine:
                 "size": match_size
             })
 
-            # Reduce matched amounts
-            buy.size -= match_size
-            sell.size -= match_size
+            buy.remaining_size -= match_size
+            sell.remaining_size -= match_size
 
-            if buy.size == 0:
+            if buy.remaining_size == 0:
                 buys.pop(0)
-            if sell.size == 0:
+            if sell.remaining_size == 0:
                 sells.pop(0)
 
             logger.debug(
