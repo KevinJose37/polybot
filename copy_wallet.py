@@ -23,7 +23,10 @@ Usage (single wallet):
 import argparse
 import json
 import logging
+import math
 import os
+import random
+import re
 import sys
 import threading
 import time
@@ -153,7 +156,14 @@ def _check_resolution(slug: str) -> dict | None:
             return None
         mkt = events[0].get("markets", [{}])[0]
         if not bool(mkt.get("closed", False)):
-            return None
+            # Polymarket sometimes takes hours to mark 'closed'.
+            # If price is > 0.999, it is mathematically resolved.
+            op_test = mkt.get("outcomePrices", '["0.5","0.5"]')
+            if isinstance(op_test, str):
+                op_test = json.loads(op_test)
+            if float(op_test[0]) < 0.999 and float(op_test[1]) < 0.999:
+                return None
+                
         op = mkt.get("outcomePrices", '["0.5","0.5"]')
         if isinstance(op, str):
             op = json.loads(op)
@@ -163,28 +173,168 @@ def _check_resolution(slug: str) -> dict | None:
 
 
 # ══════════════════════════════════════════════════════════════════
-#  REALISTIC FILL SIMULATION (VWAP book-walk)
+#  HFT-GRADE FILL SIMULATION (Paper Mode Microstructure Engine)
+# ══════════════════════════════════════════════════════════════════
+# Implements: adverse selection, probabilistic fills, dynamic latency
+# penalty, FAK rejection, fee model, spread expansion, competing
+# copier discount.  All models are PAPER-ONLY — live mode is untouched.
 # ══════════════════════════════════════════════════════════════════
 
 _CLOB_BOOK_URL = "https://clob.polymarket.com/book"
 
+# ── Fee constants ────────────────────────────────────────────────
+POLYGON_GAS_COST_USD = 0.02   # Average gas per tx on Polygon
+TAKER_FEE_PCT = 0.00          # Polymarket taker fee (currently 0%)
+ESTIMATED_COPIERS = 3          # Estimated bots copying the same wallet
 
-def _simulate_fill(asks: list, order_usd: float) -> dict:
+
+# ── Market duration extraction ───────────────────────────────────
+_SLUG_DURATION_RE = re.compile(r'(\d+)m(?:in)?', re.IGNORECASE)
+_SLUG_HOURLY_RE   = re.compile(r'(\d+)h', re.IGNORECASE)
+
+
+def _extract_market_duration_s(slug: str) -> float:
+    """Extract market duration in seconds from slug like 'btc-updown-5m-...'."""
+    m = _SLUG_DURATION_RE.search(slug)
+    if m:
+        return float(m.group(1)) * 60.0
+    m = _SLUG_HOURLY_RE.search(slug)
+    if m:
+        return float(m.group(1)) * 3600.0
+    return 900.0  # Default 15 minutes if unknown
+
+
+# ── Fee model ────────────────────────────────────────────────────
+
+def _calc_fees(stake: float) -> float:
+    """Returns total fee cost in USD for a single entry or exit."""
+    return stake * TAKER_FEE_PCT + POLYGON_GAS_COST_USD
+
+
+# ── Adverse selection model ──────────────────────────────────────
+
+def _calc_adverse_selection_cost(
+    entry_price: float,
+    signal_delay_s: float,
+    market_duration_s: float = 300.0,
+    volatility: float = 0.15,
+    information_ratio: float = 0.6,
+) -> float:
     """
-    Walk the ask side of the book to calculate a realistic fill.
-    Returns dict with vwap, filled_usd, filled_shares, levels_consumed, fully_filled.
+    Estimates the adverse selection cost of copying an informed trader.
+    Returns a price penalty to ADD to the ask price.
+
+    Model: AS = σ × √(delay / duration) × IR
+    """
+    if market_duration_s <= 0 or signal_delay_s <= 0:
+        return 0.0
+    time_fraction = min(signal_delay_s / market_duration_s, 1.0)
+    as_cost = volatility * math.sqrt(time_fraction) * information_ratio
+    return round(min(as_cost, 0.15), 4)  # Cap at 15 cents
+
+
+# ── Spread expansion model ───────────────────────────────────────
+
+def _estimate_spread_at_execution(
+    current_spread: float,
+    signal_delay_s: float,
+    market_remaining_s: float = 300.0,
+) -> float:
+    """Spreads widen as market approaches expiry and after informed flow."""
+    expiry_factor = max(1.0, 2.0 * (1.0 - max(market_remaining_s, 1.0) / 300.0))
+    flow_factor = 1.0 + signal_delay_s * 0.01
+    return round(current_spread * expiry_factor * flow_factor, 4)
+
+
+# ── FAK rejection simulation ────────────────────────────────────
+
+def _simulate_fak_outcome(
+    spread: float,
+    book_depth_usd: float,
+    order_size_usd: float,
+    signal_delay_s: float,
+) -> bool:
+    """Returns True if a FAK order would likely fill."""
+    depth_ratio = order_size_usd / max(book_depth_usd, 0.01)
+    delay_factor = min(signal_delay_s / 30.0, 1.0)
+    spread_factor = min(spread / 0.05, 1.0)
+    fill_prob = 0.95 * (1.0 - depth_ratio) * (1.0 - delay_factor * 0.3) * (1.0 - spread_factor * 0.2)
+    fill_prob = max(0.10, min(0.98, fill_prob))
+    return random.random() < fill_prob
+
+
+# ── Dynamic latency penalty (replaces old fixed 0.5%/s model) ───
+
+def apply_latency_penalty(
+    ask_levels: list,
+    signal_delay_seconds: float,
+    market_duration_s: float = 300.0,
+) -> list:
+    """
+    Dynamic penalty based on time-fraction of market elapsed.
+    Adjusts BOTH price (up) and size (down) to model MM quote withdrawal.
+    """
+    if market_duration_s <= 0:
+        market_duration_s = 300.0
+    time_frac = min(signal_delay_seconds / market_duration_s, 1.0)
+    # Quadratic-ish penalty: small delays = small impact, large = big
+    penalty_pct = min(time_frac ** 0.7 * 0.15, 0.20)  # Cap at 20%
+    # Size reduction: MMs pull liquidity after seeing informed flow
+    size_factor = max(0.30, 1.0 - penalty_pct * 2)
+
+    adjusted_levels = []
+    for level in ask_levels:
+        adj_price = float(level.get("price", 0)) * (1.0 + penalty_pct)
+        adj_size = float(level.get("size", 0)) * size_factor
+        adjusted_levels.append({
+            "price": min(adj_price, 0.99),
+            "size": adj_size,
+        })
+    return adjusted_levels
+
+
+# ── Probabilistic fill simulation (entry) ────────────────────────
+
+def _simulate_fill(
+    asks: list,
+    order_usd: float,
+    signal_delay_s: float = 0.0,
+    book_age_s: float = 0.7,
+    slug: str = "",
+    paper_mode: bool = False,
+) -> dict:
+    """
+    Walk the ask side of the book to calculate a fill.
+
+    In paper_mode, applies probabilistic level survival to model the
+    reality that book levels may have been consumed by the time your
+    order arrives.  In live mode (paper_mode=False), behaves as the
+    original deterministic walk.
     """
     sorted_asks = sorted(asks, key=lambda a: float(a.get("price", 0)))
     filled_usd = 0.0
     filled_shares = 0.0
     levels_consumed = 0
+    total_staleness = signal_delay_s + book_age_s
 
-    for level in sorted_asks:
+    for idx, level in enumerate(sorted_asks):
         px = float(level.get("price", 0))
         sz = float(level.get("size", 0))
         if px <= 0 or sz <= 0:
             continue
-        available_usd = px * sz
+
+        effective_size = sz
+        if paper_mode and total_staleness > 0:
+            # Probability this level still exists after staleness
+            # Levels near BBO vanish faster; deeper levels survive longer
+            survival_prob = max(0.10, min(0.95,
+                0.90 * (0.85 ** idx) * (0.95 ** (total_staleness / 5.0))
+            ))
+            # Competing copiers reduce available size
+            copier_discount = 1.0 / (1.0 + ESTIMATED_COPIERS)
+            effective_size = sz * survival_prob * copier_discount
+
+        available_usd = px * effective_size
         remaining = order_usd - filled_usd
         levels_consumed += 1
 
@@ -194,16 +344,103 @@ def _simulate_fill(asks: list, order_usd: float) -> dict:
             filled_usd += remaining
             break
         else:
-            filled_shares += sz
+            filled_shares += effective_size
             filled_usd += available_usd
 
     vwap = round(filled_usd / filled_shares, 6) if filled_shares > 0 else 0.0
+    fill_ratio = filled_usd / order_usd if order_usd > 0 else 0.0
+
+    if fill_ratio >= 0.95:
+        status = "fully_filled"
+    elif fill_ratio > 0:
+        status = "partial_fill"
+    else:
+        status = "rejected"
+
+    # In paper mode, add adverse selection to the VWAP
+    as_cost = 0.0
+    if paper_mode and vwap > 0:
+        market_dur = _extract_market_duration_s(slug)
+        as_cost = _calc_adverse_selection_cost(
+            entry_price=vwap,
+            signal_delay_s=signal_delay_s,
+            market_duration_s=market_dur,
+        )
+        vwap = round(min(vwap + as_cost, 0.99), 6)
+        # Recalculate shares at the worse price
+        if vwap > 0:
+            filled_shares = round(filled_usd / vwap, 4)
+
+    return {
+        "status": status,
+        "actual_stake": round(filled_usd, 4),
+        "actual_shares": round(filled_shares, 4),
+        "fill_ratio": fill_ratio,
+        "unfilled_usd": round(order_usd - filled_usd, 4),
+        "vwap": vwap,
+        "levels_consumed": levels_consumed,
+        "adverse_selection": as_cost,
+        "fee_cost": round(_calc_fees(filled_usd), 4) if paper_mode else 0.0,
+    }
+
+
+# ── Probabilistic sell fill simulation (exit) ────────────────────
+
+def _simulate_sell_fill(
+    bids: list,
+    shares_to_sell: float,
+    signal_delay_s: float = 0.0,
+    book_age_s: float = 0.7,
+    paper_mode: bool = False,
+) -> dict:
+    """
+    Walk the bid side of the book to calculate a realistic exit fill.
+    In paper_mode, applies probabilistic level survival + copier competition.
+    """
+    sorted_bids = sorted(bids, key=lambda b: float(b.get("price", 0)), reverse=True)
+    proceeds_usd = 0.0
+    sold_shares = 0.0
+    levels_consumed = 0
+    total_staleness = signal_delay_s + book_age_s
+
+    for idx, level in enumerate(sorted_bids):
+        px = float(level.get("price", 0))
+        sz = float(level.get("size", 0))
+        if px <= 0 or sz <= 0:
+            continue
+
+        effective_size = sz
+        if paper_mode and total_staleness > 0:
+            survival_prob = max(0.10, min(0.95,
+                0.90 * (0.85 ** idx) * (0.95 ** (total_staleness / 5.0))
+            ))
+            copier_discount = 1.0 / (1.0 + ESTIMATED_COPIERS)
+            effective_size = sz * survival_prob * copier_discount
+
+        remaining_shares = shares_to_sell - sold_shares
+        levels_consumed += 1
+
+        if effective_size >= remaining_shares:
+            sold_shares += remaining_shares
+            proceeds_usd += remaining_shares * px
+            break
+        else:
+            sold_shares += effective_size
+            proceeds_usd += effective_size * px
+
+    if sold_shares == 0:
+        return {"vwap": 0.0, "proceeds": 0.0, "sold_shares": 0.0, "unfilled": shares_to_sell, "levels_consumed": 0}
+
+    vwap = round(proceeds_usd / sold_shares, 6)
+    unfilled = shares_to_sell - sold_shares
+
     return {
         "vwap": vwap,
-        "filled_usd": round(filled_usd, 4),
-        "filled_shares": round(filled_shares, 4),
+        "proceeds": round(proceeds_usd, 4),
+        "sold_shares": round(sold_shares, 4),
+        "unfilled": round(unfilled, 4),
         "levels_consumed": levels_consumed,
-        "fully_filled": filled_usd >= order_usd * 0.95,
+        "fee_cost": round(_calc_fees(proceeds_usd), 4) if paper_mode else 0.0,
     }
 
 
@@ -214,9 +451,21 @@ def _simulate_fill(asks: list, order_usd: float) -> dict:
 _BOOK_CACHE = {}  # {token_id: {"data": dict, "ts": float}}
 _CACHE_TTL = 3.0  # seconds
 
-def _get_cached_book(token_id: str) -> dict | None:
-    """Get orderbook from cache or fetch fresh if expired."""
+def _get_cached_book(token_id: str, is_live: bool = True) -> dict | None:
+    """Get orderbook from WS (if paper mode) or REST cache."""
     now = time.time()
+    
+    # ── PAPER MODE: Try WebSocket L2 first ──
+    if not is_live:
+        try:
+            from scalper.ws_orderbook import get_live_book
+            ws_book = get_live_book(token_id)
+            if ws_book:
+                return ws_book
+        except Exception:
+            pass
+
+    # ── LIVE MODE or WS Fallback: Use REST Cache ──
     if token_id in _BOOK_CACHE:
         entry = _BOOK_CACHE[token_id]
         if now - entry["ts"] < _CACHE_TTL:
@@ -233,11 +482,11 @@ def _get_cached_book(token_id: str) -> dict | None:
         pass
     return None
 
-def _get_live_mid(token_id: str) -> float | None:
+def _get_live_mid(token_id: str, is_live: bool = True) -> float | None:
     """
     Fetch current mid price from cached REST book for TP/SL monitoring.
     """
-    data = _get_cached_book(token_id)
+    data = _get_cached_book(token_id, is_live=is_live)
     if not data:
         return None
     try:
@@ -264,6 +513,9 @@ class WalletTracker:
     # Category-based poll intervals (seconds)
     _POLL_INTERVALS = {"CRYP": 10.0, "SPORT": 30.0, "GEO": 30.0, "POL": 30.0, "FIN": 30.0}
 
+    # Lock to serialize live CLOB orders (prevents parallel USDC delta corruption)
+    _live_order_lock = threading.Lock()
+
     def __init__(self, address: str, name: str, cat: str, wr: float,
                  capital: float, stake: float,
                  tp_pct: float, sl_pct: float, is_live: bool = False):
@@ -277,6 +529,7 @@ class WalletTracker:
         self.sl_pct = sl_pct
         self.is_live = is_live
         self.seen = load_seen(address)
+        self.processed_txs = set()
         self.start_ts = int(time.time())
         self.last_event = ""
         self.polls = 0
@@ -290,6 +543,12 @@ class WalletTracker:
         self._live_balance: float | None = None
         self._cold_started = False  # Will pre-seed seen on first poll
         self._live_balance_ts: float = 0.0
+        self.last_reconcile = 0.0
+        
+        # Lifesaver (Equity Curve Tracker)
+        self.is_paused = False
+        self.last_pnl: float | None = None
+        self.last_pnl_check = 0.0
 
     @property
     def ws(self) -> str:
@@ -314,8 +573,20 @@ class WalletTracker:
     @property
     def available(self) -> float:
         if self.is_live:
-            # In live mode: use --capital as budget cap
-            # Real USDC balance is enforced at order execution level
+            # In live mode: use real USDC balance from CLOB (cached every 30s)
+            now = time.time()
+            if self._live_balance is None or now - self._live_balance_ts > 30:
+                try:
+                    from scalper.live_client import get_balance
+                    bal = get_balance()
+                    if bal is not None:
+                        self._live_balance = bal
+                        self._live_balance_ts = now
+                except Exception:
+                    pass
+            if self._live_balance is not None:
+                return self._live_balance
+            # Fallback to --capital if CLOB is unreachable
             return self.capital - self.exposure
         # Paper mode: simulated capital + earned P&L - exposure
         return self.capital + self.total_pnl - self.exposure
@@ -332,9 +603,412 @@ class WalletTracker:
         wins = sum(1 for t in res if (t.get("pnl", 0) or 0) > 0)
         return wins / len(res) * 100
 
+    def on_chain_buy(self, event: dict, log_cb=print):
+        """Fast-path execution triggered directly by ChainListener."""
+        token_id = event.get("token_id", "")
+        amount = event.get("amount", 0)
+        tx_hash = event.get("tx_hash", "")
+        
+        if not token_id or tx_hash in self.processed_txs:
+            return
+            
+        if self.is_paused:
+            log_cb(f"[{self.name}] \U0001F6A8 LIFESAVER ACTIVO: Ignorando compra de {token_id[:8]} por racha perdedora de Ohanism.")
+            return
+            
+        self.processed_txs.add(tx_hash)
+        
+        # Scale-in limit: Max 4 purchases per token
+        trades = self.trades
+        open_pos = [t for t in trades if t.get("status") == "open" and t.get("token_id") == token_id]
+        if len(open_pos) >= 4:
+            log_cb(f"[{self.name}] [FAST-PATH] SKIP MAX SCALE-IN (4/4) reached for {token_id[:8]}")
+            return
+        
+        # Capital check
+        if self.available < self.stake:
+            self.last_event = f"[{self.name}] [FAST-PATH] SKIP no capital (${self.available:.0f})"
+            log_cb(self.last_event)
+            return
+            
+        # Verify orderbook + VWAP
+        entry_price = 0.5
+        entry_source = "API (ChainListener)"
+        fill_meta = {}
+        slug = f"pending_{token_id[:8]}"
+        outcome = "Unknown"
+        title = f"Pending metadata for {token_id[:8]}..."
+        
+        try:
+            from scalper.live_client import _fetch_rest_book
+            t0_book = time.perf_counter()
+            book = _get_cached_book(token_id, is_live=self.is_live)
+            book_latency_ms = (time.perf_counter() - t0_book) * 1000
+
+            if book:
+                bids = book.get("bids", [])
+                asks = book.get("asks", [])
+                if bids and asks:
+                    # Estimate market duration from slug for latency models
+                    _mkt_dur = _extract_market_duration_s(slug)
+
+                    if not self.is_live:
+                        asks = apply_latency_penalty(asks, signal_delay_seconds=5.0, market_duration_s=_mkt_dur)
+
+                    sorted_asks = sorted(asks, key=lambda a: float(a.get("price", 0)))
+                    sorted_bids = sorted(bids, key=lambda b: float(b.get("price", 0)), reverse=True)
+                    best_ask = float(sorted_asks[0]["price"])
+                    best_bid = float(sorted_bids[0]["price"])
+                    spread = round(best_ask - best_bid, 4)
+
+                    total_depth_usd = sum(
+                        float(a.get("price", 0)) * float(a.get("size", 0))
+                        for a in sorted_asks[:10]
+                    )
+
+                    # ── Spread expansion estimate (paper only) ──
+                    if not self.is_live:
+                        est_spread = _estimate_spread_at_execution(spread, 5.0, _mkt_dur)
+                        if est_spread > 0.08:
+                            self.skipped_no_liq += 1
+                            log_cb(f"[{self.name}] [FAST-PATH] SKIP est-spread ${est_spread:.3f}")
+                            return
+
+                    if spread > 0.08:
+                        self.skipped_no_liq += 1
+                        log_cb(f"[{self.name}] [FAST-PATH] SKIP spread ${spread:.3f}")
+                        return
+
+                    if total_depth_usd < self.stake * 1.5:
+                        self.skipped_no_liq += 1
+                        log_cb(f"[{self.name}] [FAST-PATH] SKIP depth ${total_depth_usd:.0f}<${self.stake*1.5:.0f}")
+                        return
+
+                    # ── FAK rejection gate (paper only) ──
+                    if not self.is_live:
+                        if not _simulate_fak_outcome(spread, total_depth_usd, self.stake, 5.0):
+                            self.skipped_no_liq += 1
+                            log_cb(f"[{self.name}] [FAST-PATH] SKIP FAK rejected (sim)")
+                            return
+
+                    sim = _simulate_fill(
+                        asks, self.stake,
+                        signal_delay_s=5.0,
+                        book_age_s=book_latency_ms / 1000.0,
+                        slug=slug,
+                        paper_mode=not self.is_live,
+                    )
+                    if sim["status"] == "rejected":
+                        self.skipped_no_liq += 1
+                        log_cb(f"[{self.name}] [FAST-PATH] SKIP no liquidity")
+                        return
+
+                    entry_price = sim["vwap"]
+                    slippage = round(sim["vwap"] - best_ask, 4)
+                    entry_source = f"VWAP ${sim['vwap']:.4f} (ask=${best_ask:.3f} slip=${slippage:+.4f} spr=${spread:.3f})"
+                    fill_meta = {
+                        "signal_delay_s": 1,
+                        "book_spread": spread,
+                        "book_depth_usd": round(total_depth_usd, 2),
+                        "best_ask": best_ask,
+                        "best_bid": best_bid,
+                        "vwap": sim["vwap"],
+                        "slippage": slippage,
+                        "levels_consumed": sim["levels_consumed"],
+                        "book_latency_ms": round(book_latency_ms, 0),
+                        "actual_shares": sim["actual_shares"],
+                        "actual_stake": sim["actual_stake"],
+                        "fill_ratio": sim["fill_ratio"],
+                    }
+                else:
+                    return 
+            else:
+                return 
+        except Exception as e:
+            log_cb(f"[{self.name}] [FAST-PATH] Book error: {e}")
+            return
+            
+        if entry_price >= 0.90 or entry_price <= 0.05:
+            log_cb(f"[{self.name}] [FAST-PATH] SKIP entry price ${entry_price:.2f} (terrible risk/reward for Taker)")
+            return
+
+        if not self.is_live:
+            actual_shares = sim.get("actual_shares", 0.0) if 'sim' in locals() else 0.0
+            actual_stake = sim.get("actual_stake", self.stake) if 'sim' in locals() else self.stake
+        else:
+            actual_shares = fill_meta.get("actual_shares", self.stake / entry_price) if entry_price > 0 else 0
+            actual_stake = self.stake
+        
+        if self.is_live:
+            try:
+                from scalper.live_client import buy_outcome
+                # Serialize live orders to prevent parallel USDC delta corruption
+                with self._live_order_lock:
+                    live_result = buy_outcome(
+                        token_id=token_id,
+                        price=entry_price,
+                        size=self.stake,
+                        asset=slug[:10],
+                        side=outcome,
+                    )
+                if not live_result:
+                    log_cb(f"[{self.name}] [FAST-PATH] LIVE BUY FAILED")
+                    return
+                if isinstance(live_result, dict):
+                    if live_result.get("already_held"):
+                        return
+                    actual_shares = live_result.get("shares", actual_shares)
+                    if "actual_entry_price" in live_result:
+                        entry_price = live_result["actual_entry_price"]
+                    if "actual_cost" in live_result:
+                        actual_stake = live_result["actual_cost"]
+                        if actual_stake <= 0:
+                            actual_stake = self.stake
+                    # ── Sanity clamps: Polymarket prices are always [0, 1] ──
+                    entry_price = min(max(entry_price, 0.01), 0.99)
+                    actual_stake = min(actual_stake, self.stake * 1.5)
+            except Exception as e:
+                log_cb(f"[{self.name}] [FAST-PATH] LIVE BUY ERROR: {e}")
+                return
+
+        trades = self.trades
+        entry = {
+            "id": _next_id(trades, self.address),
+            "wallet": self.address[:14],
+            "wallet_name": self.name,
+            "slug": slug,
+            "question": title[:100],
+            "side": outcome,
+            "token_id": token_id,
+            "entry_price": round(entry_price, 4),
+            "entry_source": entry_source,
+            "entry_time": datetime.now(timezone.utc).isoformat(),
+            "stake": round(actual_stake, 2),
+            "shares": round(actual_shares, 4),
+            "original_size": round(amount, 2),
+            "original_price": 0.5,
+            "status": "open",
+            "mode": "live" if self.is_live else "paper",
+            "signal_delay_s": 1,
+            "fill_meta": fill_meta,
+            "tx_hash": tx_hash
+        }
+        trades.append(entry)
+        save_trades(self.address, trades)
+        
+        msg = f"[{self.name}] \u26A1 [FAST-PATH BUY] @ ${entry_price:.2f} | {token_id[:8]}"
+        log_cb(msg)
+        self.last_event = msg
+
+    def on_chain_sell(self, event: dict, log_cb=print):
+        """Fast-path SELL execution triggered directly by ChainListener."""
+        token_id = event.get("token_id", "")
+        tx_hash = event.get("tx_hash", "")
+        
+        if not token_id or tx_hash in self.processed_txs:
+            return
+            
+        self.processed_txs.add(tx_hash)
+        
+        # Check if we own this token
+        trades = self.trades
+        open_pos = [t for t in trades if t.get("status") == "open" and t.get("token_id") == token_id]
+        if not open_pos:
+            return
+
+        # Fetch live orderbook to get exit price
+        from scalper.live_client import sell_outcome, _fetch_rest_book
+        book = _get_cached_book(token_id, is_live=self.is_live)
+        
+        # Sell all of them!
+        total_shares = sum(t.get("shares", 0.0) for t in open_pos)
+        
+        exit_price = 0.0
+        
+        if book and book.get("bids"):
+            bids = book.get("bids", [])
+            if not self.is_live:
+                sim_sell = _simulate_sell_fill(bids, total_shares, signal_delay_s=4.0, paper_mode=True)
+                exit_price = sim_sell["vwap"]
+                if sim_sell["unfilled"] > 0:
+                    log_cb(f"[{self.name}] [FAST-PATH] SELL WARNING: Partial fill, unfilled {sim_sell['unfilled']}")
+            else:
+                sorted_bids = sorted(bids, key=lambda b: float(b.get("price", 0)), reverse=True)
+                exit_price = float(sorted_bids[0]["price"])
+        
+        # Fallback: if cached book gave no price, fetch fresh via REST
+        if exit_price < 0.01:
+            try:
+                rest_book = _fetch_rest_book(token_id)
+                if rest_book and rest_book.get("bids"):
+                    sorted_bids = sorted(rest_book["bids"], key=lambda b: float(b.get("price", 0)), reverse=True)
+                    exit_price = float(sorted_bids[0]["price"])
+                    log_cb(f"[{self.name}] [FAST-PATH] SELL: Got exit price ${exit_price:.3f} via REST fallback")
+            except Exception:
+                pass
+        
+        sell_success = True
+        if total_shares > 0 and self.is_live:
+            live_result = sell_outcome(
+                token_id=token_id,
+                price=exit_price,
+                size=total_shares,
+                asset=open_pos[0].get("slug", "unknown")[:10],
+                side=open_pos[0].get("side", "Unknown"),
+            )
+            if not live_result:
+                sell_success = False
+                log_cb(f"[{self.name}] [FAST-PATH] SELL FAILED on CLOB — marking positions closed anyway")
+
+        # Mark all matched trades as sold
+        changed = False
+        for t in open_pos:
+            t["status"] = "sold"
+            t["exit_price"] = round(exit_price, 4)
+            t["exit_reason"] = "copy-sell"
+            t["exit_time"] = datetime.now(timezone.utc).isoformat()
+            
+            # Calculate PnL (pnl in USD)
+            shares = t.get("shares", 0.0)
+            cost = t.get("stake", 0.0)
+            revenue = shares * exit_price
+            t["pnl"] = round(revenue - cost, 2)
+            changed = True
+            
+            icon = "WIN" if t["pnl"] > 0 else "LOSS"
+            msg = f"[{self.name}] \u26A1 [FAST-PATH SELL] {icon} P&L ${t['pnl']:+.2f} | {t.get('slug', '')[:12]}"
+            log_cb(msg)
+            self.last_event = msg
+
+        if changed:
+            save_trades(self.address, trades)
+
+
+    def reconcile_positions(self, log_cb=print) -> None:
+        """
+        Audit open positions by querying the real Polymarket token balance.
+        If a position is older than 60s but token balance is < 0.01,
+        mark it as a 'ghost' trade and remove it from open status to free up capital.
+        """
+        if not self.is_live:
+            return
+        
+        now_ts = time.time()
+        if now_ts - self.last_reconcile < 60:
+            return
+        self.last_reconcile = now_ts
+
+        trades = self.trades
+        changed = False
+
+        from scalper.live_client import get_token_balance, _retry_call
+
+        for t in trades:
+            if t.get("status") != "open":
+                continue
+            
+            # Check age
+            entry_time_str = t.get("entry_time")
+            if not entry_time_str:
+                continue
+            try:
+                entry_dt = datetime.fromisoformat(entry_time_str)
+                age_s = now_ts - entry_dt.timestamp()
+            except ValueError:
+                continue
+            
+            # Give it 60 seconds grace period for blockchain to sync
+            if age_s < 60:
+                continue
+
+            token_id = t.get("token_id")
+            if not token_id:
+                continue
+
+            # Check real balance
+            try:
+                # 1 retry only, delay 1.0s to avoid holding up the loop if Cloudflare blocks
+                bal = _retry_call(get_token_balance, token_id, retries=2, delay=1.0)
+                if bal is not None and bal < 0.01:
+                    # GHOST TRADE DETECTED!
+                    t["status"] = "ghost"
+                    t["exit_reason"] = "ghost-swept"
+                    t["pnl"] = 0.0
+                    changed = True
+                    log_cb(f"[{self.name}] \U0001F9F9 GHOST SWEPT: Freed capital from failed order {t.get('slug', '')[:12]}")
+            except Exception:
+                pass # If API is totally dead, just skip this cycle
+
+        if changed:
+            save_trades(self.address, trades)
+
+    def check_lifesaver(self, log_cb=print) -> None:
+        """
+        Periodically checks Ohanism's PnL via Gravia to detect losing/winning streaks.
+        Pauses or resumes the bot accordingly.
+        """
+            
+        now_ts = time.time()
+        # Check every 60 seconds
+        if now_ts - self.last_pnl_check < 60:
+            return
+        self.last_pnl_check = now_ts
+        
+        cookie = os.getenv("GRAVIA_COOKIE", "")
+        if not cookie:
+            return
+            
+        try:
+            url = f"https://gravia.trade/api/portfolio/{self.address}?mode=combined"
+            headers = {
+                "Cookie": cookie,
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "application/json"
+            }
+            resp = self._session.get(url, headers=headers, timeout=10)
+            if resp.status_code != 200:
+                return
+                
+            data = resp.json()
+            live_agg = data.get("live_aggregates", {})
+            raw_pnl = live_agg.get("total_pnl")
+            
+            if raw_pnl is None:
+                return
+                
+            # Convert from 6 decimals
+            current_pnl = float(raw_pnl) / 1e6
+            
+            if self.last_pnl is not None:
+                delta = current_pnl - self.last_pnl
+                
+                # If PnL dropped by more than $500, pause
+                if delta < -500.0 and not self.is_paused:
+                    self.is_paused = True
+                    log_cb(f"[{self.name}] \U0001F6A8 LIFESAVER: PnL dropped by ${-delta:.2f}. PAUSING copy-trading.")
+                # If PnL rose by more than $500, resume
+                elif delta > 500.0 and self.is_paused:
+                    self.is_paused = False
+                    log_cb(f"[{self.name}] \U0001F9DF LIFESAVER: PnL recovered by ${delta:.2f}. RESUMING copy-trading.")
+                    
+            self.last_pnl = current_pnl
+            
+        except Exception as e:
+            # Silently fail if API is down
+            pass
+
     def poll_and_copy(self, session: requests.Session | None = None) -> list[str]:
         """Poll wallet for new trades, copy any BUYs. Returns list of event strings."""
         events = []
+        
+        # ── Self-Audit ──
+        # Runs asynchronously every 60s without blocking the fast path
+        try:
+            self.reconcile_positions(log_cb=lambda msg: events.append(msg) or setattr(self, 'last_event', msg))
+            self.check_lifesaver(log_cb=lambda msg: events.append(msg) or setattr(self, 'last_event', msg))
+        except Exception as e:
+            pass
+            
         self.polls += 1
         s = session or self._session
 
@@ -389,9 +1063,31 @@ class WalletTracker:
             token_id = str(t.get("asset", ""))
             price = float(t.get("price", 0.5) or 0.5)
             size = float(t.get("size", 0) or 0)
+            tx_hash = str(t.get("transactionHash", ""))
 
             if not outcome or not slug:
                 continue
+
+            # ── Enrichment Path Check ──
+            if tx_hash in self.processed_txs:
+                # Find pending trade and enrich
+                trades_list = self.trades
+                did_enrich = False
+                for tr in trades_list:
+                    if tr.get("tx_hash") == tx_hash and str(tr.get("slug", "")).startswith("pending_"):
+                        tr["slug"] = slug
+                        tr["title"] = title
+                        tr["question"] = title[:100]
+                        tr["side"] = outcome
+                        tr["original_price"] = price
+                        events.append(f"[{self.name}] 🔄 [ENRICHED] {slug[:20]} ({outcome})")
+                        did_enrich = True
+                
+                if did_enrich:
+                    save_trades(self.address, trades_list)
+                continue
+                
+            self.processed_txs.add(tx_hash)
 
             if action == "SELL":
                 msg = f"[{self.name}] SELL {outcome} @ ${price:.2f} | {title[:40]}"
@@ -432,7 +1128,7 @@ class WalletTracker:
                 try:
                     from scalper.live_client import _fetch_rest_book
                     t0_book = time.perf_counter()
-                    book = _get_cached_book(token_id)
+                    book = _get_cached_book(token_id, is_live=self.is_live)
                     book_latency_ms = (time.perf_counter() - t0_book) * 1000
 
                     if book:
@@ -463,13 +1159,36 @@ class WalletTracker:
                                 events.append(f"[{self.name}] SKIP depth ${total_depth_usd:.0f}<${self.stake*1.5:.0f} {title[:25]}")
                                 continue
 
+                            # Estimate market duration from slug
+                            _mkt_dur = _extract_market_duration_s(slug)
+
+                            if not self.is_live:
+                                asks = apply_latency_penalty(asks, signal_delay_s, market_duration_s=_mkt_dur)
+                                # ── Spread expansion check ──
+                                est_spread = _estimate_spread_at_execution(spread, signal_delay_s, _mkt_dur)
+                                if est_spread > 0.08:
+                                    self.skipped_no_liq += 1
+                                    events.append(f"[{self.name}] SKIP est-spread ${est_spread:.3f} {title[:25]}")
+                                    continue
+                                # ── FAK rejection gate ──
+                                if not _simulate_fak_outcome(spread, total_depth_usd, self.stake, signal_delay_s):
+                                    self.skipped_no_liq += 1
+                                    events.append(f"[{self.name}] SKIP FAK rejected (sim) {title[:25]}")
+                                    continue
+
                             # ── VWAP book-walk: simulate realistic fill ──
-                            sim = _simulate_fill(asks, self.stake)
-                            if not sim["fully_filled"]:
+                            sim = _simulate_fill(
+                                asks, self.stake,
+                                signal_delay_s=signal_delay_s,
+                                book_age_s=book_latency_ms / 1000.0,
+                                slug=slug,
+                                paper_mode=not self.is_live,
+                            )
+                            if sim["status"] == "rejected":
                                 self.skipped_no_liq += 1
                                 events.append(
-                                    f"[{self.name}] SKIP partial fill "
-                                    f"(${sim['filled_usd']:.1f}/${self.stake:.0f}) {title[:25]}"
+                                    f"[{self.name}] SKIP no liquidity "
+                                    f"(${sim['actual_stake']:.1f}/${self.stake:.0f}) {title[:25]}"
                                 )
                                 continue
 
@@ -493,7 +1212,8 @@ class WalletTracker:
                                 "slippage": slippage,
                                 "levels_consumed": sim["levels_consumed"],
                                 "book_latency_ms": round(book_latency_ms, 0),
-                                "filled_shares": sim["filled_shares"],
+                                "actual_shares": sim["actual_shares"],
+                                "actual_stake": sim["actual_stake"],
                             }
                         else:
                             # One-sided book → use API price
@@ -509,25 +1229,30 @@ class WalletTracker:
                     entry_source = "API (error)"
 
             # ── Sanity: don't buy at extremes ──
-            if entry_price >= 0.95 or entry_price <= 0.05:
+            if entry_price >= 0.90 or entry_price <= 0.05:
                 events.append(f"[{self.name}] SKIP extreme price ${entry_price:.2f} {title[:30]}")
                 continue
 
             # ── LIVE: Execute real order via CLOB ──
-            # In paper mode, use VWAP shares from simulation
-            actual_shares = fill_meta.get("filled_shares", self.stake / entry_price) if entry_price > 0 else 0
-            actual_stake = self.stake
+            if not self.is_live:
+                actual_shares = sim.get("actual_shares", 0.0) if 'sim' in locals() else 0.0
+                actual_stake = sim.get("actual_stake", self.stake) if 'sim' in locals() else self.stake
+            else:
+                actual_shares = fill_meta.get("actual_shares", self.stake / entry_price) if entry_price > 0 else 0
+                actual_stake = self.stake
             live_result = None
             if self.is_live and token_id:
                 try:
                     from scalper.live_client import buy_outcome
-                    live_result = buy_outcome(
-                        token_id=token_id,
-                        price=entry_price,
-                        size=self.stake,
-                        asset=slug[:10],
-                        side=outcome,
-                    )
+                    # Serialize live orders to prevent parallel USDC delta corruption
+                    with self._live_order_lock:
+                        live_result = buy_outcome(
+                            token_id=token_id,
+                            price=entry_price,
+                            size=self.stake,
+                            asset=slug[:10],
+                            side=outcome,
+                        )
                     if not live_result:
                         events.append(f"[{self.name}] LIVE BUY FAILED {title[:35]}")
                         continue
@@ -543,6 +1268,9 @@ class WalletTracker:
                             actual_stake = live_result["actual_cost"]
                             if actual_stake <= 0:
                                 actual_stake = self.stake
+                        # ── Sanity clamps: Polymarket prices are always [0, 1] ──
+                        entry_price = min(max(entry_price, 0.01), 0.99)
+                        actual_stake = min(actual_stake, self.stake * 1.5)
                 except Exception as e:
                     events.append(f"[{self.name}] LIVE BUY ERROR: {e}")
                     continue
@@ -595,8 +1323,27 @@ class WalletTracker:
         for t in trades:
             if t.get("status") != "open":
                 continue
+                
+            # ── Zombie cleaner: Force close trades stuck > 2.5 hours ──
+            try:
+                entry_time = datetime.fromisoformat(t.get("entry_time", datetime.now(timezone.utc).isoformat()))
+                age_hours = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600.0
+                if age_hours > 2.5:
+                    t["status"] = "void"
+                    t["exit_price"] = t["entry_price"]
+                    t["exit_reason"] = "expired_zombie"
+                    t["exit_time"] = datetime.now(timezone.utc).isoformat()
+                    t["pnl"] = 0.0
+                    changed = True
+                    msg = f"[{self.name}] 🧟 ZOMBIE VOIDED (age > 2.5h) | {t['question'][:35]}"
+                    events.append(msg)
+                    self.last_event = msg
+                    continue
+            except Exception:
+                pass
+
             slug = t.get("slug", "")
-            if not slug:
+            if not slug or slug.startswith("pending_"):
                 continue
 
             res = _check_resolution(slug)
@@ -653,48 +1400,66 @@ class WalletTracker:
             tp_target = entry_px + upside * self.tp_pct  # e.g. 0.64 + 0.36*0.5 = 0.82
             sl_target = entry_px * (1.0 - self.sl_pct)    # e.g. 0.64 * 0.75 = 0.48
 
-            # Get live mid price from orderbook
-            mid = _get_live_mid(token_id)
-            if mid is None:
-                continue
-
             exit_reason = None
-            if mid >= tp_target:
-                exit_reason = f"TP hit (mid=${mid:.3f} >= ${tp_target:.3f})"
-            elif mid <= sl_target and self.cat != "CRYP":
-                # SL disabled for CRYP — 5min binary markets have 30-50% swings
-                # that resolve favorably. SL only active for slow markets (GEO/SPORT/etc)
-                exit_reason = f"SL hit (mid=${mid:.3f} <= ${sl_target:.3f})"
+            exit_price = entry_px
+            
+            if self.is_live:
+                # ── LIVE: Use FRESH REST book (not stale cache) ──
+                try:
+                    from scalper.live_client import _fetch_rest_book
+                    fresh_book = _fetch_rest_book(token_id)
+                except Exception:
+                    fresh_book = None
 
-            if not exit_reason:
-                continue
+                if not fresh_book:
+                    continue
 
-            # Simulate exit at best_bid (realistic sell price)
-            try:
-                book = _get_cached_book(token_id)
-                if book:
-                    bids = book.get("bids", [])
-                    if bids:
-                        # Walk bid side for sell simulation
-                        sorted_bids = sorted(bids, key=lambda b: float(b.get("price", 0)), reverse=True)
-                        exit_price = float(sorted_bids[0]["price"])
+                bids = fresh_book.get("bids", [])
+                asks = fresh_book.get("asks", [])
+                if not bids or not asks:
+                    continue
 
-                        # Simulate sell VWAP if we have enough shares
-                        shares = t.get("shares", 0)
-                        sell_usd = shares * exit_price
-                        total_bid_depth = sum(
-                            float(b.get("price", 0)) * float(b.get("size", 0))
-                            for b in sorted_bids[:10]
-                        )
-                        # If book can't absorb our sell, use pessimistic exit
-                        if total_bid_depth < sell_usd * 0.5:
-                            exit_price *= 0.97  # 3% slippage penalty
-                    else:
-                        exit_price = mid * 0.98  # No bids, estimate
-                else:
-                    exit_price = mid * 0.98
-            except Exception:
-                exit_price = mid * 0.98
+                try:
+                    best_bid = max(float(b.get("price", 0)) for b in bids)
+                    best_ask = min(float(a.get("price", 0)) for a in asks)
+                    mid = round((best_bid + best_ask) / 2, 4)
+                except (ValueError, TypeError):
+                    continue
+
+                if mid >= tp_target:
+                    exit_reason = f"TP hit (mid=${mid:.3f} >= ${tp_target:.3f})"
+                elif mid <= sl_target and self.cat != "CRYP":
+                    exit_reason = f"SL hit (mid=${mid:.3f} <= ${sl_target:.3f})"
+
+                if not exit_reason:
+                    continue
+
+                # Use best_bid as exit price (what we'd actually sell at)
+                exit_price = best_bid
+            else:
+                # ── PAPER: Lógica Realista (Bid-price y VWAP) ──
+                book = _get_cached_book(token_id, is_live=self.is_live)
+                if not book:
+                    continue
+                    
+                bids = book.get("bids", [])
+                if not bids:
+                    continue
+                    
+                sorted_bids = sorted(bids, key=lambda b: float(b.get("price", 0)), reverse=True)
+                best_bid = float(sorted_bids[0]["price"])
+
+                if best_bid >= tp_target:
+                    exit_reason = f"TP hit (bid=${best_bid:.3f} >= ${tp_target:.3f})"
+                elif best_bid <= sl_target and self.cat != "CRYP":
+                    exit_reason = f"SL hit (bid=${best_bid:.3f} <= ${sl_target:.3f})"
+
+                if not exit_reason:
+                    continue
+
+                # Simulate exit at VWAP (paper-realistic)
+                sim_sell = _simulate_sell_fill(bids, t.get("shares", 0), signal_delay_s=5.0, paper_mode=True)
+                exit_price = sim_sell["vwap"]
 
             # Calculate P&L
             pnl = (exit_price - entry_px) * t.get("shares", 0)
@@ -712,14 +1477,30 @@ class WalletTracker:
                     )
                     if sell_result and isinstance(sell_result, dict):
                         actual_proceeds = sell_result.get("actual_proceeds", 0)
-                        rem_shares = sell_result.get("remaining_shares", 0)
-                        sold_shares = max(t.get("shares", 0) - rem_shares, 0.01)
-                        exit_price = actual_proceeds / sold_shares
-                        # Calculate P&L using the true average exit price over all shares
-                        pnl = (exit_price - entry_px) * t.get("shares", 0)
+                        cost = t.get("stake", 0)
+                        # PnL = what we received - what we paid (direct USD calc)
+                        pnl = actual_proceeds - cost
+                        # Back-calculate exit price for display, clamped to [0, 1]
+                        shares = t.get("shares", 0)
+                        if shares > 0 and actual_proceeds > 0:
+                            exit_price = min(max(actual_proceeds / shares, 0.0), 1.0)
+                        else:
+                            exit_price = min(max(exit_price, 0.0), 1.0)
+                    elif not sell_result:
+                        # Sell failed on CLOB — still close position to avoid capital lock
+                        events.append(f"[{self.name}] TP SELL FAILED on CLOB — closing position with estimated price")
+                        pnl = (min(max(exit_price, 0.0), 1.0) - entry_px) * t.get("shares", 0)
+                        exit_price = min(max(exit_price, 0.0), 1.0)
                 except Exception as e:
                     events.append(f"[{self.name}] LIVE SELL ERROR: {e}")
                     continue
+
+            # ── Sanity gate: TP must produce profit ──
+            # If TP triggered but P&L is negative, the price data was stale/wrong.
+            # Skip this cycle and let the next poll re-evaluate with fresh data.
+            if exit_reason and "TP" in exit_reason and pnl < 0:
+                events.append(f"[{self.name}] ⚠️ TP BLOCKED: mid said profit but real exit@${exit_price:.3f} gives P&L ${pnl:+.2f} — skipping")
+                continue
 
             t["status"] = "sold"
             t["exit_price"] = round(exit_price, 4)
@@ -887,11 +1668,11 @@ def run_fleet(
             addr = event.get("wallet", "").lower()
             tr = tracker_map.get(addr)
             if tr:
-                # Force an immediate poll to catch the new trade via REST
-                # (The Activity API is sometimes delayed, but ChainListener
-                # tells us exactly WHEN to look).
-                tr.next_poll_at = time.time() - 1
-                _log_event(f"{ts} [CHAIN] Signal from {tr.name}: {event['direction']} detected on-chain")
+                direction = event.get("direction", "BUY")
+                if direction == "BUY":
+                    tr.on_chain_buy(event, log_cb=_log_event)
+                else:
+                    tr.on_chain_sell(event, log_cb=_log_event)
 
         listener = ChainListener(
             watched_wallets=list(tracker_map.keys()),

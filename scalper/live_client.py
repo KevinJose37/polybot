@@ -161,13 +161,12 @@ def buy_outcome(
         from py_clob_client_v2.clob_types import MarketOrderArgs, OrderType
         from py_clob_client_v2.order_builder.builder import BUY
 
-        # ── Duplicate entry guard (non-blocking) ────────────────────
+        # ── Pre-check balance (for cost accounting, NOT blocking) ──
+        # Scale-in limit (max 4) is enforced upstream in copy_wallet.py
         try:
             existing_shares = _retry_call(get_token_balance, token_id)
-            if existing_shares is not None and existing_shares > 0.1:
-                logger.warning("Already holding %.2f shares of %s. Skipping BUY.", existing_shares, label)
-                return {"success": True, "shares": existing_shares, "token_id": token_id, "already_held": True}
         except Exception:
+            existing_shares = 0.0
             logger.debug("Pre-check balance failed, proceeding with order")
 
         # ── Snapshot USDC balance BEFORE ────────────────────────────
