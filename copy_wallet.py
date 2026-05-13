@@ -573,20 +573,8 @@ class WalletTracker:
     @property
     def available(self) -> float:
         if self.is_live:
-            # In live mode: use real USDC balance from CLOB (cached every 30s)
-            now = time.time()
-            if self._live_balance is None or now - self._live_balance_ts > 30:
-                try:
-                    from scalper.live_client import get_balance
-                    bal = get_balance()
-                    if bal is not None:
-                        self._live_balance = bal
-                        self._live_balance_ts = now
-                except Exception:
-                    pass
-            if self._live_balance is not None:
-                return self._live_balance
-            # Fallback to --capital if CLOB is unreachable
+            # In live mode: use --capital as budget cap (simple, predictable)
+            # Real USDC balance is enforced at order execution level
             return self.capital - self.exposure
         # Paper mode: simulated capital + earned P&L - exposure
         return self.capital + self.total_pnl - self.exposure
@@ -618,11 +606,11 @@ class WalletTracker:
             
         self.processed_txs.add(tx_hash)
         
-        # Scale-in limit: Max 4 purchases per token
+        # Duplicate check: Max 1 entry per token (v3 proven config)
         trades = self.trades
         open_pos = [t for t in trades if t.get("status") == "open" and t.get("token_id") == token_id]
-        if len(open_pos) >= 4:
-            log_cb(f"[{self.name}] [FAST-PATH] SKIP MAX SCALE-IN (4/4) reached for {token_id[:8]}")
+        if len(open_pos) >= 1:
+            log_cb(f"[{self.name}] [FAST-PATH] SKIP already holding {token_id[:8]}")
             return
         
         # Capital check
@@ -1668,11 +1656,10 @@ def run_fleet(
             addr = event.get("wallet", "").lower()
             tr = tracker_map.get(addr)
             if tr:
-                direction = event.get("direction", "BUY")
-                if direction == "BUY":
-                    tr.on_chain_buy(event, log_cb=_log_event)
-                else:
-                    tr.on_chain_sell(event, log_cb=_log_event)
+                # Signal-only mode: force an immediate poll to catch the trade via REST
+                # (v3 proven config — no direct execution, avoids race conditions)
+                tr.next_poll_at = time.time() - 1
+                _log_event(f"{ts} [CHAIN] Signal from {tr.name}: {event.get('direction','?')} detected on-chain")
 
         listener = ChainListener(
             watched_wallets=list(tracker_map.keys()),
