@@ -17,26 +17,39 @@ class ExposureTracker:
         self.initial_capital = initial_capital or config.initial_capital
         self.available_capital = self.initial_capital
         self.realized_pnl = 0.0
+        self._capital_in_use = 0.0
 
     @property
     def total_capital(self) -> float:
-        return self.available_capital + self.realized_pnl
+        return self.initial_capital + self.realized_pnl
 
     @property
     def capital_in_use(self) -> float:
-        return self.initial_capital - self.available_capital
+        return self._capital_in_use
+
+    def update_capital(self, total_pnl: float, inventories: dict[str, InventoryState]):
+        """Update capital tracking accurately using PnL and current inventory."""
+        self.realized_pnl = total_pnl  # We use total PnL to represent portfolio growth
+        
+        capital_locked = 0.0
+        for inv in inventories.values():
+            if inv.net_position != 0:
+                capital_locked += abs(inv.net_position) * inv.avg_entry_price
+                
+        self._capital_in_use = capital_locked
+        self.available_capital = self.total_capital - self._capital_in_use
 
     def record_buy(self, cost: float):
-        """Record capital spent on a buy order."""
-        self.available_capital -= cost
+        """No-op, we use update_capital now."""
+        pass
 
     def record_sell(self, revenue: float):
-        """Record capital returned from a sell."""
-        self.available_capital += revenue
+        """No-op, we use update_capital now."""
+        pass
 
     def record_realized_pnl(self, pnl: float):
-        """Record realized PnL from a closed position."""
-        self.realized_pnl += pnl
+        """No-op"""
+        pass
 
     def compute_unrealized_pnl(
         self,

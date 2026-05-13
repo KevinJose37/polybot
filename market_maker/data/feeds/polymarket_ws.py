@@ -73,6 +73,8 @@ class PolymarketFeed:
                 timestamp_ms=int(now * 1000),
                 book_depth_bid=book_depth_bid,
                 book_depth_ask=book_depth_ask,
+                bids=bids,
+                asks=asks,
             )
 
             self._last_odds = odds

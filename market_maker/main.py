@@ -254,47 +254,44 @@ async def quote_engine_worker(
                 mrt.fair_value = fv
                 new_fv = fv.probability
 
-                # ── Fill simulation: check if FV crossed our quotes ──
-                if mrt.current_quotes is not None:
-                    fills = fill_simulator.check_fill_on_fv_update(
-                        market_key=key,
-                        quotes=mrt.current_quotes,
-                        new_fv=new_fv,
-                        asset=asset,
-                        window_minutes=mi.window_minutes,
+                # Check R/R bounds
+                if new_fv < config.min_rr_price or new_fv > config.max_rr_price:
+                    if mrt.state != MarketState.SUSPENDED:
+                        mrt.state = MarketState.SUSPENDED
+                        mrt.current_quotes = None
+                    continue
+
+                # ── Fill simulation: evaluate pending quotes and latency ──
+                fills = fill_simulator.update_state(
+                    market_key=key,
+                    now_ms=now_ms,
+                    fv=new_fv,
+                    l2_book=mrt.odds,
+                    asset=asset,
+                    window_minutes=mi.window_minutes
+                )
+                for fill in fills:
+                    # Update inventory
+                    inv_manager.record_fill(key, fill)
+
+                    # Update PnL
+                    pnl_engine.record_fill(key, fill)
+
+                    # Capital is updated accurately at the end of the loop
+                    # exposure.record_buy / record_sell are now no-ops
+
+                    # Track fill
+                    mrt.fills.append(fill)
+                    mrt.last_fill_ms = fill.timestamp_ms
+
+                    latest_logs.appendleft(
+                        f"FILL {key} {fill.side} {fill.size}@{fill.price:.4f} "
+                        f"| FV={new_fv:.3f} | net={mrt.inventory.net_position if mrt.inventory else '?'}"
                     )
-                    for fill in fills:
-                        # Update inventory
-                        inv_manager.record_fill(key, fill)
-
-                        # Update PnL
-                        pnl_engine.record_fill(key, fill)
-
-                        # Update exposure
-                        if fill.side == "BUY":
-                            exposure.record_buy(fill.price * fill.size)
-                        else:
-                            exposure.record_sell(fill.price * fill.size)
-
-                        # Track fill
-                        mrt.fills.append(fill)
-                        mrt.last_fill_ms = fill.timestamp_ms
-
-                        latest_logs.appendleft(
-                            f"FILL {key} {fill.side} {fill.size}@{fill.price:.4f} "
-                            f"| FV={new_fv:.3f} | net={mrt.inventory.net_position if mrt.inventory else '?'}"
-                        )
-                        logger.info(
-                            f"[Fill] {key} {fill.side} {fill.size}@{fill.price:.4f} "
-                            f"| FV={new_fv:.3f} "
-                            f"| net={mrt.inventory.net_position if mrt.inventory else '?'}"
-                        )
-                else:
-                    # Initialize FV tracker even if no quotes yet
-                    fill_simulator.check_fill_on_fv_update(
-                        market_key=key, quotes=QuotePair(0, 0, 0, 0),
-                        new_fv=new_fv, asset=asset,
-                        window_minutes=mi.window_minutes,
+                    logger.info(
+                        f"[Fill] {key} {fill.side} {fill.size}@{fill.price:.4f} "
+                        f"| FV={new_fv:.3f} "
+                        f"| net={mrt.inventory.net_position if mrt.inventory else '?'}"
                     )
 
                 # Get toxicity metrics
@@ -323,6 +320,18 @@ async def quote_engine_worker(
                     )
                     mrt.current_quotes = quotes
                     mrt.last_quote_update_ms = now_ms
+                    
+                    # Margin reservation to prevent simultaneous capital over-allocation
+                    cost = quotes.bid_size * quotes.bid_price
+                    if cost > 0:
+                        if exposure.available_capital >= cost:
+                            exposure.available_capital -= cost
+                        else:
+                            logger.warning(f"[Quote] Insufficient capital for {key}. Bid omitted.")
+                            quotes.bid_size = 0
+
+                    # Submit to latency simulator
+                    fill_simulator.submit_quotes(key, quotes, mrt.odds)
 
                     # Update market state based on inventory
                     inv_mode = inv_manager.get_quoting_mode(key)
@@ -340,12 +349,13 @@ async def quote_engine_worker(
                     mrt.current_quotes = None
 
             # Update inventory PnL
-            fair_values = {}
+            market_odds_dict = {}
             for key, mrt in active_markets.items():
-                if mrt.fair_value:
-                    fair_values[key] = mrt.fair_value.probability
+                if mrt.odds:
+                    market_odds_dict[key] = mrt.odds
             inventories = inv_manager.get_all_inventories()
-            pnl_engine.update_inventory_pnl(inventories, fair_values)
+            pnl_engine.update_inventory_pnl(inventories, market_odds_dict)
+            exposure.update_capital(pnl_engine.get_pnl().total_pnl, inventories)
 
             # Update portfolio circuit breaker
             pnl = pnl_engine.get_pnl()
@@ -354,7 +364,7 @@ async def quote_engine_worker(
             )
             circuit_breaker.check_daily_loss()
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.1)  # Faster event loop to reduce sampling bias
 
         except asyncio.CancelledError:
             break
@@ -449,12 +459,19 @@ async def dashboard_worker(
                 f"Defensive: {n_defensive} | "
                 f"Total: {n_markets}"
             )
+            win_ratios_str = " | ".join(f"{asset.upper()}: {ratio:.1f}%" for asset, ratio in stats.get("win_ratios_by_asset", {}).items())
             lines.append(
                 f"  ⚡ FILLS    Total: {stats['total_fills']} | "
-                f"Buys: {stats['buy_fills']} | "
-                f"Sells: {stats['sell_fills']} | "
-                f"Win Ratio: {stats.get('win_ratio', 0.0):.1f}% 🏆"
+                f"Global Win: {stats.get('win_ratio', 0.0):.1f}% | "
+                f"By Asset: [{win_ratios_str}]"
             )
+            
+            # Hold vs Sold Metrics
+            hold_vs_sold = pnl_engine.get_hold_vs_sold_metrics({k: m.odds for k, m in active_markets.items() if m.odds})
+            hvs_str = " | ".join(f"{asset.upper()}: ${val:+.2f}" for asset, val in hold_vs_sold.items())
+            if hvs_str:
+                lines.append(f"  ⚖️ HOLD vs SOLD BENEFIT: {hvs_str}")
+                
             lines.append("-" * 80)
 
             # ── Per-market table ──
@@ -527,7 +544,20 @@ async def dashboard_worker(
             lines.append("=" * 80)
 
             output = "\n".join(lines)
-            print(output, flush=True)
+            try:
+                print(output, flush=True)
+            except UnicodeEncodeError:
+                # Windows console fallback
+                print(output.encode("ascii", errors="replace").decode("ascii"), flush=True)
+
+            try:
+                with open(config.dashboard_file, "w", encoding="utf-8") as f:
+                    f.write(output)
+                with open(config.hold_vs_sold_file, "w", encoding="utf-8") as f:
+                    import json
+                    json.dump(hold_vs_sold, f, indent=2)
+            except Exception as e:
+                logger.error(f"[Dashboard] Error saving files: {e}")
 
         except asyncio.CancelledError:
             break
@@ -565,8 +595,8 @@ async def run_bot():
     logger.remove()
     os.makedirs("logs", exist_ok=True)
     os.makedirs("data", exist_ok=True)
-    # File: full DEBUG trace
-    logger.add("logs/mm_bot.log", mode="w", level="DEBUG")
+    # File: full DEBUG trace with 500KB (~5000 lines) rotation
+    logger.add("logs/mm_bot.log", mode="w", level="DEBUG", rotation="500 KB", retention=1)
     # Console: only WARNING+ (dashboard handles INFO display)
     logger.add(sys.stderr, level="WARNING",
                format="<red>{time:HH:mm:ss}</red> | <level>{level: <8}</level> | {message}")

@@ -116,6 +116,8 @@ class MarketOdds:
     timestamp_ms: int = 0
     book_depth_bid: int = 0  # Number of bid levels
     book_depth_ask: int = 0  # Number of ask levels
+    bids: list[dict] = field(default_factory=list)  # Full L2 bids [{"price": "0.5", "size": "100"}, ...]
+    asks: list[dict] = field(default_factory=list)  # Full L2 asks
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -169,6 +171,15 @@ class QuotePair:
     @property
     def mid(self) -> float:
         return (self.bid_price + self.ask_price) / 2
+
+
+@dataclass
+class PendingQuote:
+    """A quote sitting in the latency delay buffer."""
+    quotes: QuotePair
+    arrival_ms: int
+    q_buy: float = 0.0
+    q_sell: float = 0.0
 
 
 # ═══════════════════════════════════════════════════════════════

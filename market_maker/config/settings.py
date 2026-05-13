@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     spread_volatility_multiplier: float = 2.0  # Higher vol → wider spread
     skew_sensitivity: float = 1.0           # Inventory skew multiplier
     spread_competition_floor_pct: float = 0.0  # Quote at 90% of best competitor spread
+    min_rr_price: float = 0.30              # Skip quoting if FV < 0.30
+    max_rr_price: float = 0.83              # Skip quoting if FV > 0.83
 
     # ── Inventory Limits ───────────────────────────────────────
     max_inventory_per_market: int = 100     # Max contracts per market side
@@ -74,6 +76,8 @@ class Settings(BaseSettings):
     # ── Paper Trading Fill Simulation ──────────────────────────
     default_fill_probability: float = 0.25  # Conservative queue-position fill probability
     fill_rate_feedback_threshold: float = 0.30  # Auto-adjust if actual vs predicted deviates > 30%
+    sim_latency_ms: int = 300               # Simulated Polygon RPC latency
+    sim_queue_drain_rate: float = 50.0      # Average contracts per second of uninformed flow when at front of queue
 
     # ── Feed Configuration ──────────────────────────────────────
     binance_ws_url: str = "wss://stream.binance.com:9443/ws"
@@ -93,6 +97,8 @@ class Settings(BaseSettings):
     fills_file: str = "data/fills.json"
     pnl_file: str = "data/pnl.json"
     state_file: str = "data/state.json"
+    dashboard_file: str = "data/dashboard.txt"
+    hold_vs_sold_file: str = "data/hold_vs_sold.json"
 
     class Config:
         env_file = ".env"
