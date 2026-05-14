@@ -221,4 +221,12 @@ class QuoteEngine:
 
         skew = imbalance * self.skew_sensitivity * half_spread * skew_boost
 
+        # Cap skew to never cross fair value (leave at least 10% of spread as theoretical edge)
+        # This prevents the bot from willingly paying worse than FV to flatten inventory
+        max_skew_abs = 0.9 * half_spread
+        if skew > max_skew_abs:
+            skew = max_skew_abs
+        elif skew < -max_skew_abs:
+            skew = -max_skew_abs
+
         return skew

@@ -78,15 +78,22 @@ class Settings(BaseSettings):
     fill_rate_feedback_threshold: float = 0.30  # Auto-adjust if actual vs predicted deviates > 30%
     sim_latency_ms: int = 300               # Simulated Polygon RPC latency
     sim_queue_drain_rate: float = 50.0      # Average contracts per second of uninformed flow when at front of queue
+    sim_cancel_rate: float = 0.60           # Fraction of L1 size decreases that are cancels, not fills (empirical: 50-70%)
+    sim_order_rejection_rate: float = 0.07  # Probability an order is rejected (nonce/rate-limit, empirical: 5-10%)
+    sim_quote_cooldown_ms: int = 300        # Min delay before new quotes after a fill (cancel-replace latency)
+    sim_vwap_slippage_penalty: float = 0.10 # Slippage penalty for position size exceeding L2 depth (10%)
+    sim_partial_fill_share: float = 0.30    # Our share of adverse sweep volume (rest goes to other makers)
 
     # ── Feed Configuration ──────────────────────────────────────
     binance_ws_url: str = "wss://stream.binance.com:9443/ws"
+    poly_ws_url: str = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+    poly_ws_ping_interval_s: int = 5        # Ping interval to keep Polymarket WS alive
     stale_feed_threshold_ms: int = 10_000   # Cancel quotes if feed stale > this (10s for low-vol assets)
     poly_book_stale_threshold_ms: int = 2000  # Suspend quoting if Poly book stale > this
 
     # ── Target Markets ──────────────────────────────────────────
-    # All 4 assets × 3 windows
-    assets: list[str] = ["btcusdt", "ethusdt", "solusdt", "xrpusdt"]
+    # Only BTC and ETH as requested by user
+    assets: list[str] = ["btcusdt", "ethusdt"]
     windows: list[int] = [5, 15, 60]        # Minutes
 
     # ── Logging ─────────────────────────────────────────────────

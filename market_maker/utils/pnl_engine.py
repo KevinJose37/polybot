@@ -45,7 +45,7 @@ class PnLEngine:
         Record a fill and compute PnL attribution.
         Attempts to match buys with sells for spread PnL.
         """
-        # Record fee PnL
+        # Record fee PnL (includes gas cost baked into fill.fee by the simulator)
         self.pnl.fee_pnl -= fill.fee
 
         # Store fill
@@ -133,19 +133,24 @@ class PnLEngine:
         """Calculate the VWAP to exit a position of given size using L2 orderbook."""
         remaining = abs(position_size)
         total_value = 0.0
+        last_price = 0.0
         for level in l2_levels:
             p = float(level.get("price", 0))
             s = float(level.get("size", 0))
+            last_price = p
             take_size = min(remaining, s)
             total_value += take_size * p
             remaining -= take_size
             if remaining <= 0:
                 break
-        
+
         if remaining > 0:
-            # Penalty for exceeding liquidity
-            total_value += remaining * 0.0 # Assuming worst case
-            
+            # Penalty for exceeding available L2 depth:
+            # Use last seen price minus configurable slippage penalty
+            slippage_penalty = config.sim_vwap_slippage_penalty
+            penalty_price = max(0.0, last_price * (1.0 - slippage_penalty))
+            total_value += remaining * penalty_price
+
         return total_value / abs(position_size) if position_size > 0 else 0.0
 
     def update_inventory_pnl(

@@ -6,6 +6,7 @@ Production-grade paper trading with FV-crossing fill simulation.
 
 import asyncio
 import os
+import random
 import sys
 import time
 import logging
@@ -64,14 +65,6 @@ async def discovery_worker(
             )
             for key, market_info in discovered.items():
                 if key not in active_markets:
-                    # Set strike from current spot price (price at window start)
-                    asset = market_info.asset
-                    if asset in spot_prices and market_info.strike_price == 0:
-                        market_info.strike_price = spot_prices[asset]
-                        logger.info(
-                            f"[Discovery] Strike set for {key}: ${market_info.strike_price:,.2f}"
-                        )
-
                     active_markets[key] = MarketRuntimeState(
                         market_info=market_info,
                         state=MarketState.INITIALIZING,
@@ -82,11 +75,7 @@ async def discovery_worker(
                     )
                     logger.info(f"[Discovery] New: {key} | {market_info.slug}")
                 elif active_markets[key].market_info.slug != market_info.slug:
-                    # Market rotated — set strike from current spot
-                    asset = market_info.asset
-                    if asset in spot_prices:
-                        market_info.strike_price = spot_prices[asset]
-
+                    # Market rotated
                     inv_manager.reset(key)
                     fill_simulator.reset(key)  # Reset FV tracking on rotation
                     active_markets[key] = MarketRuntimeState(
@@ -152,11 +141,11 @@ async def on_trade_event(
 
 
 # ══════════════════════════════════════════════════════════════
-# Odds Updater Worker
+# Polymarket Book Feed Manager (WebSocket + REST fallback)
 # ══════════════════════════════════════════════════════════════
 
-async def odds_updater_worker():
-    """Fetch Polymarket odds for all active markets."""
+async def poly_ws_manager_worker(feed_health: 'FeedHealthMonitor'):
+    """Manage Polymarket WebSocket feeds. Start WS for new markets, fallback to REST."""
     while True:
         try:
             for key, mrt in list(active_markets.items()):
@@ -164,20 +153,33 @@ async def odds_updater_worker():
                     continue
 
                 mi = mrt.market_info
+
+                # Create feed if not exists
                 if key not in poly_feeds:
-                    poly_feeds[key] = PolymarketFeed(
+                    feed = PolymarketFeed(
                         mi.token_id_yes, mi.token_id_no, mi.market_id,
                     )
+                    poly_feeds[key] = feed
+                    # Start WebSocket connection
+                    await feed.start_ws()
+                    logger.info(f"[PolyWS] Started WS feed for {key}")
 
-                odds = await poly_feeds[key].get_market_odds()
+                feed = poly_feeds[key]
+
+                # Update odds from WS (instant) or REST fallback
+                odds = await feed.get_market_odds()
                 if odds:
                     mrt.odds = odds
 
-            await asyncio.sleep(2.0)
+                # Update feed health
+                if feed.is_ws_connected:
+                    feed_health.update(f"poly_{key}", int(time.time() * 1000))
+
+            await asyncio.sleep(0.5)  # Check more frequently since WS is primary
         except asyncio.CancelledError:
             break
         except Exception as e:
-            logger.error(f"[Odds] Error: {e}")
+            logger.error(f"[PolyWS] Manager error: {e}")
             await asyncio.sleep(5.0)
 
 
@@ -213,7 +215,10 @@ async def quote_engine_worker(
                 await asyncio.sleep(1.0)
                 continue
 
-            for key, mrt in list(active_markets.items()):
+            # Shuffle market order to prevent path-dependent capital allocation
+            market_items = list(active_markets.items())
+            random.shuffle(market_items)
+            for key, mrt in market_items:
                 asset = mrt.market_info.asset
                 mi = mrt.market_info
 
@@ -527,12 +532,22 @@ async def dashboard_worker(
 
             # ── Feed Health ──
             feed_status = feed_health.get_status()
-            feed_parts = []
+            binance_parts = []
             for n, s in sorted(feed_status.items()):
+                if not n.startswith("binance_"):
+                    continue
                 status_icon = "🟢" if s["status"] == "LIVE" else "🔴"
                 name = n.replace("binance_", "").replace("usdt", "").upper()
-                feed_parts.append(f"{name}:{status_icon}")
-            lines.append(f"  📡 FEEDS    {' | '.join(feed_parts)}")
+                binance_parts.append(f"{name}:{status_icon}")
+            lines.append(f"  📡 BINANCE  {' | '.join(binance_parts)}")
+
+            # Polymarket WS status
+            ws_connected = sum(1 for pf in poly_feeds.values() if pf.is_ws_connected)
+            ws_total = len(poly_feeds)
+            ws_icon = "🟢" if ws_connected == ws_total and ws_total > 0 else ("🟡" if ws_connected > 0 else "🔴")
+            lines.append(
+                f"  📡 POLY WS  {ws_icon} {ws_connected}/{ws_total} connected"
+            )
 
             # ── Recent Activity ──
             if latest_logs:
@@ -662,8 +677,8 @@ async def run_bot():
         feeds.append(feed)
         background_tasks.append(asyncio.create_task(feed.connect()))
 
-    # ── Start Polymarket Odds Updater ──
-    background_tasks.append(asyncio.create_task(odds_updater_worker()))
+    # ── Start Polymarket WebSocket Feed Manager ──
+    background_tasks.append(asyncio.create_task(poly_ws_manager_worker(feed_health)))
 
     # ── Start Quote Engine (with integrated fill simulation) ──
     background_tasks.append(asyncio.create_task(
@@ -698,6 +713,7 @@ async def run_bot():
         for feed in feeds:
             feed.stop()
         for key, pf in poly_feeds.items():
+            pf.stop()
             await pf.close()
         await discovery.close()
         for task in background_tasks:

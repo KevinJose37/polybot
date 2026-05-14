@@ -71,6 +71,33 @@ class MarketDiscovery:
         divisor = window_minutes * 60
         return now_ts - (now_ts % divisor)
 
+    async def _fetch_historical_strike(self, symbol: str, window_start_ts: int) -> float:
+        """
+        Fetch the true strike price: the 1m Binance kline open price
+        at the exact window start time.
+        """
+        binance_symbol = self.ASSET_STRIKE_MAP.get(
+            self.ASSET_SLUG_MAP.get(symbol.lower(), "btc"), "BTCUSDT"
+        )
+        url = "https://api.binance.com/api/v3/klines"
+        params = {
+            "symbol": binance_symbol,
+            "interval": "1m",
+            "startTime": window_start_ts * 1000,
+            "limit": 1
+        }
+        try:
+            session = await self._get_session()
+            async with session.get(url, params=params) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if data and len(data) > 0:
+                        # kline format: [Open time, Open, High, Low, Close, ...]
+                        return float(data[0][1])
+        except Exception as e:
+            logger.debug(f"[Discovery] Failed to fetch strike for {binance_symbol}: {e}")
+        return 0.0
+
     def _generate_slug(self, symbol: str, window_minutes: int) -> str:
         """
         Generate the predictable slug for a market.
@@ -152,6 +179,12 @@ class MarketDiscovery:
                     end_date_ts=end_date_ts,
                     question=market.get("question", ""),
                 )
+
+                # Fetch the true historical strike price
+                window_ts = self._get_window_ts(window_minutes)
+                true_strike = await self._fetch_historical_strike(symbol, window_ts)
+                if true_strike > 0:
+                    market_info.strike_price = true_strike
 
                 logger.info(
                     f"[Discovery] Found market: {slug} | "
