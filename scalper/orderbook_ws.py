@@ -40,6 +40,8 @@ _prices: dict[str, dict] = {}
 
 # token_id → deque of (timestamp, mid_price) — 2 minutes of history at max
 _mid_history: dict[str, deque] = {}
+_ask_history: dict[str, deque] = {}
+_callbacks: list = []
 
 _subscribed_tokens: set[str] = set()
 _lock = threading.Lock()
@@ -63,9 +65,10 @@ def get_price(token_id: str) -> float | None:
         return None
 
 
-def update_mid_history(token_id: str, mid_price: float) -> None:
+def update_mid_history(token_id: str, mid_price: float, best_ask: float = 0.0) -> None:
     """
     Append a (timestamp, mid_price) sample to the circular buffer for token_id.
+    Also tracks best_ask history for V12 Event-Driven Engine.
     Called internally every time the book snapshot produces a new mid-price.
     Buffer holds up to 120 samples (~2 minutes at 1 sample/sec).
     """
@@ -73,7 +76,57 @@ def update_mid_history(token_id: str, mid_price: float) -> None:
     if token_id not in _mid_history:
         _mid_history[token_id] = deque(maxlen=120)
     _mid_history[token_id].append((time.time(), mid_price))
+    
+    if best_ask > 0:
+        if token_id not in _ask_history:
+            _ask_history[token_id] = deque(maxlen=200) # Holds ~200 events for ultra-fast ms tracking
+        _ask_history[token_id].append((time.time(), best_ask))
 
+
+def get_ask_velocity(token_id: str, window_ms: int = 500) -> float:
+    """
+    V12 Microstructure: Compute how much the Polymarket best_ask has moved in the last `window_ms`.
+    Returns:
+        float: (current_ask - oldest_ask_in_window)
+               Positive -> ask price is shooting up (bullish explosion or toxicity)
+               0.0 -> healthy, stable, or missing data.
+    """
+    now = time.time()
+    cutoff = now - (window_ms / 1000.0)
+
+    with _lock:
+        history = _ask_history.get(token_id)
+        if not history or len(history) < 2:
+            return 0.0
+
+        current_ask = history[-1][1]
+        
+        # Find the oldest ask within the time window
+        older_samples = [(t, p) for t, p in history if t >= cutoff]
+        if older_samples:
+            oldest_ask = older_samples[0][1]
+            return round(current_ask - oldest_ask, 4)
+        return 0.0
+
+
+def register_book_callback(func) -> None:
+    """V12: Register a callback to be fired on every tick of the orderbook."""
+    with _lock:
+        if func not in _callbacks:
+            _callbacks.append(func)
+
+def _fire_book_callbacks(token_id: str, book: dict) -> None:
+    """Fire all registered callbacks with the new orderbook state."""
+    # Run outside the lock to avoid deadlocks
+    callbacks = []
+    with _lock:
+        callbacks = list(_callbacks)
+    
+    for cb in callbacks:
+        try:
+            cb(token_id, book)
+        except Exception as e:
+            logger.error("Error in WS book callback: %s", e)
 
 def get_mid_velocity(token_id: str, window_sec: int = 30) -> float:
     """
@@ -518,15 +571,18 @@ def _parse_book_message(data: dict):
         if bids and asks:
             mid = (bids[0][0] + asks[0][0]) / 2.0
             _prices[asset_id] = {"price": mid, "updated": now}
-            update_mid_history(asset_id, mid)
+            update_mid_history(asset_id, mid, best_ask=asks[0][0])
+            _fire_book_callbacks(asset_id, _orderbooks[asset_id])
         elif bids:
             mid = bids[0][0]
             _prices[asset_id] = {"price": mid, "updated": now}
             update_mid_history(asset_id, mid)
+            _fire_book_callbacks(asset_id, _orderbooks[asset_id])
         elif asks:
             mid = asks[0][0]
             _prices[asset_id] = {"price": mid, "updated": now}
-            update_mid_history(asset_id, mid)
+            update_mid_history(asset_id, mid, best_ask=asks[0][0])
+            _fire_book_callbacks(asset_id, _orderbooks[asset_id])
 
 
 def _parse_price_change(data: dict):
@@ -574,15 +630,18 @@ def _parse_price_change(data: dict):
             if msg_best_bid > 0 and msg_best_ask > 0:
                 mid = (msg_best_bid + msg_best_ask) / 2.0
                 _prices[asset_id] = {"price": mid, "updated": now}
-                update_mid_history(asset_id, mid)
+                update_mid_history(asset_id, mid, best_ask=msg_best_ask)
+                _fire_book_callbacks(asset_id, book)
             elif msg_best_bid > 0:
                 mid = msg_best_bid
                 _prices[asset_id] = {"price": mid, "updated": now}
                 update_mid_history(asset_id, mid)
+                _fire_book_callbacks(asset_id, book)
             elif msg_best_ask > 0:
                 mid = msg_best_ask
                 _prices[asset_id] = {"price": mid, "updated": now}
-                update_mid_history(asset_id, mid)
+                update_mid_history(asset_id, mid, best_ask=msg_best_ask)
+                _fire_book_callbacks(asset_id, book)
             else:
                 # Fallback: reconstruct from local book
                 bids = book["bids"]
@@ -590,15 +649,18 @@ def _parse_price_change(data: dict):
                 if bids and asks:
                     mid = (bids[0][0] + asks[0][0]) / 2.0
                     _prices[asset_id] = {"price": mid, "updated": now}
-                    update_mid_history(asset_id, mid)
+                    update_mid_history(asset_id, mid, best_ask=asks[0][0])
+                    _fire_book_callbacks(asset_id, book)
                 elif bids:
                     mid = bids[0][0]
                     _prices[asset_id] = {"price": mid, "updated": now}
                     update_mid_history(asset_id, mid)
+                    _fire_book_callbacks(asset_id, book)
                 elif asks:
                     mid = asks[0][0]
                     _prices[asset_id] = {"price": mid, "updated": now}
-                    update_mid_history(asset_id, mid)
+                    update_mid_history(asset_id, mid, best_ask=asks[0][0])
+                    _fire_book_callbacks(asset_id, book)
 
 
 def _parse_last_trade_price(data: dict):
@@ -614,26 +676,124 @@ def _parse_last_trade_price(data: dict):
 
 
 # ═══════════════════════════════════════════════════════════════
-# WebSocket Connection
+# WebSocket Connection (Queue-based architecture)
 # ═══════════════════════════════════════════════════════════════
 
 _pending_subscribe: list[str] = []
 
+# Performance counters (thread-safe reads are fine for ints)
+_ws_msgs_received = 0
+_ws_msgs_parsed = 0
+_ws_slow_parses = 0
+_ws_reconnect_count = 0
+
+
+async def _ws_parse_worker(queue: asyncio.Queue):
+    """
+    Worker task: pulls raw JSON strings from the queue and parses them.
+    Runs as a separate asyncio task so recv() is never blocked by parsing.
+    """
+    global _ws_msgs_parsed, _ws_slow_parses
+
+    # Track last_useful_msg here so health check can read it
+    while True:
+        raw_msg = await queue.get()
+        if raw_msg is None:  # Poison pill → shutdown
+            break
+
+        t0 = time.perf_counter()
+        try:
+            data = json.loads(raw_msg)
+
+            # Log list messages instead of silently discarding
+            if isinstance(data, list):
+                if len(data) > 0:
+                    logger.debug(
+                        "WS list msg (%d items), first=%s",
+                        len(data), str(data[0])[:200],
+                    )
+                continue
+            if not isinstance(data, dict):
+                logger.debug("WS non-dict msg: type=%s val=%s", type(data).__name__, str(data)[:200])
+                continue
+
+            event_type = data.get("event_type", "")
+
+            # One-shot: log the first message keys for debugging
+            if not hasattr(_ws_parse_worker, "_first_logged"):
+                _ws_parse_worker._first_logged = True
+                logger.info(
+                    "WS first msg keys=%s event=%s ts=%s",
+                    list(data.keys()), event_type,
+                    data.get("timestamp", "MISSING"),
+                )
+
+            # Record WS latency
+            try:
+                from scalper.latency import record_polymarket_ws
+                server_ts = data.get("timestamp")
+                ts_val = int(server_ts) if server_ts else None
+                record_polymarket_ws(ts_val)
+            except (ValueError, TypeError, ImportError):
+                pass
+
+            if event_type == "book":
+                _parse_book_message(data)
+            elif event_type == "price_change":
+                _parse_price_change(data)
+            elif event_type == "last_trade_price":
+                _parse_last_trade_price(data)
+            else:
+                logger.debug("WS unknown event_type=%s keys=%s", event_type, list(data.keys()))
+
+            _ws_msgs_parsed += 1
+
+        except json.JSONDecodeError:
+            logger.debug("WS invalid JSON: %s", raw_msg[:200])
+
+        dt = time.perf_counter() - t0
+        if dt > 0.01:
+            _ws_slow_parses += 1
+            logger.warning("WS slow parse %.4fs event=%s size=%d",
+                           dt, data.get("event_type", "?") if isinstance(data, dict) else "?",
+                           len(raw_msg))
+
+        queue.task_done()
+
 
 async def _ws_main():
-    """Main WebSocket loop with auto-reconnection and health-check recovery."""
-    global _ws_running, _ws_connection
+    """
+    Main WebSocket loop with queue-based architecture.
 
-    HEALTH_TIMEOUT = 30  # seconds without price data → force reconnect
+    recv loop → asyncio.Queue → parse worker (separate task)
+    This ensures recv() is never blocked by parsing, preventing
+    the server from detecting us as a slow consumer.
+    """
+    global _ws_running, _ws_connection, _ws_msgs_received, _ws_reconnect_count
+    import random
+
+    HEALTH_TIMEOUT = 90  # seconds without ANY message → force reconnect
+    retry_delay = 1.0    # Exponential backoff base
 
     while _ws_running:
+        # Create a fresh queue for each connection
+        msg_queue: asyncio.Queue = asyncio.Queue(maxsize=5000)
+        parse_task = None
+
         try:
             async with websockets.connect(
-                WS_URL, ping_interval=20, ping_timeout=10
+                WS_URL,
+                ping_interval=10,
+                ping_timeout=10,
+                close_timeout=5,
             ) as ws:
                 _ws_connection = ws
-                last_useful_msg = time.time()
+                retry_delay = 1.0  # Reset backoff on successful connect
+                last_any_msg = time.time()
                 logger.info("WS connected to %s", WS_URL)
+
+                # Start the parse worker
+                parse_task = asyncio.create_task(_ws_parse_worker(msg_queue))
 
                 # Subscribe to all tracked tokens
                 tokens = list(_subscribed_tokens)
@@ -648,19 +808,17 @@ async def _ws_main():
                     print(f"  [WS] Connected — tracking {len(tokens)} tokens")
 
                 while _ws_running:
-                    # ── Health check: force reconnect if no useful data ──
-                    if time.time() - last_useful_msg > HEALTH_TIMEOUT:
+                    # ── Health check: no messages at all → dead connection ──
+                    if time.time() - last_any_msg > HEALTH_TIMEOUT:
                         n_tokens = len(_subscribed_tokens)
                         logger.warning(
-                            "WS health check FAILED — no data for %ds with %d tokens. Reconnecting.",
+                            "WS health FAILED — no msgs for %ds (%d tokens). Reconnecting.",
                             HEALTH_TIMEOUT, n_tokens,
                         )
-                        print(
-                            f"  [WS] ⚠️ No data for {HEALTH_TIMEOUT}s — forcing reconnect"
-                        )
-                        break  # exits inner while → closes ws → reconnects
+                        print(f"  [WS] No data for {HEALTH_TIMEOUT}s — forcing reconnect")
+                        break
 
-                    # ── Check for pending subscriptions (hot-add / replace) ──
+                    # ── Check for pending subscriptions ──
                     if _pending_subscribe:
                         _pending_subscribe.clear()
                         all_tokens = list(_subscribed_tokens)
@@ -670,59 +828,49 @@ async def _ws_main():
                             "custom_feature_enabled": True,
                         }
                         await ws.send(json.dumps(sub_msg))
-                        logger.info("WS re-subscribed ALL %d tokens", len(all_tokens))
+                        logger.info("WS re-subscribed %d tokens (queue=%d)",
+                                    len(all_tokens), msg_queue.qsize())
 
-                    # ── Wait for message with short timeout ──
+                    # ── Fast recv: grab message and push to queue immediately ──
                     try:
                         raw_msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
                     except asyncio.TimeoutError:
                         continue
 
-                    try:
-                        data = json.loads(raw_msg)
+                    _ws_msgs_received += 1
+                    last_any_msg = time.time()
 
-                        if isinstance(data, list):
-                            continue
-                        if not isinstance(data, dict):
-                            continue
-
-                        event_type = data.get("event_type", "")
-
-                        # One-shot: log the first message keys for debugging
-                        if not hasattr(_ws_main, "_first_logged"):
-                            _ws_main._first_logged = True
-                            logger.info(
-                                "WS first msg keys=%s event=%s ts=%s",
-                                list(data.keys()), event_type,
-                                data.get("timestamp", "MISSING"),
-                            )
-
-                        # Record WS latency (every message)
+                    # Non-blocking put: if queue is full, drop oldest
+                    if msg_queue.full():
                         try:
-                            from scalper.latency import record_polymarket_ws
-                            server_ts = data.get("timestamp")
-                            ts_val = int(server_ts) if server_ts else None
-                            record_polymarket_ws(ts_val)
-                        except (ValueError, TypeError, ImportError):
+                            msg_queue.get_nowait()
+                            logger.warning("WS queue full (%d) — dropped oldest msg",
+                                           msg_queue.maxsize)
+                        except asyncio.QueueEmpty:
                             pass
-
-                        if event_type == "book":
-                            _parse_book_message(data)
-                            last_useful_msg = time.time()
-                        elif event_type == "price_change":
-                            _parse_price_change(data)
-                            last_useful_msg = time.time()
-                        elif event_type == "last_trade_price":
-                            _parse_last_trade_price(data)
-                            last_useful_msg = time.time()
-                    except json.JSONDecodeError:
-                        pass
+                    await msg_queue.put(raw_msg)
 
         except Exception as exc:
             _ws_connection = None
+            _ws_reconnect_count += 1
             if _ws_running:
-                logger.warning("WS disconnected: %s — reconnecting in 3s", exc)
-                await asyncio.sleep(3)
+                # Exponential backoff with jitter
+                jitter = random.uniform(0, retry_delay * 0.5)
+                wait = retry_delay + jitter
+                logger.warning(
+                    "WS disconnected (#%d): %s — reconnecting in %.1fs",
+                    _ws_reconnect_count, exc, wait,
+                )
+                await asyncio.sleep(wait)
+                retry_delay = min(retry_delay * 2, 30)  # Cap at 30s
+        finally:
+            # Shutdown parse worker cleanly
+            if parse_task and not parse_task.done():
+                await msg_queue.put(None)  # Poison pill
+                try:
+                    await asyncio.wait_for(parse_task, timeout=2.0)
+                except asyncio.TimeoutError:
+                    parse_task.cancel()
 
     _ws_connection = None
 
@@ -824,7 +972,7 @@ def is_running() -> bool:
 
 
 def get_status() -> dict:
-    """Get status summary."""
+    """Get status summary including performance counters."""
     with _lock:
         stale = time.time() - 30
         active_books = sum(1 for b in _orderbooks.values() if b.get("updated", 0) > stale)
@@ -835,4 +983,8 @@ def get_status() -> dict:
         "subscribed": len(_subscribed_tokens),
         "active_books": active_books,
         "active_prices": active_prices,
+        "msgs_received": _ws_msgs_received,
+        "msgs_parsed": _ws_msgs_parsed,
+        "slow_parses": _ws_slow_parses,
+        "reconnects": _ws_reconnect_count,
     }

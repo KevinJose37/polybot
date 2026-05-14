@@ -42,3 +42,8 @@ Thumbs.db
 
 # Gemini
 .gemini/
+
+# Machine Learning & Parquet
+*.parquet
+data/parquet/
+data/ml_features/

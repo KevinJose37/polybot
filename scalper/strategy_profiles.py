@@ -58,6 +58,9 @@ class StrategyProfile:
 
     # ── Signal score ceiling (v2opt3) ────────────────────────────
     max_signal_score: float = 1.0      # block entry if |score| above this (momentum exhausted)
+    
+    # ── Execution filters ──────────────────────────────────────────
+    max_spread: float = 0.03           # Max bid-ask spread for entry
 
     # ── Smart Inversion (Falling Knife Protection) ─────────────
     smart_invert_threshold: float = 0.0  # invert signal if original entry price is below this
@@ -83,6 +86,9 @@ class StrategyProfile:
     reversion_threshold: float = 0.008   # min deviation from MA to enter
     ma_window_sec: int = 60              # SMA lookback in seconds
     time_stop_sec: int = 0               # exit if not resolved in N seconds (0 = disabled)
+    
+    # ── V11 Sniper ──────────────────────────────────────────────────
+    sniper_trigger_price: float = 0.53
 
 # ═══════════════════════════════════════════════════════════════
 # Strategy Profiles
@@ -417,6 +423,56 @@ PROFILES: dict[str, StrategyProfile] = {
         velocity_window_sec=30,
         velocity_threshold=0.02,
         hold_to_resolution=True,
+    ),
+    # ── V11: Spread Sniper (Frontrun Static Imbalance) ─────────
+    "v11": StrategyProfile(
+        name="v11",
+        label="V11 — Spread Sniper (Frontrun Initial Imbalance)",
+        trades_file="hft_trades_v11.json",
+        signal_source="poly_sniper",     
+        signal_threshold=0.5,            # Need 1.0 from our sniper signal
+        entry_mode="late",               
+        entry_window_start=5,            # Wait 5 seconds for book to populate
+        entry_window_end=120,            # Ampliado a 120 segundos
+        take_profit=0.20,                # TP Gigante ($0.20 por contrato)
+        stop_loss=99.0,                  # Sin Stop Loss (solo TP o resolución final)
+        signal_reversal=99.0,            # Sin salidas por reversión
+        trailing_stop=False,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=99,
+        best_signal_only=False,
+        poly_price_filter=True,          # V11: FILTRO ACTIVADO
+        poly_price_cap=0.55,             # Tope máximo absoluto: $0.55 (no comprar caro)
+        min_entry_price=0.05,            # Min entry
+        sniper_trigger_price=0.505,      # Triggers immediately on 0.51 (using 0.505 for float safety)
+        max_spread=0.06,                 # Permitir spreads iniciales más grandes
+        hold_to_resolution=False,        # Quick TP is the goal
+    ),
+    # ── V12: Event-Driven Sniper (Zero-Latency) ─────────
+    "v12": StrategyProfile(
+        name="v12",
+        label="V12 — Event-Driven Sniper (Zero-Latency)",
+        trades_file="hft_trades_v12.json",
+        signal_source="poly_sniper_v12",     
+        signal_threshold=0.5,            
+        entry_mode="late",               
+        entry_window_start=0,            # Triggered by WS callback
+        entry_window_end=120,            
+        take_profit=0.20,                
+        stop_loss=99.0,                  
+        signal_reversal=99.0,            
+        trailing_stop=False,
+        sizing="flat",
+        base_stake=10.0,
+        max_open_positions=99,
+        best_signal_only=False,
+        poly_price_filter=True,          
+        poly_price_cap=0.55,             
+        min_entry_price=0.05,            
+        sniper_trigger_price=0.505,      
+        max_spread=0.06,                 
+        hold_to_resolution=False,        
     ),
 }
 

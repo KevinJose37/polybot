@@ -412,25 +412,10 @@ def check_entry_conditions(token_id: str, max_spread: float = 0.03, asset: str =
             "best_bid": best_bid,
         })
 
-    # Risk/reward filter: block entries where loss >> potential gain
+    # Risk/reward calculation (for logging only, filter removed for V11)
     potential_win = 1.0 - best_ask
     potential_loss = best_ask
     rr_ratio = round(potential_loss / potential_win, 2) if potential_win > 0 else 99.0
-    max_rr = 2.0  # Max acceptable risk/reward ratio (blocks entries above ~$0.67)
-
-    if rr_ratio > max_rr:
-        return _log_result({
-            "can_enter": False,
-            "reason": (
-                f"Bad R/R: {rr_ratio:.1f}x "
-                f"(lose ${potential_loss:.2f} to win ${potential_win:.2f})"
-            ),
-            "spread": spread,
-            "mid_price": mid,
-            "best_ask": best_ask,
-            "best_bid": best_bid,
-            "rr_ratio": rr_ratio,
-        })
 
     return _log_result({
         "can_enter": True,
@@ -653,6 +638,69 @@ def sell_outcome(
 
     except Exception as exc:
         logger.error("SELL order failed for %s: %s", label, exc)
+        return None
+
+
+def place_maker_limit_sell(token_id: str, shares: float, limit_price: float) -> str | None:
+    """
+    Places a GTC (Maker) limit order to sell shares at a specific target price.
+    Returns the order ID if successful, or None if failed.
+    """
+    global _client
+    if not _client:
+        return None
+
+    try:
+        from py_clob_client_v2.constants import SELL
+        from py_clob_client_v2.clob_types import OrderArgs, OrderType
+
+        order_args = OrderArgs(
+            token_id=token_id,
+            price=round(limit_price, 2),
+            size=round(shares, 2),
+            side=SELL
+        )
+
+        signed = _client.create_order(order_args)
+        resp = _client.post_order(signed, OrderType.GTC)
+
+        logger.info("MAKER SELL posted for %.2f shares @ $%.4f (resp: %s)", shares, limit_price, resp)
+
+        if isinstance(resp, dict):
+            status = resp.get("status", "unknown")
+            order_id = resp.get("orderID") or resp.get("id")
+            err = resp.get("error_message") or resp.get("errorMsg")
+
+            if err:
+                logger.error("Failed to post maker order: %s", err)
+                return None
+            
+            if order_id:
+                return str(order_id)
+            
+        return None
+    except Exception as e:
+        logger.error("Exception placing maker limit sell: %s", e)
+        return None
+
+def get_maker_order_status(order_id: str) -> dict | None:
+    """
+    Checks the status of a specific order ID.
+    Returns dict with {"status": "open" | "matched" | "canceled", "size_matched": float}
+    """
+    global _client
+    if not _client:
+        return None
+    try:
+        resp = _client.get_order(order_id)
+        if isinstance(resp, list) and len(resp) > 0:
+            order_data = resp[0]
+            status = order_data.get("status", "")
+            size_matched = float(order_data.get("sizeMatched", 0.0))
+            return {"status": status, "size_matched": size_matched, "raw": order_data}
+        return None
+    except Exception as e:
+        logger.error("Failed to fetch order status for %s: %s", order_id, e)
         return None
 
 

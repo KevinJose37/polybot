@@ -469,9 +469,8 @@ def open_trade(
             if sim["best_ask"] <= 0 or sim["best_ask"] >= 0.99:
                 print(
                     f"  [PAPER BUY] {asset} {side}: "
-                    f"No asks on book → skipping entry"
+                    f"No valid asks on WS book → skipping entry"
                 )
-                logger.info("PAPER BUY SKIPPED (no asks): %s %s", asset, side)
                 return None
 
             if not sim["can_fill"]:
@@ -577,8 +576,25 @@ def open_trade(
             save_trades(trades)
             return None
 
-    return trade
+    # ── TAKER-MAKER: Calculate and place Maker Exit immediately ──
+    # Calculate TP price. If entry < 0.40, target ~0.48 to capture liquidity vacuum.
+    # Otherwise target entry + $0.05 for a quick scalp.
+    tp_price = 0.48 if trade["entry_price"] < 0.40 else min(0.99, round(trade["entry_price"] + 0.05, 2))
+    trade["maker_target_price"] = tp_price
+    
+    if token_id and is_live_mode:
+        from scalper.live_client import place_maker_limit_sell
+        maker_order_id = place_maker_limit_sell(token_id, trade["shares"], tp_price)
+        if maker_order_id:
+            logger.info("Maker order %s placed at $%.2f for %s", maker_order_id, tp_price, trade["id"])
+            trade["maker_order_id"] = maker_order_id
+        else:
+            logger.error("Failed to place Maker exit for %s", trade["id"])
+    else:
+        logger.debug("Paper Mode: Simulated Maker exit pending at $%.2f", tp_price)
 
+    save_trades(trades)
+    return trade
 
 def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict | None:
     """
@@ -625,11 +641,7 @@ def sell_trade(trade_id: str, exit_price: float, reason: str = "manual") -> dict
                 if sim["best_bid"] <= 0.01:
                     print(
                         f"  [PAPER SELL] {trade['asset']} {trade['side']}: "
-                        f"No bids on book → holding for resolution"
-                    )
-                    logger.info(
-                        "PAPER SELL SKIPPED (no bids): %s %s",
-                        trade["asset"], trade["side"],
+                        f"No valid bids on WS book → holding position"
                     )
                     return None
 
@@ -1125,6 +1137,43 @@ def check_open_positions_profiled(
         # Theoretical change (mid price) vs Actual change if we sell to the bid right now
         unrealized_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0
         realizable_change = (sell_price - entry_price) / entry_price if entry_price > 0 else 0
+
+        # ── Maker Exit Evaluation ────────────────────────────
+        maker_order_id = trade.get("maker_order_id")
+        maker_tp_price = trade.get("maker_target_price")
+        
+        if maker_order_id:
+            # LIVE MODE: Check Polymarket API
+            try:
+                from scalper.live_client import get_maker_order_status
+                status_info = get_maker_order_status(maker_order_id)
+                if status_info and status_info.get("status") == "matched":
+                    # Order was fully matched
+                    trade["status"] = "sold"
+                    trade["exit_price"] = maker_tp_price
+                    trade["exit_time"] = datetime.now(timezone.utc).isoformat()
+                    trade["pnl"] = round((maker_tp_price * trade["shares"]) - trade["stake"], 2)
+                    trade["exit_reason"] = "maker_limit_hit"
+                    save_trades(trades)
+                    actions.append({"type": "sold", "trade": trade})
+                    logger.info("LIVE Maker filled at $%.2f for %s", maker_tp_price, trade["id"])
+                    continue
+            except Exception as e:
+                logger.error("Failed checking maker status: %s", e)
+
+        elif maker_tp_price and ws_bid:
+            # PAPER MODE: Simulate Maker Fill via WS
+            if ws_bid >= maker_tp_price:
+                # Market swept our Limit order!
+                trade["status"] = "sold"
+                trade["exit_price"] = maker_tp_price
+                trade["exit_time"] = datetime.now(timezone.utc).isoformat()
+                trade["pnl"] = round((maker_tp_price * trade["shares"]) - trade["stake"], 2)
+                trade["exit_reason"] = "maker_limit_hit_sim"
+                save_trades(trades)
+                actions.append({"type": "sold", "trade": trade})
+                logger.info("[PAPER] Maker limit filled at $%.2f for %s", maker_tp_price, trade["id"])
+                continue
 
         # ── Hold-to-resolution: skip all early exits ─────────
         import scalper.config as _cfg

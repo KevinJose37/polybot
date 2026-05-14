@@ -79,17 +79,22 @@ FLEET_WALLETS = [
 #  FILE I/O per wallet
 # ══════════════════════════════════════════════════════════════════
 
+# Global file tag for running multiple instances (paper/live) simultaneously
+_FILE_TAG = ""
+
 def _ws(addr: str) -> str:
     """Short wallet id for file naming."""
     return addr[2:10].lower()
 
 
 def _trades_path(addr: str) -> Path:
-    return DATA_DIR / f"copy_{_ws(addr)}.json"
+    tag = f"_{_FILE_TAG}" if _FILE_TAG else ""
+    return DATA_DIR / f"copy_{_ws(addr)}{tag}.json"
 
 
 def _seen_path(addr: str) -> Path:
-    return DATA_DIR / f"copy_{_ws(addr)}_seen.json"
+    tag = f"_{_FILE_TAG}" if _FILE_TAG else ""
+    return DATA_DIR / f"copy_{_ws(addr)}{tag}_seen.json"
 
 
 def load_trades(addr: str) -> list[dict]:
@@ -314,9 +319,9 @@ class WalletTracker:
     @property
     def available(self) -> float:
         if self.is_live:
-            # In live mode: use --capital as budget cap
+            # In live mode: use --capital + earned P&L as budget cap
             # Real USDC balance is enforced at order execution level
-            return self.capital - self.exposure
+            return self.capital + self.total_pnl - self.exposure
         # Paper mode: simulated capital + earned P&L - exposure
         return self.capital + self.total_pnl - self.exposure
 
@@ -416,8 +421,25 @@ class WalletTracker:
                 events.append(f"[{self.name}] SKIP no capital (${self.available:.0f}) {title[:30]}")
                 continue
 
-            # ── Duplicate check ──
-            if any(tr.get("slug") == slug and tr.get("side") == outcome for tr in self.open_trades):
+            # ── Trash Filter (Ignore tiny hedges) ──
+            if size < 2.0:
+                events.append(f"[{self.name}] SKIP trash bet (${size:.2f}) {title[:30]}")
+                continue
+
+            # ── Duplicate check / Merge Unknown ──
+            existing_trade = None
+            for tr in self.open_trades:
+                if tr.get("token_id") == token_id:
+                    existing_trade = tr
+                    break
+                    
+            if existing_trade:
+                if str(existing_trade.get("slug", "")).startswith("unknown-"):
+                    existing_trade["slug"] = slug
+                    existing_trade["question"] = title[:100]
+                    existing_trade["side"] = outcome
+                    save_trades(self.address, self.trades)
+                    events.append(f"[{self.name}] 🔄 Restored metadata for {title[:30]}")
                 continue
 
             # ── Signal delay tracking ──
@@ -508,6 +530,15 @@ class WalletTracker:
                 except Exception:
                     entry_source = "API (error)"
 
+            # --- PAPER LATENCY PENALTY ---
+            if not self.is_live and signal_delay_s > 2:
+                penalty = price * 0.05
+                entry_price = min(0.99, entry_price + penalty)
+                if not fill_meta:
+                    fill_meta = {}
+                fill_meta["latency_penalty"] = round(penalty, 4)
+                entry_source += f" (+{penalty:.4f} latency slip)"
+
             # ── Sanity: don't buy at extremes ──
             if entry_price >= 0.95 or entry_price <= 0.05:
                 events.append(f"[{self.name}] SKIP extreme price ${entry_price:.2f} {title[:30]}")
@@ -585,6 +616,133 @@ class WalletTracker:
             self.last_event = msg
 
         return events
+
+    def execute_fast_buy(self, event: dict) -> str:
+        """Execute a low-latency FAST BUY directly from chain event (0ms latency)."""
+        token_id = event.get("token_id")
+        if not token_id:
+            return ""
+            
+        # Deduplication check
+        if any(tr.get("token_id") == token_id for tr in self.open_trades):
+            return ""
+            
+        if self.available < self.stake:
+            return f"[{self.name}] FAST-BUY SKIP: No capital (${self.available:.0f})"
+            
+        try:
+            from scalper.live_client import buy_outcome, _fetch_rest_book
+            book = _fetch_rest_book(token_id)
+            if not book or not book.get("bids") or not book.get("asks"):
+                return f"[{self.name}] FAST-BUY FAILED: Could not fetch book for {token_id[:8]}"
+                
+            sorted_asks = sorted(book["asks"], key=lambda a: float(a.get("price", 0)))
+            sorted_bids = sorted(book["bids"], key=lambda b: float(b.get("price", 0)), reverse=True)
+            ask_price = float(sorted_asks[0]["price"])
+            bid_price = float(sorted_bids[0]["price"])
+            spread = round(ask_price - bid_price, 4)
+            
+            event_amount = event.get("amount", 0)
+            usd_size = event_amount * ask_price
+            if usd_size < 2.0:
+                return f"[{self.name}] FAST-BUY SKIP: trash bet (${usd_size:.2f})"
+            
+            if spread > 0.08:
+                return f"[{self.name}] FAST-BUY SKIP: spread ${spread:.3f} > $0.08"
+                
+            total_depth_usd = sum(float(a.get("price", 0)) * float(a.get("size", 0)) for a in sorted_asks[:5])
+            if total_depth_usd < self.stake * 1.5:
+                return f"[{self.name}] FAST-BUY SKIP: depth ${total_depth_usd:.0f}<${self.stake*1.5:.0f}"
+                
+            if ask_price >= 0.95 or ask_price <= 0.05:
+                return f"[{self.name}] FAST-BUY SKIP: extreme price ${ask_price:.2f}"
+                
+            # --- PAPER MODE (Simulated Execution) ---
+            if not self.is_live:
+                simulated_entry = ask_price + 0.015
+                if simulated_entry > 0.99:
+                    return f"[{self.name}] PAPER FAK REJECTED: Price too high (${simulated_entry:.2f})"
+                
+                shares = self.stake / simulated_entry
+                trades = self.trades
+                entry = {
+                    "id": _next_id(trades, self.address),
+                    "wallet": self.address[:14],
+                    "wallet_name": self.name,
+                    "slug": f"unknown-{token_id[-6:]}",
+                    "question": f"Pending REST data for {token_id[:10]}...",
+                    "side": "?",
+                    "token_id": token_id,
+                    "entry_price": round(simulated_entry, 4),
+                    "entry_source": "FAST-PATH-SIM",
+                    "entry_time": datetime.now(timezone.utc).isoformat(),
+                    "stake": round(self.stake, 2),
+                    "shares": round(shares, 4),
+                    "original_size": round(self.stake, 2),
+                    "original_price": round(ask_price, 4),
+                    "status": "open",
+                    "mode": "PAPER",
+                    "signal_delay_s": 0,
+                    "fill_meta": {"sim_slippage": 0.015},
+                    "exit_price": None,
+                    "exit_time": None,
+                    "exit_reason": None,
+                    "pnl": None,
+                }
+                trades.append(entry)
+                save_trades(self.address, trades)
+                msg = f"[{self.name}] \u26a1 [FAST-PATH PAPER] @ ${entry['entry_price']:.3f} | {token_id[:8]}"
+                self.last_event = msg
+                return msg
+
+            # --- LIVE MODE (Real Execution) ---
+            res = buy_outcome(
+                token_id=token_id,
+                price=ask_price,
+                size=self.stake,
+                asset="Unknown",
+                side="?",
+                max_slippage=0.08,
+                fast_path=True,
+            )
+            
+            if res and isinstance(res, dict) and "actual_entry_price" in res:
+                actual_stake = res.get("actual_cost", self.stake)
+                trades = self.trades
+                entry = {
+                    "id": _next_id(trades, self.address),
+                    "wallet": self.address[:14],
+                    "wallet_name": self.name,
+                    "slug": f"unknown-{token_id[-6:]}",
+                    "question": f"Pending REST data for {token_id[:10]}...",
+                    "side": "?",
+                    "token_id": token_id,
+                    "entry_price": res.get("actual_entry_price", ask_price),
+                    "entry_source": "FAST-PATH",
+                    "entry_time": datetime.now(timezone.utc).isoformat(),
+                    "stake": round(actual_stake, 2),
+                    "shares": round(res.get("shares", 0), 4),
+                    "original_size": round(self.stake, 2),
+                    "original_price": round(ask_price, 4),
+                    "status": "open",
+                    "mode": "LIVE",
+                    "signal_delay_s": 0,
+                    "fill_meta": None,
+                    "exit_price": None,
+                    "exit_time": None,
+                    "exit_reason": None,
+                    "pnl": None,
+                }
+                trades.append(entry)
+                save_trades(self.address, trades)
+                msg = f"[{self.name}] \u26a1 [FAST-PATH BUY] @ ${entry['entry_price']:.3f} | {token_id[:8]}"
+                self.last_event = msg
+                return msg
+                
+        except Exception as e:
+            return f"[{self.name}] FAST-BUY ERROR: {e}"
+            
+        return ""
 
     def check_resolutions(self) -> list[str]:
         """Check if any open positions have resolved."""
@@ -758,7 +916,8 @@ def render_dashboard(trackers: list[WalletTracker], event_log: list[str], cycle:
     cap_each = trackers[0].capital if trackers else 0
     stake_each = trackers[0].stake if trackers else 0
 
-    print(f"  POLYMARKET COPY FLEET              {now}  |  Cycle #{cycle}")
+    mode_str = "[LIVE MODE \U0001F534]" if (trackers and trackers[0].is_live) else "[PAPER MODE \U0001F4DD]"
+    print(f"  POLYMARKET COPY FLEET  {mode_str}      {now}  |  Cycle #{cycle}")
     print(f"  {len(trackers)} wallets  |  ${cap_each:.0f}/wallet  |  ${stake_each:.0f}/trade  |  "
           f"Open: {total_open}  |  Resolved: {total_resolved}  |  "
           f"Fleet P&L: ${total_pnl:+.2f}")
@@ -887,11 +1046,16 @@ def run_fleet(
             addr = event.get("wallet", "").lower()
             tr = tracker_map.get(addr)
             if tr:
+                if event.get("direction") == "BUY":
+                    fast_msg = tr.execute_fast_buy(event)
+                    if fast_msg:
+                        _log_event(f"{ts} {fast_msg}")
+
                 # Force an immediate poll to catch the new trade via REST
                 # (The Activity API is sometimes delayed, but ChainListener
                 # tells us exactly WHEN to look).
                 tr.next_poll_at = time.time() - 1
-                _log_event(f"{ts} [CHAIN] Signal from {tr.name}: {event['direction']} detected on-chain")
+                _log_event(f"{ts} [CHAIN] Signal from {tr.name}: {event.get('direction', '?')} detected on-chain")
 
         listener = ChainListener(
             watched_wallets=list(tracker_map.keys()),
@@ -1072,8 +1236,13 @@ Examples:
     parser.add_argument("--poll", type=float, default=30, help="Poll interval in seconds")
     parser.add_argument("--live", action="store_true",
                         help="Execute REAL trades on CLOB (requires .env credentials)")
+    parser.add_argument("--tag", type=str, default="",
+                        help="File tag for parallel instances (e.g. 'paper', 'live')")
 
     args = parser.parse_args()
+
+    # Set file tag for separate trade files (paper vs live)
+    _FILE_TAG = args.tag
 
     # Auto-stake: capital/10 allows ~10 concurrent positions
     stake = args.stake if args.stake > 0 else max(1.0, round(args.capital / 10, 1))

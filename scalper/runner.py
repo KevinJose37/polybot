@@ -189,7 +189,8 @@ def _run_single_cycle(
         # REST pre-entry check: verify bilateral book + spread
         if token_id:
             from scalper.live_client import check_entry_conditions
-            entry_check = check_entry_conditions(token_id, max_spread=HFT_MAX_SPREAD, asset=asset_key, side=side)
+            profile_max_spread = getattr(profile, 'max_spread', HFT_MAX_SPREAD)
+            entry_check = check_entry_conditions(token_id, max_spread=profile_max_spread, asset=asset_key, side=side)
             if not entry_check["can_enter"]:
                 print(f"  [REST CHECK] {asset_key} {side}: {entry_check['reason']} -> SKIP")
                 continue
@@ -287,6 +288,8 @@ def _run_single_cycle_profiled(
     # ── 1. SCAN ──────────────────────────────────────────────
     try:
         markets = scan_active_markets(assets, duration_minutes=duration_minutes)
+        # Update shared state for V12 async callbacks
+        run_scalper.current_markets = markets
     except Exception as exc:
         logger.error("Market scan failed: %s", exc)
         markets = {}
@@ -317,27 +320,34 @@ def _run_single_cycle_profiled(
             all_needed_tokens.append(tid)
 
     # Proactive: prefetch NEXT market's tokens when next slot is <90s away.
-    # Only runs in the last ~90s of each 5-min window to avoid wasting API calls.
-    # Pre-warms the WS buffer so velocity is non-zero from cycle start.
+    # We also keep querying in the first 60s of the new slot (>240s) because
+    # Gamma's REST API often lags. By caching these tokens, we ensure the WS
+    # doesn't drop the orderbooks exactly when we need them most.
     import time as _time
     _now_ts = int(_time.time())
     _slot_sec = duration_minutes * 60
     _next_slot = ((_now_ts // _slot_sec) + 1) * _slot_sec
     _secs_to_next = _next_slot - _now_ts
 
-    if _secs_to_next <= 90:  # Only prefetch in the last 90s
+    if not hasattr(_run_single_cycle_profiled, "_cached_next_tokens"):
+        _run_single_cycle_profiled._cached_next_tokens = []
+
+    if _secs_to_next <= 90 or _secs_to_next >= 240:
         try:
             from scalper.market_scanner import prefetch_next_market_tokens
             next_tokens = prefetch_next_market_tokens(
                 assets=assets, duration_minutes=duration_minutes,
             )
-            for tid in next_tokens:
-                if tid and tid not in all_needed_tokens:
-                    all_needed_tokens.append(tid)
             if next_tokens:
-                print(f"  [WS] Pre-warming {len(next_tokens)} tokens for next cycle ({_secs_to_next}s away)")
+                _run_single_cycle_profiled._cached_next_tokens = next_tokens
+                if _secs_to_next <= 90:
+                    print(f"  [WS] Pre-warming {len(next_tokens)} tokens for next cycle ({_secs_to_next}s away)")
         except Exception:
             pass
+
+    for tid in _run_single_cycle_profiled._cached_next_tokens:
+        if tid and tid not in all_needed_tokens:
+            all_needed_tokens.append(tid)
 
     if all_needed_tokens:
         try:
@@ -417,12 +427,23 @@ def _run_single_cycle_profiled(
                 reversion_threshold=getattr(profile, 'reversion_threshold', 0.008),
                 ma_window_sec=getattr(profile, 'ma_window_sec', 60),
             )
+        elif profile.signal_source == "poly_sniper":
+            from scalper.signals_v11 import compute_all_signals_sniper
+            signals = compute_all_signals_sniper(
+                assets=assets,
+                markets=markets,
+                trigger_price=getattr(profile, "sniper_trigger_price", 0.53),
+                max_entry=getattr(profile, "poly_price_cap", 0.56)
+            )
         elif profile.signal_source == "meta_v9":
             from scalper.signals_v9 import compute_all_signals_v9
             signals = compute_all_signals_v9(
                 assets=assets,
                 markets=markets,
             )
+        elif profile.signal_source == "poly_sniper_v12":
+            # V12 is fully asynchronous. Signals are computed via WS callbacks.
+            signals = {}
         else:
             signals = compute_all_signals(assets)
     except Exception as exc:
@@ -652,7 +673,8 @@ def _run_single_cycle_profiled(
 
         if token_id:
             from scalper.live_client import check_entry_conditions
-            entry_check = check_entry_conditions(token_id, max_spread=HFT_MAX_SPREAD, asset=asset_key, side=side)
+            profile_max_spread = getattr(profile, 'max_spread', HFT_MAX_SPREAD)
+            entry_check = check_entry_conditions(token_id, max_spread=profile_max_spread, asset=asset_key, side=side)
             if not entry_check["can_enter"]:
                 print(f"  [REST CHECK] {asset_key} {side}: {entry_check['reason']} -> SKIP")
                 continue
@@ -779,6 +801,57 @@ def run_scalper(
         tick_manager = BinanceTickManager()
         tick_manager.start()
 
+    # Initialize Polymarket WS for V6, V11, V12
+    if profile.signal_source in ("poly_velocity", "meta_v9", "poly_sniper", "poly_sniper_v12"):
+        from scalper.orderbook_ws import start as start_orderbook_ws
+        start_orderbook_ws()
+
+    # V12 Event-Driven Architecture Hook
+    if profile.signal_source == "poly_sniper_v12":
+        from scalper.orderbook_ws import register_book_callback
+        from scalper.signals_v12_event import evaluate_tick
+        import threading
+        
+        def _v12_event_hook(token_id, book):
+            if not hasattr(run_scalper, "current_markets"):
+                return
+            
+            # Fire signal evaluation synchronously on the WS parser thread (micro-latency)
+            result = evaluate_tick(
+                token_id, 
+                book, 
+                run_scalper.current_markets, 
+                target_assets or HFT_ASSETS,
+                profile
+            )
+            
+            if result:
+                asset_key, market_data, sig = result
+                # Spawn a thread to execute the trade so we don't block the WS parser!
+                from scalper.trader import open_trade
+                from scalper.runner import _get_active_trades
+                
+                # Double-check position limits before spawning thread
+                active = _get_active_trades()
+                if len(active) >= profile.max_open_positions:
+                    return
+                    
+                directional_price = market_data.get(f"{sig.direction.lower()}_price", 0.5)
+                
+                def _execute():
+                    open_trade(
+                        asset=asset_key,
+                        side=sig.direction,
+                        score=sig.score,
+                        profile=profile,
+                        current_price=directional_price,
+                        market_data=market_data
+                    )
+                
+                threading.Thread(target=_execute, daemon=True).start()
+
+        register_book_callback(_v12_event_hook)
+
     print_scalper_banner()
 
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -848,8 +921,22 @@ def run_scalper(
                 print(f"\n  {reason}\n")
                 break
 
-            print(f"\n  💤 Próximo ciclo en {_cfg.HFT_POLL_INTERVAL}s...")
-            time.sleep(_cfg.HFT_POLL_INTERVAL)
+            import time as _time
+            _now_ts = int(_time.time())
+            _slot_sec = duration_minutes * 60
+            _next_slot = ((_now_ts // _slot_sec) + 1) * _slot_sec
+            _secs_to_next = _next_slot - _now_ts
+
+            if _secs_to_next <= 15 or _secs_to_next >= 285:
+                # Critical window: 15s before to 15s after boundary
+                sleep_time = 0.5
+                if cycle % 5 == 0:  # Reduce terminal spam
+                    print(f"\n  ⏱️  [HFT] Polling rápido en {sleep_time}s... (Boundary close)")
+            else:
+                sleep_time = _cfg.HFT_POLL_INTERVAL
+                print(f"\n  💤 Próximo ciclo en {sleep_time}s...")
+            
+            time.sleep(sleep_time)
 
     except KeyboardInterrupt:
         print("\n\n  ⛔ Bot detenido por el usuario.\n")

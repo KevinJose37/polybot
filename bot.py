@@ -373,9 +373,9 @@ Ejemplos de uso:
     )
     parser.add_argument(
         "--strategy",
-        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4", "v2opt2", "v2opt3", "v5", "v6", "v7", "v8", "v9", "v10"],
+        choices=["v1", "v2", "v3", "v1opt", "v2opt", "v4", "v2opt2", "v2opt3", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12"],
         default="v1",
-        help="Strategy: v1-v7. v7=Production (Velocity+Hold)",
+        help="Strategy: v1-v12. v12=Event-Driven Sniper",
     )
     parser.add_argument(
         "--interval",
