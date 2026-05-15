@@ -1,0 +1,3 @@
+"""
+Arbitrage package init.
+"""

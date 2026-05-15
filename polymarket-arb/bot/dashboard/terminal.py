@@ -1,0 +1,299 @@
+"""
+Terminal UI using rich.
+"""
+from rich.layout import Layout
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from rich.console import Console, Group
+
+from bot.execution.position_manager import PositionManager
+from bot.api.schemas import MarketSnapshot
+from bot.orderbook.local_book import LocalOrderBook
+from bot.paper_trading.stats import TradingStats
+
+console = Console()
+
+
+class TerminalDashboard:
+    def __init__(self, mode: str, capital: float):
+        self.mode = mode
+        self.capital = capital
+        self.layout = Layout()
+        
+        # Persistent mapping so we don't lose names of resolved markets
+        self.token_to_name = {}
+        self.token_to_base_name = {}
+        
+        self.layout.split_column(
+            Layout(name="header", size=3),
+            Layout(name="body", ratio=3),
+            Layout(name="footer", size=3),
+        )
+        
+        self.layout["body"].split_row(
+            Layout(name="left", ratio=3),
+            Layout(name="right", ratio=2),
+        )
+        
+        self.layout["left"].split_column(
+            Layout(name="markets", size=12),
+            Layout(name="resolved", ratio=1),
+            Layout(name="opportunities", size=7),
+        )
+        
+        self.layout["right"].split_column(
+            Layout(name="stats", ratio=1),
+            Layout(name="positions", ratio=1),
+        )
+        
+    def update(
+        self,
+        position_manager: PositionManager,
+        markets: list[MarketSnapshot],
+        orderbooks: dict[str, LocalOrderBook],
+        opportunities: list[dict],
+        health_status: dict[str, bool],
+        stats: TradingStats | None = None,
+    ) -> None:
+        """Refresh the layout with new data."""
+        total_pnl = position_manager.total_realized_pnl + position_manager.total_unrealized_pnl
+        equity = self.capital + total_pnl
+        pnl_pct = (total_pnl / self.capital) * 100 if self.capital > 0 else 0
+        
+        pos_value = sum(
+            abs(p.size * p.avg_price)
+            for p in position_manager.positions.values()
+            if p.size != 0
+        )
+        avail_capital = equity - pos_value
+        
+        mode_text = "[bold yellow]PAPER TRADING — NOT REAL MONEY[/]" if self.mode == "paper" else "[bold red]🔴 LIVE TRADING[/]"
+        pnl_color = "green" if total_pnl >= 0 else "red"
+        
+        # ── Header ──
+        uptime = stats.uptime_str if stats else "00:00:00"
+        header_text = (
+            f"  💰 Capital: [bold]${self.capital:,.2f}[/]  │  "
+            f"💵 Cash: [bold cyan]${max(0, avail_capital):,.2f}[/]  │  "
+            f"📦 Positions: [bold yellow]${pos_value:,.2f}[/]  │  "
+            f"📊 Equity: [bold]${equity:,.2f}[/]  │  "
+            f"PnL: [{pnl_color}]${total_pnl:,.2f} ({pnl_pct:+.2f}%)[/]  │  "
+            f"⏱ {uptime}  │  {mode_text}"
+        )
+        self.layout["header"].update(
+            Panel(Text.from_markup(header_text), title="[bold]Polymarket Arb Bot[/]", border_style="cyan")
+        )
+        
+        # ── Markets Table ──
+        table = Table(title="Active Markets", expand=True, show_lines=False, border_style="dim")
+        table.add_column("Market", style="dim", max_width=40)
+        table.add_column("UP Bid", justify="right")
+        table.add_column("UP Ask", justify="right")
+        table.add_column("DN Bid", justify="right")
+        table.add_column("DN Ask", justify="right")
+        table.add_column("Σ Ask", justify="right")
+        table.add_column("PnL", justify="right")
+        
+        for market in markets:
+            if len(market.tokens) >= 2:
+                yes_id = market.tokens[0].token_id
+                no_id = market.tokens[1].token_id
+                
+                b_yes = orderbooks.get(yes_id)
+                b_no = orderbooks.get(no_id)
+                
+                up_bid = b_yes.best_bid() if b_yes else None
+                up_ask = b_yes.best_ask() if b_yes else None
+                dn_bid = b_no.best_bid() if b_no else None
+                dn_ask = b_no.best_ask() if b_no else None
+                
+                up_bid_s = f"{up_bid:.4f}" if up_bid else "---"
+                up_ask_s = f"{up_ask:.4f}" if up_ask else "---"
+                dn_bid_s = f"{dn_bid:.4f}" if dn_bid else "---"
+                dn_ask_s = f"{dn_ask:.4f}" if dn_ask else "---"
+                
+                # Sum of asks — < 1.0 = potential parity arb
+                if up_ask and dn_ask:
+                    ask_sum = up_ask + dn_ask
+                    sum_color = "green" if ask_sum < 1.0 else "red" if ask_sum > 1.02 else "yellow"
+                    sum_s = f"[{sum_color}]{ask_sum:.4f}[/]"
+                else:
+                    sum_s = "---"
+                
+                # Aggregate PnL for this market pair
+                pos_yes = position_manager.get_position(yes_id)
+                pos_no = position_manager.get_position(no_id)
+                market_pnl = pos_yes.realized_pnl + pos_no.realized_pnl
+                unrealized = (
+                    position_manager.mark_to_market(yes_id, up_bid) +
+                    position_manager.mark_to_market(no_id, dn_bid)
+                )
+                total_mkt_pnl = market_pnl + unrealized
+                pnl_str = f"[green]+${total_mkt_pnl:.2f}[/]" if total_mkt_pnl >= 0 else f"[red]-${abs(total_mkt_pnl):.2f}[/]"
+                
+                # Shorten slug for display
+                slug_short = market.slug[:38] if len(market.slug) > 38 else market.slug
+                
+                table.add_row(slug_short, up_bid_s, up_ask_s, dn_bid_s, dn_ask_s, sum_s, pnl_str)
+                
+        self.layout["markets"].update(Panel(table, border_style="blue"))
+        self.layout["markets"].size = max(5, len(markets) + 4)
+        
+        # ── Opportunities ──
+        if opportunities:
+            lines = []
+            for opp in opportunities[-5:]:
+                if isinstance(opp, dict):
+                    lines.append(f"[{opp['type']}] edge={opp['edge']*100:.2f}% | size=${opp['size']:.2f} | [{opp['color']}]{opp['status']}[/]")
+                else:
+                    lines.append(opp)
+            opp_text = "\n".join(lines)
+        else:
+            opp_text = "[dim]Scanning for opportunities...[/]"
+            
+        self.layout["opportunities"].update(
+            Panel(Text.from_markup(opp_text), title="[bold]Recent Opportunities[/]", border_style="magenta")
+        )
+        
+        # Build token_id -> readable name mapping
+        from bot.market_discovery.parsers import parse_market_slug
+        for m in markets:
+            if not m.tokens: continue
+            if m.tokens[0].token_id not in self.token_to_base_name:
+                parsed = parse_market_slug(m.slug)
+                if parsed.is_valid:
+                    tf = "15 min" if parsed.timeframe == "15m" else "5 min"
+                    name = f"{parsed.asset} up/down {tf}"
+                else:
+                    name = m.slug[:16]
+                for t in m.tokens:
+                    self.token_to_name[t.token_id] = f"{name} ({t.outcome})"
+                    self.token_to_base_name[t.token_id] = name
+
+        # ── Resolved Positions ──
+        res_table = Table(show_header=True, expand=True, border_style="dim")
+        res_table.add_column("Market", max_width=30)
+        res_table.add_column("Size", justify="right")
+        res_table.add_column("Avg Px", justify="right")
+        res_table.add_column("Settle", justify="right")
+        res_table.add_column("PnL", justify="right")
+
+        if getattr(position_manager, "resolved_positions", None):
+            for rp in position_manager.resolved_positions[-15:]:
+                res_name = self.token_to_base_name.get(rp["market_id"], rp["market_id"][:15] + "…")
+                rpnl_color = "green" if rp["pnl"] >= 0 else "red"
+                res_table.add_row(
+                    res_name,
+                    f"{abs(rp['size']):.1f}",
+                    f"{rp['avg_price']:.4f}",
+                    f"{rp['settle_price']:.4f}",
+                    f"[{rpnl_color}]${rp['pnl']:.2f}[/]",
+                )
+        else:
+            res_table.add_row("[dim]No positions resolved yet[/]", "", "", "", "")
+
+        self.layout["resolved"].update(
+            Panel(res_table, title="[bold]Last Positions Resolved[/]", border_style="green")
+        )
+
+        # ── Stats Panel ──
+        if stats:
+            win_rate, wins, losses = stats.win_rate
+            wr_color = "green" if win_rate >= 0.5 else "red"
+            
+            stats_table = Table(show_header=False, expand=True, border_style="dim", pad_edge=False)
+            stats_table.add_column("Metric", style="bold", ratio=2)
+            stats_table.add_column("Value", justify="right", ratio=1)
+            
+            stats_table.add_row("Win Rate", f"[{wr_color}]{win_rate*100:.1f}%[/] [dim]({wins}W/{losses}L)[/]")
+            
+            wr_by_type = stats.win_rates_by_type
+            for t_type, data in wr_by_type.items():
+                wr, w, l = data
+                t_color = "green" if wr >= 0.5 else "red"
+                stats_table.add_row(f"  {t_type}", f"[{t_color}]{wr*100:.1f}%[/] [dim]({w}W/{l}L)[/]")
+                
+            wr_by_market = stats.win_rates_by_market(self.token_to_base_name)
+            for mkt, data in wr_by_market.items():
+                wr, w, l = data
+                t_color = "green" if wr >= 0.5 else "red"
+                stats_table.add_row(f"  {mkt}", f"[{t_color}]{wr*100:.1f}%[/] [dim]({w}W/{l}L)[/]")
+                
+            stats_table.add_row("Opps Detected", str(stats.opportunities_detected))
+            stats_table.add_row("Opps Executed", str(stats.opportunities_executed))
+            stats_table.add_row("Rejected (Risk)", str(stats.opportunities_rejected_risk))
+            stats_table.add_row("Rejected (Dedup)", str(stats.opportunities_rejected_dedup))
+            stats_table.add_row("Fills", str(stats.fills_count))
+            stats_table.add_row("No Liquidity", str(stats.rejects_no_liquidity))
+            stats_table.add_row("─" * 16, "─" * 10)
+            
+            gross_color = "green" if stats.gross_pnl >= 0 else "red"
+            net_color = "green" if stats.net_pnl >= 0 else "red"
+            stats_table.add_row("Gross PnL", f"[{gross_color}]${stats.gross_pnl:,.2f}[/]")
+            stats_table.add_row("Total Fees", f"[red]-${stats.total_fees_paid:,.2f}[/]")
+            stats_table.add_row("Net PnL", f"[{net_color}]${stats.net_pnl:,.2f}[/]")
+            stats_table.add_row("Volume", f"${stats.total_volume:,.2f}")
+            stats_table.add_row("Avg Edge", f"{stats.avg_edge*100:.2f}%")
+            stats_table.add_row("─" * 16, "─" * 10)
+            
+            stats_table.add_row("Avail Capital", f"[cyan]${max(0, avail_capital):,.2f}[/]")
+            
+            self.layout["stats"].update(
+                Panel(stats_table, title="[bold]Trading Stats[/]", border_style="green")
+            )
+        else:
+            self.layout["stats"].update(Panel("[dim]No stats available[/]", title="Trading Stats"))
+        
+        # ── Positions Panel ──
+        pos_table = Table(show_header=True, expand=True, border_style="dim")
+        pos_table.add_column("Market", max_width=24)
+        pos_table.add_column("Side", justify="center")
+        pos_table.add_column("Size", justify="right")
+        pos_table.add_column("Avg Px", justify="right")
+        pos_table.add_column("Realized", justify="right")
+        
+        active_positions = [
+            (mid, p) for mid, p in position_manager.positions.items() if p.size != 0
+        ]
+        
+        if active_positions:
+            for mid, p in active_positions[:10]:  # Show top 10
+                side = "[green]LONG[/]" if p.size > 0 else "[red]SHORT[/]"
+                rpnl_color = "green" if p.realized_pnl >= 0 else "red"
+                readable_name = self.token_to_name.get(mid, mid[:10] + "…")
+                pos_table.add_row(
+                    readable_name,
+                    side,
+                    f"{abs(p.size):.1f}",
+                    f"{p.avg_price:.4f}",
+                    f"[{rpnl_color}]${p.realized_pnl:.2f}[/]",
+                )
+            if len(active_positions) > 10:
+                pos_table.add_row(f"...+{len(active_positions)-10} more", "", "", "", "")
+        else:
+            pos_table.add_row("[dim]No open positions[/]", "", "", "", "")
+        
+        self.layout["positions"].update(
+            Panel(pos_table, title=f"[bold]Positions ({len(active_positions)})[/]", border_style="yellow")
+        )
+        
+        # ── Footer ──
+        health_parts = []
+        for k, v in health_status.items():
+            health_parts.append(f"{k}: {'[green]●[/]' if v else '[red]●[/]'}")
+        health_text = " │ ".join(health_parts)
+        
+        n_books = len(orderbooks)
+        n_active = sum(1 for b in orderbooks.values() if not b.is_stale())
+        n_stale = n_books - n_active
+        
+        footer_text = (
+            f"  {health_text}  │  "
+            f"Books: {n_active}/{n_books} active  │  "
+            f"Stale: {'[red]' + str(n_stale) + '[/]' if n_stale > 0 else '[green]0[/]'}  │  "
+            f"Markets: {len(markets)}"
+        )
+        self.layout["footer"].update(
+            Panel(Text.from_markup(footer_text), title="[bold]System Health[/]", border_style="dim")
+        )

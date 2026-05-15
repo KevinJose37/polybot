@@ -1,0 +1,3 @@
+"""
+Paper trading package.
+"""
