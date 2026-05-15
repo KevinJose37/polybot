@@ -57,7 +57,7 @@ class TerminalDashboard:
         stats: TradingStats | None = None,
     ) -> None:
         """Refresh the layout with new data."""
-        total_pnl = position_manager.total_realized_pnl + position_manager.total_unrealized_pnl
+        total_pnl = stats.net_pnl if stats else 0.0
         equity = self.capital + total_pnl
         pnl_pct = (total_pnl / self.capital) * 100 if self.capital > 0 else 0
         
@@ -73,12 +73,14 @@ class TerminalDashboard:
         
         # ── Header ──
         uptime = stats.uptime_str if stats else "00:00:00"
+        total_fees = stats.total_fees_paid if stats else 0.0
         header_text = (
             f"  💰 Capital: [bold]${self.capital:,.2f}[/]  │  "
             f"💵 Cash: [bold cyan]${max(0, avail_capital):,.2f}[/]  │  "
             f"📦 Positions: [bold yellow]${pos_value:,.2f}[/]  │  "
             f"📊 Equity: [bold]${equity:,.2f}[/]  │  "
             f"PnL: [{pnl_color}]${total_pnl:,.2f} ({pnl_pct:+.2f}%)[/]  │  "
+            f"Fees: [red]-${total_fees:,.2f}[/]  │  "
             f"⏱ {uptime}  │  {mode_text}"
         )
         self.layout["header"].update(
@@ -205,39 +207,54 @@ class TerminalDashboard:
             stats_table = Table(show_header=False, expand=True, border_style="dim", pad_edge=False)
             stats_table.add_column("Metric", style="bold", ratio=2)
             stats_table.add_column("Value", justify="right", ratio=1)
+            stats_table.add_column("PnL", justify="right", ratio=1)
             
-            stats_table.add_row("Win Rate", f"[{wr_color}]{win_rate*100:.1f}%[/] [dim]({wins}W/{losses}L)[/]")
+            stats_table.add_row("Win Rate", f"[{wr_color}]{win_rate*100:.1f}%[/] [dim]({wins}W/{losses}L)[/]", "")
             
             wr_by_type = stats.win_rates_by_type
+            pnl_by_type = stats.pnl_by_type
             for t_type, data in wr_by_type.items():
                 wr, w, l = data
                 t_color = "green" if wr >= 0.5 else "red"
-                stats_table.add_row(f"  {t_type}", f"[{t_color}]{wr*100:.1f}%[/] [dim]({w}W/{l}L)[/]")
+                t_pnl = pnl_by_type.get(t_type, 0.0)
+                p_color = "green" if t_pnl >= 0 else "red"
+                stats_table.add_row(
+                    f"  {t_type}",
+                    f"[{t_color}]{wr*100:.1f}%[/] [dim]({w}W/{l}L)[/]",
+                    f"[{p_color}]${t_pnl:,.2f}[/]",
+                )
                 
             wr_by_market = stats.win_rates_by_market(self.token_to_base_name)
+            pnl_by_mkt = stats.pnl_by_market(self.token_to_base_name)
             for mkt, data in wr_by_market.items():
                 wr, w, l = data
                 t_color = "green" if wr >= 0.5 else "red"
-                stats_table.add_row(f"  {mkt}", f"[{t_color}]{wr*100:.1f}%[/] [dim]({w}W/{l}L)[/]")
+                m_pnl = pnl_by_mkt.get(mkt, 0.0)
+                p_color = "green" if m_pnl >= 0 else "red"
+                stats_table.add_row(
+                    f"  {mkt}",
+                    f"[{t_color}]{wr*100:.1f}%[/] [dim]({w}W/{l}L)[/]",
+                    f"[{p_color}]${m_pnl:,.2f}[/]",
+                )
                 
-            stats_table.add_row("Opps Detected", str(stats.opportunities_detected))
-            stats_table.add_row("Opps Executed", str(stats.opportunities_executed))
-            stats_table.add_row("Rejected (Risk)", str(stats.opportunities_rejected_risk))
-            stats_table.add_row("Rejected (Dedup)", str(stats.opportunities_rejected_dedup))
-            stats_table.add_row("Fills", str(stats.fills_count))
-            stats_table.add_row("No Liquidity", str(stats.rejects_no_liquidity))
-            stats_table.add_row("─" * 16, "─" * 10)
+            stats_table.add_row("Opps Detected", str(stats.opportunities_detected), "")
+            stats_table.add_row("Opps Executed", str(stats.opportunities_executed), "")
+            stats_table.add_row("Rejected (Risk)", str(stats.opportunities_rejected_risk), "")
+            stats_table.add_row("Rejected (Dedup)", str(stats.opportunities_rejected_dedup), "")
+            stats_table.add_row("Fills", str(stats.fills_count), "")
+            stats_table.add_row("No Liquidity", str(stats.rejects_no_liquidity), "")
+            stats_table.add_row("─" * 16, "─" * 10, "─" * 8)
             
             gross_color = "green" if stats.gross_pnl >= 0 else "red"
             net_color = "green" if stats.net_pnl >= 0 else "red"
-            stats_table.add_row("Gross PnL", f"[{gross_color}]${stats.gross_pnl:,.2f}[/]")
-            stats_table.add_row("Total Fees", f"[red]-${stats.total_fees_paid:,.2f}[/]")
-            stats_table.add_row("Net PnL", f"[{net_color}]${stats.net_pnl:,.2f}[/]")
-            stats_table.add_row("Volume", f"${stats.total_volume:,.2f}")
-            stats_table.add_row("Avg Edge", f"{stats.avg_edge*100:.2f}%")
-            stats_table.add_row("─" * 16, "─" * 10)
+            stats_table.add_row("Gross PnL", f"[{gross_color}]${stats.gross_pnl:,.2f}[/]", "")
+            stats_table.add_row("Total Fees", f"[red]-${stats.total_fees_paid:,.2f}[/]", "")
+            stats_table.add_row("Net PnL", f"[{net_color}]${stats.net_pnl:,.2f}[/]", "")
+            stats_table.add_row("Volume", f"${stats.total_volume:,.2f}", "")
+            stats_table.add_row("Avg Edge", f"{stats.avg_edge*100:.2f}%", "")
+            stats_table.add_row("─" * 16, "─" * 10, "─" * 8)
             
-            stats_table.add_row("Avail Capital", f"[cyan]${max(0, avail_capital):,.2f}[/]")
+            stats_table.add_row("Avail Capital", f"[cyan]${max(0, avail_capital):,.2f}[/]", "")
             
             self.layout["stats"].update(
                 Panel(stats_table, title="[bold]Trading Stats[/]", border_style="green")
@@ -251,6 +268,7 @@ class TerminalDashboard:
         pos_table.add_column("Side", justify="center")
         pos_table.add_column("Size", justify="right")
         pos_table.add_column("Avg Px", justify="right")
+        pos_table.add_column("Notional", justify="right")
         pos_table.add_column("Realized", justify="right")
         
         active_positions = [
@@ -262,17 +280,19 @@ class TerminalDashboard:
                 side = "[green]LONG[/]" if p.size > 0 else "[red]SHORT[/]"
                 rpnl_color = "green" if p.realized_pnl >= 0 else "red"
                 readable_name = self.token_to_name.get(mid, mid[:10] + "…")
+                notional = abs(p.size * p.avg_price)
                 pos_table.add_row(
                     readable_name,
                     side,
                     f"{abs(p.size):.1f}",
                     f"{p.avg_price:.4f}",
+                    f"${notional:,.2f}",
                     f"[{rpnl_color}]${p.realized_pnl:.2f}[/]",
                 )
             if len(active_positions) > 10:
-                pos_table.add_row(f"...+{len(active_positions)-10} more", "", "", "", "")
+                pos_table.add_row(f"...+{len(active_positions)-10} more", "", "", "", "", "")
         else:
-            pos_table.add_row("[dim]No open positions[/]", "", "", "", "")
+            pos_table.add_row("[dim]No open positions[/]", "", "", "", "", "")
         
         self.layout["positions"].update(
             Panel(pos_table, title=f"[bold]Positions ({len(active_positions)})[/]", border_style="yellow")

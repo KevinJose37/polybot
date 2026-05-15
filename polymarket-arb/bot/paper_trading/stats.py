@@ -108,53 +108,18 @@ class TradingStats:
     @property
     def win_rate(self) -> float:
         """
-        Win rate based on per-opportunity P&L (grouped by timestamp clusters).
-        A trade pair (SELL leg + BUY leg within 500ms) is a single opportunity.
+        Win rate based on per-opportunity net PnL.
+        Returns (rate, wins, losses).
         """
         if len(self.trades) < 2:
             return (0.0, 0, 0)
         
-        # Group trades by opp_id
-        from collections import defaultdict
-        opps_map: dict[str, list[TradeRecord]] = defaultdict(list)
-        for t in self.trades:
-            if t.opp_id:
-                opps_map[t.opp_id].append(t)
-            else:
-                opps_map[f"standalone_{t.timestamp}"].append(t)
-                
-        opps = list(opps_map.values())
-        
         wins = 0
         losses = 0
-        for group in opps:
+        for group in self._group_trades():
             if not group:
                 continue
-                
-            pnl = 0.0
-            for t in group:
-                if t.side == "SELL":
-                    pnl += t.price * t.size - t.fee
-                else:  # BUY
-                    pnl -= t.price * t.size + t.fee
-                    
-            if len(group) == 2:
-                opp_type = group[0].opp_type
-                size = group[0].size
-                is_buy = group[0].side == "BUY"
-                
-                if "TYPE-A" in opp_type or "TYPE-C" in opp_type:
-                    if is_buy:
-                        pnl += size * 1.0  # Payout from buying parity
-                    else:
-                        pnl -= size * 1.0  # Liability from selling parity
-                elif "TYPE-B" in opp_type:
-                    # Type B is cross-interval; payouts and liabilities perfectly cancel out.
-                    pass
-            else:
-                # Leg imbalance. M2M value is roughly net zero minus fees
-                pnl = -sum(t.fee for t in group)
-
+            pnl = self._compute_opp_pnl(group, include_fees=True)
             if pnl >= 0:
                 wins += 1
             else:
@@ -167,49 +132,20 @@ class TradingStats:
     def win_rates_by_type(self) -> dict[str, tuple[float, int, int]]:
         """Win rates segmented by opportunity type."""
         from collections import defaultdict
-        opps_map: dict[str, list[TradeRecord]] = defaultdict(list)
-        for t in self.trades:
-            if t.opp_id:
-                opps_map[t.opp_id].append(t)
-            else:
-                opps_map[f"standalone_{t.timestamp}"].append(t)
-                
         wins_by_type = defaultdict(int)
         totals_by_type = defaultdict(int)
         
-        for group in opps_map.values():
+        for group in self._group_trades():
             if not group:
                 continue
-                
             opp_type = group[0].opp_type or "UNKNOWN"
-                
-            pnl = 0.0
-            for t in group:
-                if t.side == "SELL":
-                    pnl += t.price * t.size - t.fee
-                else:  # BUY
-                    pnl -= t.price * t.size + t.fee
-                    
-            if len(group) == 2:
-                size = group[0].size
-                is_buy = group[0].side == "BUY"
-                
-                if "TYPE-A" in opp_type or "TYPE-C" in opp_type:
-                    if is_buy:
-                        pnl += size * 1.0  # Payout from buying parity
-                    else:
-                        pnl -= size * 1.0  # Liability from selling parity
-                elif "TYPE-B" in opp_type:
-                    pass
-            else:
-                pnl = -sum(t.fee for t in group)
-
+            pnl = self._compute_opp_pnl(group, include_fees=True)
             totals_by_type[opp_type] += 1
             if pnl >= 0:
                 wins_by_type[opp_type] += 1
                 
         result = {}
-        for t in ["TYPE-A", "TYPE-B", "TYPE-C"]:
+        for t in ["TYPE-B", "TYPE-C"]:
             if totals_by_type[t] > 0:
                 wins = wins_by_type[t]
                 losses = totals_by_type[t] - wins
@@ -228,45 +164,14 @@ class TradingStats:
     def win_rates_by_market(self, token_to_market_name: dict[str, str]) -> dict[str, tuple[float, int, int]]:
         """Win rates segmented by market name."""
         from collections import defaultdict
-        opps_map: dict[str, list[TradeRecord]] = defaultdict(list)
-        for t in self.trades:
-            if t.opp_id:
-                opps_map[t.opp_id].append(t)
-            else:
-                opps_map[f"standalone_{t.timestamp}"].append(t)
-                
         wins_by_mkt = defaultdict(int)
         totals_by_mkt = defaultdict(int)
         
-        for group in opps_map.values():
+        for group in self._group_trades():
             if not group:
                 continue
-                
-            opp_type = group[0].opp_type or "UNKNOWN"
-            # Get base market name for the first leg
             market_name = token_to_market_name.get(group[0].market_id, "Unknown Market")
-                
-            pnl = 0.0
-            for t in group:
-                if t.side == "SELL":
-                    pnl += t.price * t.size - t.fee
-                else:  # BUY
-                    pnl -= t.price * t.size + t.fee
-                    
-            if len(group) == 2:
-                size = group[0].size
-                is_buy = group[0].side == "BUY"
-                
-                if "TYPE-A" in opp_type or "TYPE-C" in opp_type:
-                    if is_buy:
-                        pnl += size * 1.0  # Payout from buying parity
-                    else:
-                        pnl -= size * 1.0  # Liability from selling parity
-                elif "TYPE-B" in opp_type:
-                    pass
-            else:
-                pnl = -sum(t.fee for t in group)
-
+            pnl = self._compute_opp_pnl(group, include_fees=True)
             totals_by_mkt[market_name] += 1
             if pnl >= 0:
                 wins_by_mkt[market_name] += 1
@@ -280,13 +185,48 @@ class TradingStats:
                 
         return result
 
-    @property
-    def gross_pnl(self) -> float:
-        """Total P&L ignoring fees."""
-        if not self.trades:
+    def _compute_opp_pnl(self, group: list, include_fees: bool = True) -> float:
+        """Compute PnL for a single opportunity group of trades.
+        
+        Args:
+            group: List of TradeRecord for one opportunity.
+            include_fees: If True, fees are deducted inline (net PnL).
+                          If False, fees are excluded (gross PnL).
+        """
+        if not group:
             return 0.0
-            
-        # Group trades by opp_id
+
+        opp_type = group[0].opp_type or "UNKNOWN"
+
+        pnl = 0.0
+        for t in group:
+            if t.side == "SELL":
+                pnl += t.price * t.size - (t.fee if include_fees else 0.0)
+            else:  # BUY
+                pnl -= t.price * t.size + (t.fee if include_fees else 0.0)
+
+        if len(group) == 2:
+            size = group[0].size
+            is_buy = group[0].side == "BUY"
+
+            if "TYPE-A" in opp_type or "TYPE-C" in opp_type:
+                if is_buy:
+                    pnl += size * 1.0  # Payout from buying parity
+                else:
+                    pnl -= size * 1.0  # Liability from selling parity
+            elif "TYPE-B" in opp_type:
+                pass
+        else:
+            # Leg imbalance / standalone — only fees are the realized loss
+            if include_fees:
+                pnl = -sum(t.fee for t in group)
+            else:
+                pnl = 0.0
+
+        return pnl
+
+    def _group_trades(self) -> list[list]:
+        """Group trades by opp_id into opportunity groups."""
         from collections import defaultdict
         opps_map: dict[str, list[TradeRecord]] = defaultdict(list)
         for t in self.trades:
@@ -294,39 +234,58 @@ class TradingStats:
                 opps_map[t.opp_id].append(t)
             else:
                 opps_map[f"standalone_{t.timestamp}"].append(t)
-                
-        opps = list(opps_map.values())
-            
-        total_pnl = 0.0
-        for group in opps:
+        return list(opps_map.values())
+
+    @property
+    def pnl_by_type(self) -> dict[str, float]:
+        """Total net PnL segmented by opportunity type."""
+        from collections import defaultdict
+        pnl_by: dict[str, float] = defaultdict(float)
+
+        for group in self._group_trades():
             if not group:
                 continue
-                
-            pnl = 0.0
-            for t in group:
-                if t.side == "SELL":
-                    pnl += t.price * t.size
-                else:
-                    pnl -= t.price * t.size
-                    
-            if len(group) == 2:
-                opp_type = group[0].opp_type
-                size = group[0].size
-                is_buy = group[0].side == "BUY"
-                
-                if "TYPE-A" in opp_type or "TYPE-C" in opp_type:
-                    if is_buy:
-                        pnl += size * 1.0
-                    else:
-                        pnl -= size * 1.0
-            else:
-                pnl = 0.0  # Ignore unhedged cashflow for gross PnL
-                
-            total_pnl += pnl
-            
-        return total_pnl
+            opp_type = group[0].opp_type or "UNKNOWN"
+            pnl_by[opp_type] += self._compute_opp_pnl(group, include_fees=True)
+
+        # Ensure active types are present
+        for t in ["TYPE-B", "TYPE-C"]:
+            if t not in pnl_by:
+                pnl_by[t] = 0.0
+
+        return dict(pnl_by)
+
+    def pnl_by_market(self, token_to_market_name: dict[str, str]) -> dict[str, float]:
+        """Total net PnL segmented by market name."""
+        from collections import defaultdict
+        pnl_by: dict[str, float] = defaultdict(float)
+
+        for group in self._group_trades():
+            if not group:
+                continue
+            market_name = token_to_market_name.get(group[0].market_id, "Unknown Market")
+            pnl_by[market_name] += self._compute_opp_pnl(group, include_fees=True)
+
+        return dict(pnl_by)
+
+    @property
+    def gross_pnl(self) -> float:
+        """Total P&L ignoring fees."""
+        if not self.trades:
+            return 0.0
+        return sum(
+            self._compute_opp_pnl(group, include_fees=False)
+            for group in self._group_trades()
+            if group
+        )
 
     @property 
     def net_pnl(self) -> float:
-        """P&L after fees."""
-        return self.gross_pnl - self.total_fees_paid
+        """P&L after fees. Equals sum of pnl_by_type values."""
+        if not self.trades:
+            return 0.0
+        return sum(
+            self._compute_opp_pnl(group, include_fees=True)
+            for group in self._group_trades()
+            if group
+        )

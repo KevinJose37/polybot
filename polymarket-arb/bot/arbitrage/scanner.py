@@ -83,25 +83,9 @@ class ArbitrageScanner:
             _, yes_bid_vol = yes_bid_depth[0]
             _, no_bid_vol = no_bid_depth[0]
 
-            # Type A
-            parity_opp = detect_parity(
-                market_id=market.id,
-                token_yes_id=yes_token,
-                token_no_id=no_token,
-                yes_ask=yes_ask, # type: ignore
-                no_ask=no_ask, # type: ignore
-                yes_vol=yes_ask_vol,
-                no_vol=no_ask_vol,
-                fee=fee,
-                slippage=slippage,
-                min_edge=min_edge,
-                min_notional=min_notional,
-                capital=capital
-            )
-            if parity_opp:
-                parity_opp.timestamp_ms = current_timestamp_ms()
-                opportunities.append(parity_opp)
-                
+            # Type A is subsumed by Type C (exhaustive checks both BUY and SELL parity)
+            # Running both would double-execute on the same BUY-side dislocation.
+
             # Type C
             exhaustive_opp = detect_exhaustive_parity(
                 market_id=market.id,
