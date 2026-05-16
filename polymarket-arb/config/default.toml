@@ -1,9 +1,9 @@
 [trading]
-polymarket_fee = 0.0075
+polymarket_fee = 0.03
 slippage_est = 0.005
 min_edge = 0.015
 min_notional = 1.0
-kelly_fraction_multiplier = 0.45
+kelly_fraction_multiplier = 0.35
 
 [network]
 websocket_reconnect_min_backoff = 1.0
@@ -20,9 +20,9 @@ mean_latency_ms = 120.0
 std_latency_ms = 30.0
 
 [risk]
-max_daily_drawdown = 500.0
-max_exposure_per_asset = 300.0
-max_portfolio_exposure = 900.0
+max_daily_drawdown = 10.0
+max_exposure_per_asset = 10.0
+max_portfolio_exposure = 25.0
 
 [monitoring]
 health_port = 8080

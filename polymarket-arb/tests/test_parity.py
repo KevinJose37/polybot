@@ -1,11 +1,12 @@
 """
 Tests for Type A - YES/NO Parity.
+Uses the real Polymarket fee formula. BUY orders pay taker fees.
 """
 from bot.arbitrage.parity import detect_parity
 
 
 def test_parity_opportunity() -> None:
-    """Verify parity detector finds arb with the additive fee model."""
+    """Verify parity detector finds arb with Polymarket fee model."""
     opp = detect_parity(
         market_id="m1",
         token_yes_id="yes1",
@@ -14,7 +15,8 @@ def test_parity_opportunity() -> None:
         no_ask=0.50,
         yes_vol=1000.0,
         no_vol=500.0,
-        fee=0.02,
+        yes_fee_rate=0.03,
+        no_fee_rate=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
@@ -23,12 +25,15 @@ def test_parity_opportunity() -> None:
     
     assert opp is not None
     assert opp.type.value == "TYPE-A"
-    # edge = 1.0 - (0.40 + 0.008 + 0.005) - (0.50 + 0.01 + 0.005) = 0.072
-    assert abs(opp.edge - 0.072) < 0.0001
+    # yes_fee = 0.40 × 0.03 × (0.40 × 0.60) = 0.40 × 0.03 × 0.24 = 0.00288
+    # no_fee  = 0.50 × 0.03 × (0.50 × 0.50) = 0.50 × 0.03 × 0.25 = 0.00375
+    # yes_cost = 0.40 + 0.00288 + 0.005 = 0.40788
+    # no_cost  = 0.50 + 0.00375 + 0.005 = 0.50875
+    # edge = 1.0 - 0.40788 - 0.50875 = 0.08337
+    assert abs(opp.edge - 0.08337) < 0.001
     assert len(opp.legs) == 2
     assert opp.legs[0].side == "BUY"
     assert opp.legs[1].side == "BUY"
-    # Legs carry raw exchange prices, not all-in cost
     assert opp.legs[0].price == 0.40
     assert opp.legs[1].price == 0.50
 
@@ -43,7 +48,8 @@ def test_parity_no_edge() -> None:
         no_ask=0.49,
         yes_vol=1000.0,
         no_vol=500.0,
-        fee=0.02,
+        yes_fee_rate=0.03,
+        no_fee_rate=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
@@ -62,7 +68,8 @@ def test_parity_sum_gt_1() -> None:
         no_ask=0.99,
         yes_vol=1000.0,
         no_vol=1000.0,
-        fee=0.02,
+        yes_fee_rate=0.03,
+        no_fee_rate=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
@@ -81,7 +88,8 @@ def test_parity_zero_volume() -> None:
         no_ask=0.50,
         yes_vol=0.0,
         no_vol=0.0,
-        fee=0.02,
+        yes_fee_rate=0.03,
+        no_fee_rate=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
@@ -100,7 +108,8 @@ def test_parity_below_min_notional() -> None:
         no_ask=0.50,
         yes_vol=1000.0,
         no_vol=1000.0,
-        fee=0.02,
+        yes_fee_rate=0.03,
+        no_fee_rate=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=100.0,  # Very high threshold

@@ -57,18 +57,19 @@ async def test_orderbook_delta_update() -> None:
 
 @pytest.mark.asyncio
 async def test_orderbook_sequence_gap() -> None:
+    """Monotonic sequences are accepted — Polymarket uses timestamps, not strict +1."""
     book = LocalOrderBook("t1", stale_threshold_ms=5000)
     snapshot = OrderBookSnapshot(
         market_id="t1", bids=[(0.40, 100)], asks=[(0.42, 50)]
     )
     await book.apply_snapshot(snapshot, sequence=1)
     
-    # Gap! sequence=3 instead of 2
+    # Sequence 3 > 1 is fine (monotonic ordering)
     await book.apply_delta(bids=[(0.41, 10)], asks=[], sequence=3)
     
-    assert book.state == BookState.DISCONNECTED
-    assert book.best_bid() is None
-    assert book.last_sequence is None
+    assert book.state == BookState.ACTIVE
+    assert book.best_bid() == 0.41  # New best bid applied
+    assert book.last_sequence == 3
 
 
 @pytest.mark.asyncio

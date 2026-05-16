@@ -1,6 +1,4 @@
-"""
-Tests for market topology builder.
-"""
+"""Tests for market topology builder."""
 from bot.market_discovery.market_relationships import build_topology, MarketTopology
 from bot.api.schemas import MarketSnapshot, Token
 
@@ -35,21 +33,20 @@ def test_topology_parity_markets() -> None:
 
 def test_topology_monotonicity_pairs_different_timestamps() -> None:
     """
-    CRITICAL: 5m and 15m markets have DIFFERENT timestamps (different grid sizes).
-    The topology builder must still pair them by asset, not by timestamp.
+    5m and 15m markets with DIFFERENT timestamps (different grid sizes)
+    should still be paired by asset for monotonicity.
     """
     markets = [
         # BTC 5m at timestamp 1778774100 (divisible by 300)
         _make_market("btc_5m", "btc-updown-5m-1778774100"),
-        # BTC 15m at timestamp 1778773500 (divisible by 900) — DIFFERENT timestamp!
+        # BTC 15m at timestamp 1778773500 (divisible by 900) — DIFFERENT timestamp
         _make_market("btc_15m", "btc-updown-15m-1778773500"),
     ]
     topo = build_topology(markets)
     
-    # Should have one monotonicity group for BTC
-    assert "BTC" in topo.monotonicity_pairs
-    assert "btc_5m" in topo.monotonicity_pairs["BTC"]["5m"]
-    assert "btc_15m" in topo.monotonicity_pairs["BTC"]["15m"]
+    # Should have one monotonicity pair: (5m, 15m) for BTC
+    assert len(topo.monotonicity_pairs) == 1
+    assert topo.monotonicity_pairs[0] == ("btc_5m", "btc_15m")
 
 
 def test_topology_monotonicity_multiple_windows() -> None:
@@ -62,9 +59,12 @@ def test_topology_monotonicity_multiple_windows() -> None:
     ]
     topo = build_topology(markets)
     
-    assert "BTC" in topo.monotonicity_pairs
-    assert len(topo.monotonicity_pairs["BTC"]["5m"]) == 2
-    assert len(topo.monotonicity_pairs["BTC"]["15m"]) == 2
+    # 2 × 2 = 4 cross-product pairs
+    assert len(topo.monotonicity_pairs) == 4
+    # Every pair should be (5m_market, 15m_market)
+    for m5, m15 in topo.monotonicity_pairs:
+        assert "5m" in m5
+        assert "15m" in m15
 
 
 def test_topology_monotonicity_incomplete_asset() -> None:
@@ -75,12 +75,11 @@ def test_topology_monotonicity_incomplete_asset() -> None:
     ]
     topo = build_topology(markets)
     
-    # ETH should not be in monotonicity pairs
-    assert "ETH" not in topo.monotonicity_pairs
+    assert len(topo.monotonicity_pairs) == 0
 
 
 def test_topology_multiple_assets() -> None:
-    """Separate assets get separate monotonicity groups."""
+    """Separate assets get separate monotonicity groups — no cross-asset pairing."""
     markets = [
         _make_market("btc_5m", "btc-updown-5m-1778774100"),
         _make_market("btc_15m", "btc-updown-15m-1778773500"),
@@ -89,6 +88,15 @@ def test_topology_multiple_assets() -> None:
     ]
     topo = build_topology(markets)
     
-    assert "BTC" in topo.monotonicity_pairs
-    assert "ETH" in topo.monotonicity_pairs
+    # 1 BTC pair + 1 ETH pair = 2 total
     assert len(topo.monotonicity_pairs) == 2
+    
+    assets_paired = set()
+    for m5, m15 in topo.monotonicity_pairs:
+        # Extract asset prefix
+        asset = m5.split("_")[0]
+        assets_paired.add(asset)
+        # Ensure no cross-asset pairing
+        assert m15.startswith(asset)
+    
+    assert assets_paired == {"btc", "eth"}

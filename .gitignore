@@ -10,8 +10,10 @@ venv/
 .env
 
 # Logs
-logs/*.log
+logs/
 *.log
+*.jsonl
+.kill_switch
 
 # Trade data (regenerable, lives in data/trades/)
 data/trades/*.json

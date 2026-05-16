@@ -20,9 +20,10 @@ class ArbitrageScanner:
     """
     Orchestrates the pure detector functions against the current orderbook state.
     """
-    def __init__(self, settings: Settings, topology: MarketTopology):
+    def __init__(self, settings: Settings, topology: MarketTopology, fee_rates: dict[str, float] | None = None):
         self.settings = settings
         self.topology = topology
+        self.fee_rates = fee_rates or {}
         self._scan_count: int = 0
         self._total_opportunities: int = 0
 
@@ -34,7 +35,7 @@ class ArbitrageScanner:
         opportunities = []
         
         capital = self.settings.starting_capital
-        fee = self.settings.trading.polymarket_fee
+        default_fee = self.settings.trading.polymarket_fee
         slippage = self.settings.trading.slippage_est
         min_edge = self.settings.trading.min_edge
         min_notional = self.settings.trading.min_notional
@@ -87,6 +88,8 @@ class ArbitrageScanner:
             # Running both would double-execute on the same BUY-side dislocation.
 
             # Type C
+            up_fee = self.fee_rates.get(yes_token, default_fee)
+            down_fee = self.fee_rates.get(no_token, default_fee)
             exhaustive_opp = detect_exhaustive_parity(
                 market_id=market.id,
                 token_up_id=yes_token,
@@ -99,7 +102,8 @@ class ArbitrageScanner:
                 down_ask_vol=no_ask_vol,
                 up_bid_vol=yes_bid_vol,
                 down_bid_vol=no_bid_vol,
-                fee=fee,
+                up_fee_rate=up_fee,
+                down_fee_rate=down_fee,
                 slippage=slippage,
                 min_edge=min_edge,
                 min_notional=min_notional,
@@ -150,6 +154,9 @@ class ArbitrageScanner:
             _, vol_5m = depth_5m[0]
             _, vol_15m = depth_15m[0]
 
+            fee_5m = self.fee_rates.get(yes_5m, default_fee)
+            fee_15m = self.fee_rates.get(yes_15m, default_fee)
+
             mono_opp = detect_monotonicity(
                 market_5m_id=market_5m_id,
                 market_15m_id=market_15m_id,
@@ -159,7 +166,8 @@ class ArbitrageScanner:
                 ask_15m=ask_15m,
                 vol_5m=vol_5m,
                 vol_15m=vol_15m,
-                fee=fee,
+                fee_rate_5m=fee_5m,
+                fee_rate_15m=fee_15m,
                 slippage=slippage,
                 min_edge=min_edge,
                 min_notional=min_notional,
@@ -169,19 +177,15 @@ class ArbitrageScanner:
                 mono_opp.timestamp_ms = current_timestamp_ms()
                 opportunities.append(mono_opp)
         
-        # Heartbeat log every 50 scans
+        # Heartbeat log every 200 scans (keeps logs clean)
         self._scan_count += 1
         self._total_opportunities += len(opportunities)
-        if self._scan_count % 50 == 0:
-            n_mono_pairs = len(self.topology.monotonicity_pairs)
+        if self._scan_count % 200 == 0:
             logger.info(
                 "scanner_heartbeat",
                 scans=self._scan_count,
                 total_opps=self._total_opportunities,
-                parity_markets=len(self.topology.parity_markets),
-                mono_pairs=n_mono_pairs,
-                skipped_stale=skipped_stale,
-                skipped_no_data=skipped_no_data,
+                active_markets=len(self.topology.parity_markets),
                 found_this_scan=len(opportunities),
             )
                     

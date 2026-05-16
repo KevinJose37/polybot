@@ -19,6 +19,7 @@ class Position:
 class PositionManager:
     """
     Tracks inventory and realized/unrealized PnL.
+    Supports parity pair tracking for correct valuation of arb positions.
     """
     def __init__(self):
         # market_id -> Position
@@ -26,6 +27,14 @@ class PositionManager:
         self.total_realized_pnl = 0.0
         self.total_unrealized_pnl = 0.0
         self.resolved_positions: list[dict] = []
+        # Parity pair mapping: token_id -> complementary_token_id
+        # e.g., {"yes_token": "no_token", "no_token": "yes_token"}
+        self.parity_pairs: dict[str, str] = {}
+
+    def register_parity_pair(self, token_a: str, token_b: str) -> None:
+        """Register two tokens as a parity pair (YES/NO of the same market)."""
+        self.parity_pairs[token_a] = token_b
+        self.parity_pairs[token_b] = token_a
 
     def get_position(self, market_id: str) -> Position:
         if market_id not in self.positions:
@@ -94,13 +103,50 @@ class PositionManager:
     def update_all_mtm(self, mid_prices: dict[str, float]) -> None:
         """
         Update total unrealized PnL using the latest mid prices.
+        For parity pairs (YES+NO), values matched shares at $1.00 guaranteed
+        instead of using individual mid prices.
         """
         unrealized = 0.0
+        valued_tokens: set[str] = set()
+        
         for market_id, pos in self.positions.items():
-            if pos.size != 0:
-                mid = mid_prices.get(market_id)
-                if mid is not None:
-                    unrealized += self.mark_to_market(market_id, mid)
+            if pos.size == 0 or market_id in valued_tokens:
+                continue
+                
+            complement_id = self.parity_pairs.get(market_id)
+            if complement_id and complement_id in self.positions:
+                comp_pos = self.positions[complement_id]
+                
+                # Both sides held — value matched shares at $1.00
+                if pos.size > 0 and comp_pos.size > 0:
+                    matched = min(pos.size, comp_pos.size)
+                    # Matched parity: guaranteed $1.00 payout per share
+                    # Unrealized = payout - cost_of_both_legs
+                    parity_pnl = matched * 1.0 - (pos.avg_price * matched + comp_pos.avg_price * matched)
+                    unrealized += parity_pnl
+                    
+                    # Value any unmatched excess at mid-price
+                    excess_a = pos.size - matched
+                    excess_b = comp_pos.size - matched
+                    if excess_a > 0:
+                        mid = mid_prices.get(market_id)
+                        if mid is not None:
+                            unrealized += (mid - pos.avg_price) * excess_a
+                    if excess_b > 0:
+                        mid = mid_prices.get(complement_id)
+                        if mid is not None:
+                            unrealized += (mid - comp_pos.avg_price) * excess_b
+                    
+                    valued_tokens.add(market_id)
+                    valued_tokens.add(complement_id)
+                    continue
+            
+            # Non-parity position: use standard mid-price valuation
+            mid = mid_prices.get(market_id)
+            if mid is not None:
+                unrealized += self.mark_to_market(market_id, mid)
+            valued_tokens.add(market_id)
+                
         self.total_unrealized_pnl = unrealized
 
     def settle_market(self, market_id: str, settle_price: float = 0.5) -> None:

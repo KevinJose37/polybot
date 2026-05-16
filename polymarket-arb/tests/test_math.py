@@ -64,43 +64,52 @@ def test_calculate_order_size() -> None:
 
 
 def test_polymarket_taker_fee() -> None:
-    """Hand-verify Polymarket fee formula."""
-    # price=0.62, size=100, fee_rate=0.02
-    # fee = 0.02 * min(0.62, 0.38) * 100 = 0.02 * 0.38 * 100 = 0.76
-    fee = polymarket_taker_fee(0.62, 100.0, 0.02)
-    assert abs(fee - 0.76) < 0.0001
-    
-    # price=0.50 (max fee point): 0.02 * 0.50 * 100 = 1.00
-    fee_50 = polymarket_taker_fee(0.50, 100.0, 0.02)
-    assert abs(fee_50 - 1.0) < 0.0001
-    
-    # price=0.01 (near boundary): 0.02 * 0.01 * 100 = 0.02
-    fee_01 = polymarket_taker_fee(0.01, 100.0, 0.02)
-    assert abs(fee_01 - 0.02) < 0.0001
+    """Hand-verify Polymarket fee formula: fee = C × p × feeRate × (p × (1-p))^1."""
+    # price=0.50, size=100, fee_rate=0.03
+    # fee = 100 × 0.50 × 0.03 × (0.50 × 0.50)^1 = 100 × 0.50 × 0.03 × 0.25 = 0.375
+    fee_50 = polymarket_taker_fee(0.50, 100.0, 0.03)
+    assert abs(fee_50 - 0.375) < 0.0001
+
+    # price=0.62, size=100, fee_rate=0.03
+    # fee = 100 × 0.62 × 0.03 × (0.62 × 0.38) = 100 × 0.62 × 0.03 × 0.2356 = 0.4382
+    fee_62 = polymarket_taker_fee(0.62, 100.0, 0.03)
+    assert abs(fee_62 - 0.4382) < 0.001
+
+    # price=0.01 (near boundary): fee = 100 × 0.01 × 0.03 × (0.01 × 0.99) = 0.000297 → rounds to 0.0003
+    fee_01 = polymarket_taker_fee(0.01, 100.0, 0.03)
+    assert abs(fee_01 - 0.0003) < 0.0001
 
     # Edge cases: price=0 or size=0 -> 0
-    assert polymarket_taker_fee(0.0, 100.0, 0.02) == 0.0
-    assert polymarket_taker_fee(0.50, 0.0, 0.02) == 0.0
-    assert polymarket_taker_fee(1.0, 100.0, 0.02) == 0.0
+    assert polymarket_taker_fee(0.0, 100.0, 0.03) == 0.0
+    assert polymarket_taker_fee(0.50, 0.0, 0.03) == 0.0
+    assert polymarket_taker_fee(1.0, 100.0, 0.03) == 0.0
+
+
+def test_polymarket_taker_fee_sell_is_free() -> None:
+    """Sell orders should not incur taker fees."""
+    assert polymarket_taker_fee(0.50, 100.0, 0.03, side="SELL") == 0.0
+    assert polymarket_taker_fee(0.62, 100.0, 0.03, side="SELL") == 0.0
 
 
 def test_fee_per_share() -> None:
-    """Per-share fee component."""
-    # price=0.40, fee_rate=0.02 -> 0.02 * min(0.40, 0.60) = 0.008
-    assert abs(fee_per_share(0.40, 0.02) - 0.008) < 0.0001
-    # price=0.50 -> 0.02 * 0.50 = 0.01
-    assert abs(fee_per_share(0.50, 0.02) - 0.01) < 0.0001
+    """Per-share fee component: p × feeRate × (p × (1-p))."""
+    # price=0.50, fee_rate=0.03 -> 0.50 × 0.03 × (0.50 × 0.50) = 0.00375
+    assert abs(fee_per_share(0.50, 0.03) - 0.00375) < 0.0001
+    # price=0.40, fee_rate=0.03 -> 0.40 × 0.03 × (0.40 × 0.60) = 0.40 × 0.03 × 0.24 = 0.00288
+    assert abs(fee_per_share(0.40, 0.03) - 0.00288) < 0.0001
+    # SELL should return 0
+    assert fee_per_share(0.50, 0.03, side="SELL") == 0.0
 
 
 def test_net_cost_buy() -> None:
     """Buy cost = price*size + fee."""
-    # price=0.62, size=100 -> cost = 62.0 + 0.76 = 62.76
-    cost = net_cost_buy(0.62, 100.0, 0.02)
-    assert abs(cost - 62.76) < 0.0001
+    # price=0.50, size=100 -> cost = 50.0 + 0.375 = 50.375
+    cost = net_cost_buy(0.50, 100.0, 0.03)
+    assert abs(cost - 50.375) < 0.001
 
 
 def test_net_revenue_sell() -> None:
-    """Sell revenue = price*size - fee."""
-    # price=0.62, size=100 -> revenue = 62.0 - 0.76 = 61.24
-    rev = net_revenue_sell(0.62, 100.0, 0.02)
-    assert abs(rev - 61.24) < 0.0001
+    """Sell revenue = price*size (no taker fee on sells)."""
+    # price=0.62, size=100 -> revenue = 62.0 (fee-free)
+    rev = net_revenue_sell(0.62, 100.0, 0.03)
+    assert abs(rev - 62.0) < 0.0001

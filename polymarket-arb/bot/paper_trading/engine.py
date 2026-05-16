@@ -1,6 +1,4 @@
-"""
-Paper execution engine.
-"""
+"""Paper execution engine."""
 import structlog
 import hashlib
 import asyncio
@@ -13,9 +11,11 @@ from bot.paper_trading.slippage import apply_slippage
 from bot.paper_trading.fills import simulate_fill
 from bot.paper_trading.stats import TradingStats
 from bot.api.schemas import OrderRequest, OrderAck
-from bot.arbitrage.opportunity import ArbOpportunity
+from bot.arbitrage.opportunity import ArbOpportunity, ArbType
 from bot.risk.engine import RiskEngine, RiskKillSwitchTriggered
+from bot.monitoring.forensic import ForensicLogger
 from bot.settings import Settings
+from bot.utils.clocks import current_timestamp_ms
 
 logger = structlog.get_logger(__name__)
 
@@ -23,9 +23,7 @@ logger = structlog.get_logger(__name__)
 from bot.orderbook.local_book import LocalOrderBook
 
 class PaperExecutor(ExecutorProtocol):
-    """
-    Simulated executor matching ExecutorProtocol.
-    """
+    """Simulated executor matching ExecutorProtocol."""
     def __init__(
         self,
         settings: Settings,
@@ -34,6 +32,8 @@ class PaperExecutor(ExecutorProtocol):
         fill_manager: FillManager,
         orderbooks: dict[str, LocalOrderBook],
         stats: TradingStats | None = None,
+        fee_rates: dict[str, float] | None = None,
+        forensic: ForensicLogger | None = None,
     ):
         self.settings = settings
         self.risk_engine = risk_engine
@@ -41,59 +41,123 @@ class PaperExecutor(ExecutorProtocol):
         self.fill_manager = fill_manager
         self.orderbooks = orderbooks
         self.stats = stats or TradingStats()
+        self.fee_rates = fee_rates or {}
+        self.forensic = forensic
 
     async def execute_opportunity(self, opportunity: ArbOpportunity) -> list[OrderAck]:
         """Execute a full arbitrage opportunity."""
         if self.fill_manager.is_duplicate(opportunity.opportunity_id):
             self.stats.record_dedup_rejection()
+            if self.forensic:
+                self.forensic.log_skipped_opportunity(
+                    opp=opportunity, reason="dedup_window",
+                    details="Opportunity already executed within dedup window",
+                    filters_passed=[], filters_failed=["dedup"],
+                    orderbooks=self.orderbooks,
+                )
             return []
             
         for leg in opportunity.legs:
             try:
                 if not self.risk_engine.validate_order(leg.market_id, leg.size, orderbooks=self.orderbooks):
-                    logger.warning("paper_risk_rejected_order", market_id=leg.market_id, size=leg.size)
                     self.stats.record_risk_rejection()
+                    if self.forensic:
+                        self.forensic.log_skipped_opportunity(
+                            opp=opportunity, reason="risk_rejected",
+                            details=f"Risk engine rejected leg {leg.market_id} size={leg.size}",
+                            filters_passed=["dedup", "min_edge"],
+                            filters_failed=["risk_engine"],
+                            orderbooks=self.orderbooks,
+                        )
                     return []
             except RiskKillSwitchTriggered as e:
-                logger.critical("paper_execution_halted", reason=str(e))
                 self.stats.record_risk_rejection()
+                if self.forensic:
+                    self.forensic.log_skipped_opportunity(
+                        opp=opportunity, reason="kill_switch",
+                        details=str(e),
+                        filters_passed=[], filters_failed=["kill_switch"],
+                        orderbooks=self.orderbooks,
+                    )
                 return []
             
         self.fill_manager.mark_executed(opportunity.opportunity_id)
         self.stats.record_opportunity_executed()
         
         logger.info(
-            "paper_executing_opportunity", 
-            opp_id=opportunity.opportunity_id, 
+            "paper_exec", 
+            opp_id=opportunity.opportunity_id[:8], 
             type=opportunity.type.value,
             edge=f"{opportunity.edge*100:.2f}%",
-            size=opportunity.size
+            size=f"${opportunity.size:.2f}",
         )
 
-        self._current_opp = opportunity
         acks = []
         filled_legs = []
+        fill_details = []
+        matched_size: float | None = None
+        exec_start_ms = current_timestamp_ms()
+        leg_fill_times: list[int] = []
+
         for i, leg in enumerate(opportunity.legs):
+            # For parity arb, enforce matched sizing
+            leg_size = leg.size
+            if matched_size is not None and opportunity.type in (ArbType.PARITY, ArbType.EXHAUSTIVE):
+                leg_size = matched_size
+            
             order = OrderRequest(
                 market_id=leg.market_id,
                 side=leg.side, # type: ignore
                 price=leg.price,
-                size=leg.size
+                size=leg_size
             )
+            leg_start = current_timestamp_ms()
             ack = await self.place_order(order, opp=opportunity)
+            leg_end = current_timestamp_ms()
             acks.append(ack)
+
             if ack.status == "FILLED":
+                pos = self.position_manager.get_position(leg.market_id)
+                actual_size = abs(pos.size)
+                if matched_size is None:
+                    matched_size = actual_size
+
+                # Capture fill details for forensic log
+                fee_rate = self.fee_rates.get(leg.market_id, self.settings.trading.polymarket_fee)
+                from bot.utils.math import polymarket_taker_fee
+                fee = polymarket_taker_fee(leg.price, actual_size, fee_rate, side=str(leg.side))
+                fill_details.append({
+                    "fill_price": leg.price,
+                    "filled_size": actual_size,
+                    "fee": fee,
+                    "latency_ms": leg_end - leg_start,
+                })
+                leg_fill_times.append(leg_end)
                 filled_legs.append(i)
-            elif filled_legs:
-                # Leg imbalance: previous leg(s) filled but this one failed
-                logger.critical(
-                    "leg_imbalance_detected",
-                    opp_id=opportunity.opportunity_id,
-                    filled_legs=filled_legs,
-                    failed_leg=i,
-                    total_legs=len(opportunity.legs),
-                )
-                self.stats.record_leg_imbalance()
+            else:
+                fill_details.append({
+                    "fill_price": 0.0, "filled_size": 0.0, "fee": 0.0,
+                    "latency_ms": leg_end - leg_start,
+                })
+                if filled_legs:
+                    logger.warning(
+                        "leg_imbalance",
+                        opp_id=opportunity.opportunity_id[:8],
+                        filled=filled_legs, failed=i,
+                    )
+                    self.stats.record_leg_imbalance()
+
+        # Forensic log
+        if self.forensic:
+            legging_gap = (leg_fill_times[-1] - leg_fill_times[0]) if len(leg_fill_times) >= 2 else 0
+            self.forensic.log_executed_opportunity(
+                opp=opportunity, acks=acks, orderbooks=self.orderbooks,
+                fee_rates=self.fee_rates,
+                slippage_est=self.settings.trading.slippage_est,
+                kelly_multiplier=self.settings.trading.kelly_fraction_multiplier,
+                fill_details=fill_details,
+                legging_gap_ms=legging_gap,
+            )
             
         return acks
 
@@ -101,10 +165,8 @@ class PaperExecutor(ExecutorProtocol):
         """Place a single order and simulate fill."""
         try:
             if not self.risk_engine.validate_order(order.market_id, order.size, orderbooks=self.orderbooks):
-                logger.warning("paper_risk_rejected_order", market_id=order.market_id, size=order.size)
                 return OrderAck(order_id="failed", status="REJECTED", message="Risk Engine Rejected")
         except RiskKillSwitchTriggered as e:
-            logger.critical("paper_execution_halted", reason=str(e))
             return OrderAck(order_id="failed", status="REJECTED", message=str(e))
 
         # 1. Inject Latency
@@ -118,7 +180,6 @@ class PaperExecutor(ExecutorProtocol):
         order_id = hashlib.sha256(f"{order.market_id}_{order.side}_{order.price}".encode()).hexdigest()[:16]
         
         if not book:
-            logger.warning("paper_order_rejected_no_book", order_id=order_id, market=order.market_id)
             return OrderAck(order_id=order_id, status="REJECTED")
 
         is_filled, filled_size, vwap_price = simulate_fill(
@@ -126,9 +187,9 @@ class PaperExecutor(ExecutorProtocol):
         )
         
         if is_filled and filled_size > 0:
-            # Calculate the actual Polymarket fee for this fill
-            fee_per_unit = self.settings.trading.polymarket_fee * min(vwap_price, 1.0 - vwap_price)
-            total_fee = fee_per_unit * filled_size
+            fee_rate = self.fee_rates.get(order.market_id, self.settings.trading.polymarket_fee)
+            from bot.utils.math import polymarket_taker_fee
+            total_fee = polymarket_taker_fee(vwap_price, filled_size, fee_rate, side=str(order.side))
             self.position_manager.add_fill(
                 market_id=order.market_id,
                 side=order.side,
@@ -137,7 +198,6 @@ class PaperExecutor(ExecutorProtocol):
                 fee=total_fee
             )
             
-            # Record stats
             opp_type = opp.type.value if opp else ""
             opp_edge = opp.edge if opp else 0.0
             opp_id = opp.opportunity_id if opp else ""
@@ -152,11 +212,9 @@ class PaperExecutor(ExecutorProtocol):
                 opp_id=opp_id,
             )
             
-            logger.info("paper_order_filled", order_id=order_id, market=order.market_id, side=order.side, size=filled_size, price=vwap_price)
             return OrderAck(order_id=order_id, status="FILLED")
         else:
             self.stats.record_no_liquidity()
-            logger.warning("paper_order_rejected_no_liquidity", order_id=order_id, market=order.market_id)
             return OrderAck(order_id=order_id, status="REJECTED")
 
     async def cancel_order(self, order_id: str) -> bool:

@@ -2,6 +2,9 @@
 Polymarket REST API Adapter.
 """
 from typing import Protocol
+import hashlib
+import hmac
+import time
 import aiohttp
 import structlog
 
@@ -22,15 +25,41 @@ class PolymarketRESTClient(PolymarketAdapter):
     """
     Implementation of the PolymarketAdapter using REST endpoints.
     """
-    def __init__(self, gamma_api_url: str = "https://gamma-api.polymarket.com", clob_api_url: str = "https://clob.polymarket.com"):
+    def __init__(
+        self,
+        gamma_api_url: str = "https://gamma-api.polymarket.com",
+        clob_api_url: str = "https://clob.polymarket.com",
+        api_key: str = "",
+        api_secret: str = "",
+        api_passphrase: str = "",
+    ):
         self.gamma_api_url = gamma_api_url
         self.clob_api_url = clob_api_url
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.api_passphrase = api_passphrase
         self._session: aiohttp.ClientSession | None = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession()
         return self._session
+
+    def _get_auth_headers(self) -> dict[str, str]:
+        """Generate HMAC authentication headers for authenticated CLOB endpoints."""
+        timestamp = str(int(time.time()))
+        message = timestamp + "GET" + "/balance-allowance"
+        signature = hmac.new(
+            self.api_secret.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256
+        ).hexdigest()
+        return {
+            "POLY-API-KEY": self.api_key,
+            "POLY-SIGNATURE": signature,
+            "POLY-TIMESTAMP": timestamp,
+            "POLY-PASSPHRASE": self.api_passphrase,
+        }
 
     async def get_markets(self, slug_prefix: str) -> list[MarketSnapshot]:
         """
@@ -135,6 +164,59 @@ class PolymarketRESTClient(PolymarketAdapter):
         except Exception as e:
             logger.error("cancel_order_error", error=str(e), order_id=order_id)
             return False
+
+    async def get_fee_rate(self, token_id: str) -> float | None:
+        """
+        Fetch the taker fee rate for a specific token from Polymarket.
+        Returns the fee rate as a float, or None if the request fails.
+        Endpoint: GET /fee-rate?token_id={token_id}
+        """
+        session = await self._get_session()
+        url = f"{self.clob_api_url}/fee-rate?token_id={token_id}"
+        try:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    logger.warning("get_fee_rate_failed", status=response.status, token_id=token_id)
+                    return None
+                data = await response.json()
+                # Response typically contains: {"fee_rate": "0.03", ...}
+                fee_rate_str = data.get("fee_rate") or data.get("feeRate") or data.get("taker_fee_rate")
+                if fee_rate_str is not None:
+                    return float(fee_rate_str)
+                logger.warning("get_fee_rate_no_value", token_id=token_id, response_keys=list(data.keys()))
+                return None
+        except Exception as e:
+            logger.error("get_fee_rate_error", error=str(e), token_id=token_id)
+            return None
+
+    async def get_balance_allowance(self) -> float | None:
+        """
+        Fetch the current USDC balance from the authenticated Polymarket account.
+        Returns balance in USD, or None if the request fails.
+        Endpoint: GET /balance-allowance
+        """
+        if not self.api_key:
+            logger.warning("get_balance_no_api_key")
+            return None
+
+        session = await self._get_session()
+        url = f"{self.clob_api_url}/balance-allowance"
+        headers = self._get_auth_headers()
+        try:
+            async with session.get(url, headers=headers) as response:
+                if response.status != 200:
+                    logger.warning("get_balance_failed", status=response.status)
+                    return None
+                data = await response.json()
+                # Response typically contains balance in USDC (6 decimals)
+                balance = data.get("balance") or data.get("available_balance")
+                if balance is not None:
+                    return float(balance) / 1e6  # Convert from USDC micros to dollars
+                logger.warning("get_balance_no_value", response_keys=list(data.keys()))
+                return None
+        except Exception as e:
+            logger.error("get_balance_error", error=str(e))
+            return None
 
     async def close(self) -> None:
         if self._session and not self._session.closed:

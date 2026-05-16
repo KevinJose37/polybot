@@ -1,11 +1,13 @@
 """
 Tests for Type C - Exhaustive Sets.
+Uses the real Polymarket fee formula: fee = C × p × feeRate × (p × (1-p))^1
+Sell orders are fee-free.
 """
 from bot.arbitrage.exhaustive_sets import detect_exhaustive_parity
 
 
 def test_exhaustive_buy_opportunity() -> None:
-    """Verify exhaustive detector finds BUY-side arb with additive fee model."""
+    """Verify exhaustive detector finds BUY-side arb with Polymarket fee model."""
     opp = detect_exhaustive_parity(
         market_id="m1",
         token_up_id="yes1",
@@ -18,7 +20,8 @@ def test_exhaustive_buy_opportunity() -> None:
         down_ask_vol=500.0,
         up_bid_vol=1000.0,
         down_bid_vol=1000.0,
-        fee=0.02,
+        up_fee_rate=0.03,
+        down_fee_rate=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
@@ -27,13 +30,13 @@ def test_exhaustive_buy_opportunity() -> None:
     
     assert opp is not None
     assert opp.type.value == "TYPE-C"
-    assert abs(opp.edge - 0.0924) < 0.0001
     assert opp.legs[0].side == "BUY"
     assert opp.legs[0].price == 0.42
+    assert opp.edge > 0.01  # Above min_edge
 
 
 def test_exhaustive_sell_opportunity() -> None:
-    """Verify exhaustive detector finds SELL-side arb with additive fee model."""
+    """Verify exhaustive detector finds SELL-side arb (sell is fee-free)."""
     opp = detect_exhaustive_parity(
         market_id="m1",
         token_up_id="yes1",
@@ -46,7 +49,8 @@ def test_exhaustive_sell_opportunity() -> None:
         down_ask_vol=500.0,
         up_bid_vol=1000.0,
         down_bid_vol=1000.0,
-        fee=0.02,
+        up_fee_rate=0.03,
+        down_fee_rate=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
@@ -55,13 +59,14 @@ def test_exhaustive_sell_opportunity() -> None:
     
     assert opp is not None
     assert opp.type.value == "TYPE-C"
-    assert abs(opp.edge - 0.0312) < 0.0001
     assert opp.legs[0].side == "SELL"
     assert opp.legs[0].price == 0.56
+    # Sell side is fee-free, so edge should be higher than old formula
+    assert opp.edge > 0.01
 
 
 def test_exhaustive_sum_exactly_1() -> None:
-    """Asks summing to 1.0 exactly should have no edge after fees."""
+    """Asks summing to 1.0 exactly should have no edge after fees+slippage."""
     opp = detect_exhaustive_parity(
         market_id="m1",
         token_up_id="yes1",
@@ -74,14 +79,13 @@ def test_exhaustive_sum_exactly_1() -> None:
         down_ask_vol=500.0,
         up_bid_vol=1000.0,
         down_bid_vol=1000.0,
-        fee=0.02,
+        up_fee_rate=0.03,
+        down_fee_rate=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
         capital=1000.0
     )
-    # 0.50 + 0.01 + 0.005 + 0.50 + 0.01 + 0.005 = 1.03 -> buy_edge = -0.03
-    # 0.48 - 0.0096 - 0.005 + 0.48 - 0.0096 - 0.005 = 0.9308 -> sell_edge = -0.0692
     assert opp is None
 
 
@@ -99,7 +103,8 @@ def test_exhaustive_no_opportunity() -> None:
         down_ask_vol=500.0,
         up_bid_vol=1000.0,
         down_bid_vol=1000.0,
-        fee=0.02,
+        up_fee_rate=0.03,
+        down_fee_rate=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,

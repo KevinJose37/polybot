@@ -25,7 +25,8 @@ def detect_monotonicity(
     ask_15m: float,
     vol_5m: float,
     vol_15m: float,
-    fee: float,
+    fee_rate_5m: float,
+    fee_rate_15m: float,
     slippage: float,
     min_edge: float,
     min_notional: float,
@@ -39,8 +40,10 @@ def detect_monotonicity(
     if bid_5m is None or ask_15m is None or math.isnan(bid_5m) or math.isnan(ask_15m):
         return None
         
-    sell_fee = fee_per_share(bid_5m, fee)
-    buy_fee = fee_per_share(ask_15m, fee)
+    # 5m leg is SELL — no taker fee on sells
+    sell_fee = fee_per_share(bid_5m, fee_rate_5m, side="SELL")  # returns 0
+    # 15m leg is BUY — pays taker fee
+    buy_fee = fee_per_share(ask_15m, fee_rate_15m, side="BUY")
     receive = bid_5m - sell_fee - slippage
     pay = ask_15m + buy_fee + slippage
     edge = receive - pay

@@ -29,7 +29,8 @@ def detect_exhaustive_parity(
     down_ask_vol: float,
     up_bid_vol: float,
     down_bid_vol: float,
-    fee: float,
+    up_fee_rate: float,
+    down_fee_rate: float,
     slippage: float,
     min_edge: float,
     min_notional: float,
@@ -44,16 +45,18 @@ def detect_exhaustive_parity(
         return None
         
     # Check BUY parity (sum of asks + fees < 1.0)
-    up_fee_buy = fee_per_share(up_ask, fee)
-    down_fee_buy = fee_per_share(down_ask, fee)
+    # BUY side pays taker fees
+    up_fee_buy = fee_per_share(up_ask, up_fee_rate, side="BUY")
+    down_fee_buy = fee_per_share(down_ask, down_fee_rate, side="BUY")
     up_cost = up_ask + up_fee_buy + slippage
     down_cost = down_ask + down_fee_buy + slippage
     buy_cost = up_cost + down_cost
     buy_edge = 1.0 - buy_cost
     
     # Check SELL parity (sum of bids - fees > 1.0)
-    up_fee_sell = fee_per_share(up_bid, fee)
-    down_fee_sell = fee_per_share(down_bid, fee)
+    # SELL side has no taker fees
+    up_fee_sell = fee_per_share(up_bid, up_fee_rate, side="SELL")  # returns 0
+    down_fee_sell = fee_per_share(down_bid, down_fee_rate, side="SELL")  # returns 0
     up_receive = up_bid - up_fee_sell - slippage
     down_receive = down_bid - down_fee_sell - slippage
     sell_rev = up_receive + down_receive

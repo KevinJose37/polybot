@@ -24,6 +24,7 @@ from bot.risk.engine import RiskEngine
 from bot.arbitrage.scanner import ArbitrageScanner
 from bot.dashboard.terminal import TerminalDashboard
 from bot.monitoring.health import HealthServer
+from bot.monitoring.forensic import ForensicLogger
 from bot.persistence.postgres import DatabaseManager
 from bot.persistence.repositories import TradeRepository
 import structlog
@@ -88,8 +89,10 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
     fill_manager = FillManager()
     risk_engine = RiskEngine(settings, position_manager)
     orderbooks: dict[str, LocalOrderBook] = {}
+    fee_rates: dict[str, float] = {}
     stats = TradingStats()
-    executor = PaperExecutor(settings, risk_engine, position_manager, fill_manager, orderbooks, stats=stats)
+    forensic = ForensicLogger()
+    executor = PaperExecutor(settings, risk_engine, position_manager, fill_manager, orderbooks, stats=stats, fee_rates=fee_rates, forensic=forensic)
     
     dashboard = TerminalDashboard(mode="paper", capital=capital)
     
@@ -112,7 +115,25 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
     markets = await discovery.discover_markets()
     topology = build_topology(markets)
     
-    scanner = ArbitrageScanner(settings, topology)
+    # 2. Fetch per-token fee rates from Polymarket API
+    async def fetch_fee_rate(tid: str):
+        rate = await rest_api.get_fee_rate(tid)
+        if rate is not None:
+            fee_rates[tid] = rate
+        else:
+            fee_rates[tid] = settings.trading.polymarket_fee
+    
+    fee_tasks = [fetch_fee_rate(t.token_id) for m in markets for t in m.tokens]
+    if fee_tasks:
+        await asyncio.gather(*fee_tasks)
+    logger.info("fee_rates_loaded", count=len(fee_rates), sample=dict(list(fee_rates.items())[:3]))
+    
+    # 3. Register parity pairs so position manager values YES+NO at $1.00
+    for market in markets:
+        if len(market.tokens) == 2:
+            position_manager.register_parity_pair(market.tokens[0].token_id, market.tokens[1].token_id)
+    
+    scanner = ArbitrageScanner(settings, topology, fee_rates=fee_rates)
     
     # Initialize orderbooks
     async def init_book(tid: str):
@@ -282,8 +303,13 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
                         orderbooks[tid] = book
                         snapshot = await rest_api.get_orderbook(tid)
                         await book.apply_snapshot(snapshot)
+                    
+                    async def fetch_new_fee_rate(tid: str):
+                        rate = await rest_api.get_fee_rate(tid)
+                        fee_rates[tid] = rate if rate is not None else settings.trading.polymarket_fee
                         
                     await asyncio.gather(*(init_new_book(tid) for tid in tokens_to_sub))
+                    await asyncio.gather(*(fetch_new_fee_rate(tid) for tid in tokens_to_sub))
                     ws_client.subscribe(list(tokens_to_sub))
                     
                 # Update references safely
@@ -292,22 +318,45 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
                 scanner.topology = new_topology
                 token_ids = new_token_ids
                 
+                # Register parity pairs for new markets
+                for m in new_markets:
+                    if len(m.tokens) == 2:
+                        position_manager.register_parity_pair(m.tokens[0].token_id, m.tokens[1].token_id)
+                
                 # Market resolution check
                 active_token_ids = {t.token_id for m in new_markets for t in m.tokens}
-                for mid in list(orderbooks.keys()):
-                    if mid not in active_token_ids:
-                        logger.warning("market_no_longer_active", market_id=mid)
-                        for oid, data in list(fill_manager.inflight_orders.items()):
-                            if data.get("market") == mid:
-                                await executor.cancel_order(oid)
-                                fill_manager.remove_inflight_order(oid)
-                                
-                        # Settle position and free capital
-                        position_manager.settle_market(mid)
-                        
-                        # Remove from orderbooks to stop processing WS messages
-                        if mid in orderbooks:
-                            del orderbooks[mid]
+                resolved_tokens = [mid for mid in list(orderbooks.keys()) if mid not in active_token_ids]
+                
+                for mid in resolved_tokens:
+                    logger.warning("market_no_longer_active", market_id=mid)
+                    for oid, data in list(fill_manager.inflight_orders.items()):
+                        if data.get("market") == mid:
+                            await executor.cancel_order(oid)
+                            fill_manager.remove_inflight_order(oid)
+                    
+                    # Determine resolution price for parity pairs
+                    # For parity (YES+NO), one resolves to 1.0, the other to 0.0
+                    # Use last known best bid as proxy for which side won
+                    complement_id = position_manager.parity_pairs.get(mid)
+                    book = orderbooks.get(mid)
+                    
+                    if complement_id and complement_id in resolved_tokens:
+                        # Both sides resolving — use best bid to determine winner
+                        if book and book.bids:
+                            last_bid = max(book.bids.keys())
+                            # If last bid > 0.5, this token likely won (resolves to 1.0)
+                            settle_price = 1.0 if last_bid > 0.5 else 0.0
+                        else:
+                            settle_price = 0.5  # Unknown, use 0.5 as fallback
+                    else:
+                        # Single token resolved (complement still active or no pair)
+                        settle_price = 0.5
+                    
+                    position_manager.settle_market(mid, settle_price=settle_price)
+                    
+                    # Remove from orderbooks to stop processing WS messages
+                    if mid in orderbooks:
+                        del orderbooks[mid]
             except Exception as e:
                 logger.error("discovery_loop_error", error=str(e))
                 
@@ -330,15 +379,27 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
     with Live(dashboard.layout, refresh_per_second=2, screen=True):
         try:
             while True:
-                # Update dashboard
+                # Update mark-to-market with current mid prices
+                mid_prices = {}
+                for tid, book in orderbooks.items():
+                    bid = book.best_bid()
+                    ask = book.best_ask()
+                    if bid is not None and ask is not None:
+                        mid_prices[tid] = (bid + ask) / 2.0
+                    elif bid is not None:
+                        mid_prices[tid] = bid
+                    elif ask is not None:
+                        mid_prices[tid] = ask
+                position_manager.update_all_mtm(mid_prices)
+
                 health = {"WS": ws_client._running}
                 dashboard.update(position_manager, markets, orderbooks, recent_opportunities, health, stats=stats)
                 
                 # Check for silent WebSocket drops
                 try:
                     await ws_client.check_stale(silence_window_ms=30000)
-                except Exception as e:
-                    logger.warning("ws_reconnecting_due_to_stale_feed")
+                except Exception:
+                    logger.warning("ws_reconnecting_stale_feed")
                     if ws_client._ws:
                         await ws_client._ws.close()
                 
@@ -346,6 +407,7 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
         except asyncio.CancelledError:
             pass
         finally:
+            forensic.close()
             await ws_client.close()
             await rest_api.close()
             if not ws_task.done():

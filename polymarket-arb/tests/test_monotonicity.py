@@ -1,11 +1,12 @@
 """
 Tests for Type B - Monotonicity.
+Uses the real Polymarket fee formula. Sell orders are fee-free.
 """
 from bot.arbitrage.monotonicity import detect_monotonicity
 
 
 def test_monotonicity_opportunity() -> None:
-    """Verify monotonicity detector finds arb with the additive fee model."""
+    """Verify monotonicity detector finds arb with Polymarket fee model."""
     opp = detect_monotonicity(
         market_5m_id="m5",
         market_15m_id="m15",
@@ -15,7 +16,8 @@ def test_monotonicity_opportunity() -> None:
         ask_15m=0.50,
         vol_5m=1000.0,
         vol_15m=1000.0,
-        fee=0.02,
+        fee_rate_5m=0.03,
+        fee_rate_15m=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
@@ -24,12 +26,16 @@ def test_monotonicity_opportunity() -> None:
     
     assert opp is not None
     assert opp.type.value == "TYPE-B"
-    assert abs(opp.edge - 0.072) < 0.0001
     assert len(opp.legs) == 2
     assert opp.legs[0].side == "SELL"
     assert opp.legs[0].price == 0.60
     assert opp.legs[1].side == "BUY"
     assert opp.legs[1].price == 0.50
+    # 5m SELL is fee-free, 15m BUY pays fee
+    # edge = (0.60 - 0 - 0.005) - (0.50 + fee_per_share(0.50, 0.03) + 0.005)
+    # fee_per_share = 0.50 × 0.03 × (0.50 × 0.50) = 0.00375
+    # edge = 0.595 - 0.50875 = 0.08625
+    assert abs(opp.edge - 0.08625) < 0.001
 
 
 def test_monotonicity_no_edge() -> None:
@@ -43,7 +49,8 @@ def test_monotonicity_no_edge() -> None:
         ask_15m=0.51,
         vol_5m=1000.0,
         vol_15m=1000.0,
-        fee=0.02,
+        fee_rate_5m=0.03,
+        fee_rate_15m=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
@@ -63,7 +70,8 @@ def test_monotonicity_inverted() -> None:
         ask_15m=0.50,
         vol_5m=1000.0,
         vol_15m=1000.0,
-        fee=0.02,
+        fee_rate_5m=0.03,
+        fee_rate_15m=0.03,
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,

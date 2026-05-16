@@ -23,16 +23,15 @@ def test_simulate_fill() -> None:
     is_filled, filled_size, vwap = simulate_fill(10.0, book, "BUY")
     assert is_filled
     assert filled_size == 10.0
-    # Single level fill gets slippage floor: 0.51 * 1.005 ≈ 0.51255
-    assert abs(vwap - 0.51255) < 0.001
+    # Single level fill: VWAP = best ask (no slippage applied at fill time)
+    assert abs(vwap - 0.51) < 0.001
     
     # order_size = 100, depth = 10
     book.asks = {0.51: 10.0}
     is_filled, filled_size, vwap = simulate_fill(100.0, book, "BUY")
     assert is_filled
     assert filled_size == 10.0
-    # Single level fill gets slippage floor: 0.51 * 1.005 ≈ 0.51255
-    assert abs(vwap - 0.51255) < 0.001
+    assert abs(vwap - 0.51) < 0.001
     
     # depth = 0
     book.asks = {}
@@ -66,8 +65,8 @@ def test_simulate_fill_sell() -> None:
     is_filled, filled_size, vwap = simulate_fill(10.0, book, "SELL")
     assert is_filled
     assert filled_size == 10.0
-    # Single level fill gets slippage floor: 0.60 * 0.995 = 0.597
-    assert abs(vwap - 0.597) < 0.001
+    # Single level fill: VWAP = best bid (no slippage at fill time)
+    assert abs(vwap - 0.60) < 0.001
 
 
 def test_apply_slippage() -> None:
@@ -123,9 +122,40 @@ def test_position_manager_with_fees() -> None:
     pm.add_fill("m1", "BUY", 0.50, 100, fee=1.0)
     assert abs(pm.total_realized_pnl - (-1.0)) < 0.0001
     
-    # Sell 100 @ 0.60 with $0.80 fee -> trade PnL = +10, net = +10 - 0.80 - 1.00 = +8.20
-    pm.add_fill("m1", "SELL", 0.60, 100, fee=0.80)
-    assert abs(pm.total_realized_pnl - 8.20) < 0.0001
+    # Sell 100 @ 0.60 with $0.00 fee (sells are fee-free)
+    pm.add_fill("m1", "SELL", 0.60, 100, fee=0.0)
+    # trade PnL = +10, net = +10 - 0.00 - 1.00 = +9.00
+    assert abs(pm.total_realized_pnl - 9.0) < 0.0001
+
+
+def test_parity_pair_valuation() -> None:
+    """Parity pairs (YES+NO) should be valued at $1.00 per matched share."""
+    pm = PositionManager()
+    pm.register_parity_pair("yes_token", "no_token")
+    
+    # Buy 100 YES @ 0.42 and 100 NO @ 0.46
+    pm.add_fill("yes_token", "BUY", 0.42, 100)
+    pm.add_fill("no_token", "BUY", 0.46, 100)
+    
+    # Mid prices: YES=0.40, NO=0.45 — these DON'T sum to 1.0
+    # Without parity awareness: unrealized = (0.40-0.42)*100 + (0.45-0.46)*100 = -2 + -1 = -3
+    # WITH parity awareness: matched 100 shares at $1.00 payout
+    # unrealized = 100 * 1.0 - (0.42*100 + 0.46*100) = 100 - 88 = +12
+    pm.update_all_mtm({"yes_token": 0.40, "no_token": 0.45})
+    
+    assert abs(pm.total_unrealized_pnl - 12.0) < 0.0001
+    
+    # With unmatched sizes: 100 YES + 60 NO
+    pm2 = PositionManager()
+    pm2.register_parity_pair("yes_token", "no_token")
+    pm2.add_fill("yes_token", "BUY", 0.42, 100)
+    pm2.add_fill("no_token", "BUY", 0.46, 60)
+    
+    pm2.update_all_mtm({"yes_token": 0.40, "no_token": 0.45})
+    # 60 matched: pnl = 60*1.0 - (0.42*60 + 0.46*60) = 60 - 52.8 = 7.2
+    # 40 excess YES at mid: (0.40 - 0.42) * 40 = -0.8
+    # Total: 7.2 - 0.8 = 6.4
+    assert abs(pm2.total_unrealized_pnl - 6.4) < 0.0001
 
 
 def test_pnl_tracker_sharpe() -> None:
@@ -155,21 +185,21 @@ def test_simulate_fill_exceeds_total_depth() -> None:
     assert abs(vwap - 0.52) < 0.001
 
 
-def test_simulate_fill_slippage_floor() -> None:
-    """Single-level fills should have minimum slippage applied."""
+def test_simulate_fill_vwap_reflects_depth() -> None:
+    """Multi-level fills should have VWAP reflecting actual depth walked."""
     book = LocalOrderBook("m1", stale_threshold_ms=99999999)
     book.state = BookState.ACTIVE
     book.last_updated_ts = current_timestamp_ms()
     
-    # Single level — VWAP equals best price, slippage floor should apply
-    book.asks = {0.50: 1000.0}
-    is_filled, filled_size, vwap = simulate_fill(10.0, book, "BUY", slippage_pct=0.01)
+    # Two levels with different sizes
+    book.asks = {0.50: 10.0, 0.60: 1000.0}
+    is_filled, filled_size, vwap = simulate_fill(100.0, book, "BUY")
     
     assert is_filled
-    assert filled_size == 10.0
-    # Slippage floor: 0.50 * 1.01 = 0.505
-    assert vwap > 0.50
-    assert abs(vwap - 0.505) < 0.001
+    assert filled_size == 100.0
+    # VWAP = (10*0.50 + 90*0.60) / 100 = (5 + 54) / 100 = 0.59
+    assert abs(vwap - 0.59) < 0.001
+    assert vwap > 0.50  # VWAP is worse than best price
 
 
 @pytest.mark.asyncio
@@ -219,4 +249,3 @@ async def test_paper_executor_dedup() -> None:
     acks2 = await executor.execute_opportunity(opp)
     assert len(acks2) == 0
     assert stats.opportunities_rejected_dedup == 1
-

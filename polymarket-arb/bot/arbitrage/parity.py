@@ -2,7 +2,8 @@
 Type A - YES/NO Parity detector.
 For each binary market, YES and NO are complementary.
 edge = 1.0 - (yes_ask + yes_fee + slippage) - (no_ask + no_fee + slippage)
-where fee_per_share = fee_rate × min(price, 1 - price)
+where fee_per_share = p × feeRate × (p × (1 - p))^exponent
+Note: This detector is subsumed by Type C in production.
 """
 import structlog
 import hashlib
@@ -23,7 +24,8 @@ def detect_parity(
     no_ask: float,
     yes_vol: float,
     no_vol: float,
-    fee: float,
+    yes_fee_rate: float,
+    no_fee_rate: float,
     slippage: float,
     min_edge: float,
     min_notional: float,
@@ -31,14 +33,15 @@ def detect_parity(
 ) -> Optional[ArbOpportunity]:
     """
     Pure function to detect YES/NO parity arbitrage.
-    Uses Polymarket's additive fee model: fee_rate × min(price, 1-price).
+    Uses Polymarket's fee model: fee = p × feeRate × (p × (1-p)).
+    BUY orders pay taker fees; SELL orders are fee-free.
     """
     if yes_ask is None or no_ask is None or math.isnan(yes_ask) or math.isnan(no_ask):
         return None
         
-    # Additive per-share cost using Polymarket fee formula
-    yes_fee = fee_per_share(yes_ask, fee)
-    no_fee = fee_per_share(no_ask, fee)
+    # Both legs are BUY (pays taker fee)
+    yes_fee = fee_per_share(yes_ask, yes_fee_rate, side="BUY")
+    no_fee = fee_per_share(no_ask, no_fee_rate, side="BUY")
     yes_cost = yes_ask + yes_fee + slippage
     no_cost = no_ask + no_fee + slippage
     edge = 1.0 - (yes_cost + no_cost)

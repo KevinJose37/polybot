@@ -42,11 +42,8 @@ def simulate_fill(order_size: float, book: LocalOrderBook, side: str, slippage_p
 
     vwap = total_cost / filled_size
     
-    # Apply minimum slippage floor: if VWAP equals best price (single-level fill),
-    # use the slippage model to add conservative minimum market impact.
-    if levels:
-        best_price = levels[0][0]
-        if abs(vwap - best_price) < 1e-9:
-            vwap = apply_slippage(vwap, side, slippage_pct)
+    # VWAP from walking the book IS the fill price.
+    # Slippage is already budgeted in the detector's edge calculation (slippage_est).
+    # Applying it again here would double-count, systematically eroding thin arb edges.
     
     return True, filled_size, vwap

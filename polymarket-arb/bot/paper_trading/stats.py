@@ -206,14 +206,15 @@ class TradingStats:
                 pnl -= t.price * t.size + (t.fee if include_fees else 0.0)
 
         if len(group) == 2:
-            size = group[0].size
+            # Use min of both legs for guaranteed matched payout
+            matched_size = min(group[0].size, group[1].size)
             is_buy = group[0].side == "BUY"
 
             if "TYPE-A" in opp_type or "TYPE-C" in opp_type:
                 if is_buy:
-                    pnl += size * 1.0  # Payout from buying parity
+                    pnl += matched_size * 1.0  # Payout from buying parity
                 else:
-                    pnl -= size * 1.0  # Liability from selling parity
+                    pnl -= matched_size * 1.0  # Liability from selling parity
             elif "TYPE-B" in opp_type:
                 pass
         else:

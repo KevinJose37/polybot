@@ -57,16 +57,21 @@ class TerminalDashboard:
         stats: TradingStats | None = None,
     ) -> None:
         """Refresh the layout with new data."""
-        total_pnl = stats.net_pnl if stats else 0.0
+        # Use position_manager's PnL which correctly values parity pairs at $1.00
+        realized_pnl = position_manager.total_realized_pnl
+        unrealized_pnl = position_manager.total_unrealized_pnl
+        total_pnl = realized_pnl + unrealized_pnl
         equity = self.capital + total_pnl
         pnl_pct = (total_pnl / self.capital) * 100 if self.capital > 0 else 0
         
-        pos_value = sum(
+        # Position value = cost basis of open positions
+        pos_cost = sum(
             abs(p.size * p.avg_price)
             for p in position_manager.positions.values()
             if p.size != 0
         )
-        avail_capital = equity - pos_value
+        # Available capital = equity minus what's tied up in positions (at cost)
+        avail_capital = self.capital + realized_pnl - pos_cost
         
         mode_text = "[bold yellow]PAPER TRADING — NOT REAL MONEY[/]" if self.mode == "paper" else "[bold red]🔴 LIVE TRADING[/]"
         pnl_color = "green" if total_pnl >= 0 else "red"
@@ -75,13 +80,13 @@ class TerminalDashboard:
         uptime = stats.uptime_str if stats else "00:00:00"
         total_fees = stats.total_fees_paid if stats else 0.0
         header_text = (
-            f"  💰 Capital: [bold]${self.capital:,.2f}[/]  │  "
-            f"💵 Cash: [bold cyan]${max(0, avail_capital):,.2f}[/]  │  "
-            f"📦 Positions: [bold yellow]${pos_value:,.2f}[/]  │  "
-            f"📊 Equity: [bold]${equity:,.2f}[/]  │  "
-            f"PnL: [{pnl_color}]${total_pnl:,.2f} ({pnl_pct:+.2f}%)[/]  │  "
-            f"Fees: [red]-${total_fees:,.2f}[/]  │  "
-            f"⏱ {uptime}  │  {mode_text}"
+            f"  \U0001f4b0 Capital: [bold]${self.capital:,.2f}[/]  \u2502  "
+            f"\U0001f4b5 Cash: [bold cyan]${max(0, avail_capital):,.2f}[/]  \u2502  "
+            f"\U0001f4e6 Positions: [bold yellow]${pos_cost + unrealized_pnl:,.2f}[/]  \u2502  "
+            f"\U0001f4ca Equity: [bold]${equity:,.2f}[/]  \u2502  "
+            f"PnL: [{pnl_color}]${total_pnl:,.2f} ({pnl_pct:+.2f}%)[/]  \u2502  "
+            f"Fees: [red]-${total_fees:,.2f}[/]  \u2502  "
+            f"\u23f1 {uptime}  \u2502  {mode_text}"
         )
         self.layout["header"].update(
             Panel(Text.from_markup(header_text), title="[bold]Polymarket Arb Bot[/]", border_style="cyan")
@@ -123,14 +128,28 @@ class TerminalDashboard:
                 else:
                     sum_s = "---"
                 
-                # Aggregate PnL for this market pair
+                # Aggregate PnL for this market pair — parity-aware valuation
                 pos_yes = position_manager.get_position(yes_id)
                 pos_no = position_manager.get_position(no_id)
                 market_pnl = pos_yes.realized_pnl + pos_no.realized_pnl
-                unrealized = (
-                    position_manager.mark_to_market(yes_id, up_bid) +
-                    position_manager.mark_to_market(no_id, dn_bid)
-                )
+                
+                # Parity-aware unrealized: matched YES+NO → $1.00 guaranteed
+                if pos_yes.size > 0 and pos_no.size > 0:
+                    matched = min(pos_yes.size, pos_no.size)
+                    parity_unreal = matched * 1.0 - (pos_yes.avg_price * matched + pos_no.avg_price * matched)
+                    excess_yes = pos_yes.size - matched
+                    excess_no = pos_no.size - matched
+                    unreal_excess = 0.0
+                    if excess_yes > 0 and up_bid is not None:
+                        unreal_excess += (up_bid - pos_yes.avg_price) * excess_yes
+                    if excess_no > 0 and dn_bid is not None:
+                        unreal_excess += (dn_bid - pos_no.avg_price) * excess_no
+                    unrealized = parity_unreal + unreal_excess
+                else:
+                    unrealized = (
+                        position_manager.mark_to_market(yes_id, up_bid) +
+                        position_manager.mark_to_market(no_id, dn_bid)
+                    )
                 total_mkt_pnl = market_pnl + unrealized
                 pnl_str = f"[green]+${total_mkt_pnl:.2f}[/]" if total_mkt_pnl >= 0 else f"[red]-${abs(total_mkt_pnl):.2f}[/]"
                 
