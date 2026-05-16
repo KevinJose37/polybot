@@ -109,7 +109,8 @@ class ArbitrageScanner:
                 slippage=slippage,
                 min_edge=min_edge,
                 min_notional=min_notional,
-                capital=capital
+                capital=capital,
+                multiplier=self.settings.trading.kelly_fraction_multiplier
             )
             if exhaustive_opp:
                 exhaustive_opp.timestamp_ms = current_timestamp_ms()
@@ -173,7 +174,8 @@ class ArbitrageScanner:
                 slippage=slippage,
                 min_edge=min_edge,
                 min_notional=min_notional,
-                capital=capital
+                capital=capital,
+                multiplier=self.settings.trading.kelly_fraction_multiplier
             )
             if mono_opp:
                 mono_opp.timestamp_ms = current_timestamp_ms()

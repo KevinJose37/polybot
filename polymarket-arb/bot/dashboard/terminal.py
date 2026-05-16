@@ -200,7 +200,8 @@ class TerminalDashboard:
 
         # ── Resolved Positions ──
         res_table = Table(show_header=True, expand=True, border_style="dim")
-        res_table.add_column("Market", max_width=26)
+        res_table.add_column("Market", max_width=32)
+        res_table.add_column("Closure", justify="center")
         res_table.add_column("Side", justify="center")
         res_table.add_column("Size", justify="right")
         res_table.add_column("Avg Px", justify="right")
@@ -208,8 +209,21 @@ class TerminalDashboard:
         res_table.add_column("PnL", justify="right")
 
         if getattr(position_manager, "resolved_positions", None):
-            for rp in position_manager.resolved_positions[-15:]:
+            from datetime import datetime
+            for rp in reversed(position_manager.resolved_positions[-15:]):
                 res_name = self.token_to_base_name.get(rp["market_id"], rp["market_id"][:15] + "…")
+                
+                market_ts = self.token_to_ts.get(rp["market_id"], 0)
+                if market_ts > 0:
+                    ts_str = datetime.fromtimestamp(market_ts).strftime("%H:%M")
+                    res_name = f"{res_name} {ts_str}"
+                
+                settled_at = rp.get("settled_at", 0)
+                if settled_at > 0:
+                    closure_time = datetime.fromtimestamp(settled_at / 1000.0).strftime("%H:%M:%S")
+                else:
+                    closure_time = "---"
+                    
                 rpnl_color = "green" if rp["pnl"] >= 0 else "red"
                 side = "[green]LONG[/]" if rp["size"] > 0 else "[red]SHORT[/]"
                 settle_display = f"${rp['settle_price']:.2f}"
@@ -219,6 +233,7 @@ class TerminalDashboard:
                     settle_display = "[red]$0.00 ✗[/]"
                 res_table.add_row(
                     res_name,
+                    closure_time,
                     side,
                     f"{abs(rp['size']):.1f}",
                     f"${rp['avg_price']:.4f}",
@@ -226,7 +241,7 @@ class TerminalDashboard:
                     f"[{rpnl_color}]${rp['pnl']:.2f}[/]",
                 )
         else:
-            res_table.add_row("[dim]No positions resolved yet[/]", "", "", "", "", "")
+            res_table.add_row("[dim]No positions resolved yet[/]", "", "", "", "", "", "")
 
         self.layout["resolved"].update(
             Panel(res_table, title="[bold]Last Positions Resolved[/]", border_style="green")

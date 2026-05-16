@@ -4,6 +4,7 @@ Position and PnL management.
 import structlog
 from dataclasses import dataclass, field
 from typing import Optional
+from bot.utils.clocks import current_timestamp_ms
 
 logger = structlog.get_logger(__name__)
 
@@ -271,7 +272,8 @@ class PositionManager:
             "avg_price": pos.avg_price,
             "settle_price": settle_price,
             "pnl": pnl,
-            "total_realized_pnl": pos.realized_pnl
+            "total_realized_pnl": pos.realized_pnl,
+            "settled_at": current_timestamp_ms()
         })
         if len(self.resolved_positions) > 100:
             self.resolved_positions.pop(0)

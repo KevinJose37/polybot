@@ -34,7 +34,8 @@ def detect_exhaustive_parity(
     slippage: float,
     min_edge: float,
     min_notional: float,
-    capital: float
+    capital: float,
+    multiplier: float
 ) -> Optional[ArbOpportunity]:
     """
     Pure function to detect exhaustive set parity based on execution prices.
@@ -84,7 +85,7 @@ def detect_exhaustive_parity(
             b=b,
             capital=capital,
             max_size=max_size,
-            multiplier=0.25
+            multiplier=multiplier
         )
         
         if order_size < min_notional:

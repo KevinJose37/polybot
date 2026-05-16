@@ -30,7 +30,8 @@ def detect_monotonicity(
     slippage: float,
     min_edge: float,
     min_notional: float,
-    capital: float
+    capital: float,
+    multiplier: float
 ) -> Optional[ArbOpportunity]:
     """
     Pure function to detect cross-timeframe monotonicity arbitrage.
@@ -60,7 +61,7 @@ def detect_monotonicity(
             b=b,
             capital=capital,
             max_size=max_size,
-            multiplier=0.25
+            multiplier=multiplier
         )
         
         if order_size < min_notional:
