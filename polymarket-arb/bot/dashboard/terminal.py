@@ -24,6 +24,7 @@ class TerminalDashboard:
         # Persistent mapping so we don't lose names of resolved markets
         self.token_to_name = {}
         self.token_to_base_name = {}
+        self.token_to_ts = {}
         
         self.layout.split_column(
             Layout(name="header", size=3),
@@ -32,8 +33,8 @@ class TerminalDashboard:
         )
         
         self.layout["body"].split_row(
-            Layout(name="left", ratio=3),
-            Layout(name="right", ratio=2),
+            Layout(name="left", ratio=1),
+            Layout(name="right", ratio=1),
         )
         
         self.layout["left"].split_column(
@@ -175,11 +176,14 @@ class TerminalDashboard:
                 if parsed.is_valid:
                     tf = "15 min" if parsed.timeframe == "15m" else "5 min"
                     name = f"{parsed.asset} up/down {tf}"
+                    close_ts = parsed.timestamp + (300 if parsed.timeframe == "5m" else 900)
                 else:
                     name = m.slug[:16]
+                    close_ts = 0
                 for t in m.tokens:
                     self.token_to_name[t.token_id] = f"{name} ({t.outcome})"
                     self.token_to_base_name[t.token_id] = name
+                    self.token_to_ts[t.token_id] = close_ts
 
         # ── Resolved Positions ──
         res_table = Table(show_header=True, expand=True, border_style="dim")
@@ -209,7 +213,8 @@ class TerminalDashboard:
 
         # ── Stats Panel ──
         if stats:
-            win_rate, wins, losses = stats.win_rate
+            active_mids = {mid for mid, p in position_manager.positions.items() if p.size != 0}
+            win_rate, wins, losses = stats.get_win_rate(active_mids)
             wr_color = "green" if win_rate >= 0.5 else "red"
             
             stats_table = Table(show_header=False, expand=True, border_style="dim", pad_edge=False)
@@ -219,8 +224,8 @@ class TerminalDashboard:
             
             stats_table.add_row("Win Rate", f"[{wr_color}]{win_rate*100:.1f}%[/] [dim]({wins}W/{losses}L)[/]", "")
             
-            wr_by_type = stats.win_rates_by_type
-            pnl_by_type = stats.pnl_by_type
+            wr_by_type = stats.get_win_rates_by_type(active_mids)
+            pnl_by_type = stats.get_pnl_by_type(active_mids)
             for t_type, data in wr_by_type.items():
                 wr, w, l = data
                 t_color = "green" if wr >= 0.5 else "red"
@@ -232,8 +237,8 @@ class TerminalDashboard:
                     f"[{p_color}]${t_pnl:,.2f}[/]",
                 )
                 
-            wr_by_market = stats.win_rates_by_market(self.token_to_base_name)
-            pnl_by_mkt = stats.pnl_by_market(self.token_to_base_name)
+            wr_by_market = stats.get_win_rates_by_market(self.token_to_base_name, active_mids)
+            pnl_by_mkt = stats.get_pnl_by_market(self.token_to_base_name, active_mids)
             for mkt, data in wr_by_market.items():
                 wr, w, l = data
                 t_color = "green" if wr >= 0.5 else "red"
@@ -253,11 +258,13 @@ class TerminalDashboard:
             stats_table.add_row("No Liquidity", str(stats.rejects_no_liquidity), "")
             stats_table.add_row("─" * 16, "─" * 10, "─" * 8)
             
-            gross_color = "green" if stats.gross_pnl >= 0 else "red"
-            net_color = "green" if stats.net_pnl >= 0 else "red"
-            stats_table.add_row("Gross PnL", f"[{gross_color}]${stats.gross_pnl:,.2f}[/]", "")
+            gross_pnl = stats.get_gross_pnl(active_mids)
+            net_pnl = stats.get_net_pnl(active_mids)
+            gross_color = "green" if gross_pnl >= 0 else "red"
+            net_color = "green" if net_pnl >= 0 else "red"
+            stats_table.add_row("Gross PnL", f"[{gross_color}]${gross_pnl:,.2f}[/]", "")
             stats_table.add_row("Total Fees", f"[red]-${stats.total_fees_paid:,.2f}[/]", "")
-            stats_table.add_row("Net PnL", f"[{net_color}]${stats.net_pnl:,.2f}[/]", "")
+            stats_table.add_row("Net PnL", f"[{net_color}]${net_pnl:,.2f}[/]", "")
             stats_table.add_row("Volume", f"${stats.total_volume:,.2f}", "")
             stats_table.add_row("Avg Edge", f"{stats.avg_edge*100:.2f}%", "")
             stats_table.add_row("─" * 16, "─" * 10, "─" * 8)
@@ -273,6 +280,7 @@ class TerminalDashboard:
         # ── Positions Panel ──
         pos_table = Table(show_header=True, expand=True, border_style="dim")
         pos_table.add_column("Market", max_width=24)
+        pos_table.add_column("Closes In", justify="right")
         pos_table.add_column("Side", justify="center")
         pos_table.add_column("Size", justify="right")
         pos_table.add_column("Avg Px", justify="right")
@@ -284,13 +292,28 @@ class TerminalDashboard:
         ]
         
         if active_positions:
+            from bot.utils.clocks import current_timestamp_ms
+            now_s = current_timestamp_ms() / 1000.0
             for mid, p in active_positions[:10]:  # Show top 10
                 side = "[green]LONG[/]" if p.size > 0 else "[red]SHORT[/]"
                 rpnl_color = "green" if p.realized_pnl >= 0 else "red"
                 readable_name = self.token_to_name.get(mid, mid[:10] + "…")
                 notional = abs(p.size * p.avg_price)
+                
+                close_ts = self.token_to_ts.get(mid, 0)
+                if close_ts > 0:
+                    rem = int(close_ts - now_s)
+                    if rem > 0:
+                        m, s = divmod(rem, 60)
+                        closes_in = f"{m:02d}:{s:02d}"
+                    else:
+                        closes_in = "[dim]Settling...[/]"
+                else:
+                    closes_in = "---"
+
                 pos_table.add_row(
                     readable_name,
+                    closes_in,
                     side,
                     f"{abs(p.size):.1f}",
                     f"{p.avg_price:.4f}",
