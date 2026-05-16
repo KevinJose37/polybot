@@ -249,7 +249,8 @@ class PositionManager:
         })
         if len(self.resolved_positions) > 10:
             self.resolved_positions.pop(0)
-        
+            
+        # Zero out the position after settlement
         pos.size = 0.0
         pos.avg_price = 0.0
         del self.positions[market_id]

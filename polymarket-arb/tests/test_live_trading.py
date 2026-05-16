@@ -52,10 +52,10 @@ def test_pnl_type_c_buy_parity() -> None:
     stats.record_fill("no_tok", "BUY", 0.46, 100, fee=0.35, opp_type="TYPE-C", opp_edge=0.12, opp_id="c1")
     
     # Net PnL = payout - cost - fees = 100*1.0 - (42 + 46) - (0.30 + 0.35) = 11.35
-    assert abs(stats.net_pnl - 11.35) < 0.01
+    assert abs(stats.get_net_pnl(set()) - 11.35) < 0.01
     
     # Should be a win
-    rate, wins, losses = stats.win_rate
+    rate, wins, losses = stats.get_win_rate(set())
     assert wins == 1
     assert losses == 0
 
@@ -69,7 +69,7 @@ def test_pnl_type_c_sell_parity() -> None:
     stats.record_fill("no_tok", "SELL", 0.50, 100, fee=0.0, opp_type="TYPE-C", opp_edge=0.06, opp_id="c2")
     
     # Net PnL = revenue - liability = (56 + 50) - 100 = 6.00
-    assert abs(stats.net_pnl - 6.0) < 0.01
+    assert abs(stats.get_net_pnl(set()) - 6.0) < 0.01
 
 
 def test_pnl_type_b_monotonicity() -> None:
@@ -80,8 +80,8 @@ def test_pnl_type_b_monotonicity() -> None:
     stats.record_fill("tok_5m", "SELL", 0.60, 50, fee=0.0, opp_type="TYPE-B", opp_edge=0.10, opp_id="b1")
     stats.record_fill("tok_15m", "BUY", 0.50, 50, fee=0.20, opp_type="TYPE-B", opp_edge=0.10, opp_id="b1")
     
-    # Net = (0.60*50 - 0) - (0.50*50 + 0.20) = 30 - 25.20 = 4.80
-    assert abs(stats.net_pnl - 4.80) < 0.01
+    # Net = 0.0 (TYPE-B returns 0 until settlement to prevent dashboard corruption)
+    assert abs(stats.get_net_pnl(set()) - 0.0) < 0.01
 
 
 def test_pnl_by_type_segregation() -> None:
@@ -96,7 +96,7 @@ def test_pnl_by_type_segregation() -> None:
     stats.record_fill("s5", "SELL", 0.55, 30, fee=0.0, opp_type="TYPE-B", opp_edge=0.05, opp_id="b1")
     stats.record_fill("b15", "BUY", 0.50, 30, fee=0.05, opp_type="TYPE-B", opp_edge=0.05, opp_id="b1")
     
-    pnl_by = stats.pnl_by_type
+    pnl_by = stats.get_pnl_by_type(set())
     assert "TYPE-C" in pnl_by
     assert "TYPE-B" in pnl_by
     
@@ -104,8 +104,8 @@ def test_pnl_by_type_segregation() -> None:
     # Actually: payout=50*1.0=50, cost=(0.40*50 + 0.50*50)=20+25=45, fees=0.20 → 4.80
     assert pnl_by["TYPE-C"] > 0
     
-    # Type-B: revenue=0.55*30=16.5, cost=0.50*30=15, fees=0.05 → 1.45
-    assert pnl_by["TYPE-B"] > 0
+    # Type-B: returns 0.0 until settlement
+    assert abs(pnl_by["TYPE-B"] - 0.0) < 0.01
 
 
 def test_matched_sizing_enforcement() -> None:
@@ -119,7 +119,7 @@ def test_matched_sizing_enforcement() -> None:
     stats.record_fill("n", "BUY", 0.48, 80, fee=0.20, opp_type="TYPE-C", opp_edge=0.10, opp_id="matched1")
     
     # PnL = 80*1.0 - (0.42*80 + 0.48*80) - 0.40 = 80 - 72 - 0.40 = 7.60
-    assert abs(stats.net_pnl - 7.60) < 0.01
+    assert abs(stats.get_net_pnl(set()) - 7.60) < 0.01
 
 
 def test_win_rate_multiple_opportunities() -> None:
@@ -134,7 +134,7 @@ def test_win_rate_multiple_opportunities() -> None:
     stats.record_fill("y2", "BUY", 0.49, 100, fee=2.00, opp_type="TYPE-C", opp_edge=0.01, opp_id="lose1")
     stats.record_fill("n2", "BUY", 0.49, 100, fee=2.00, opp_type="TYPE-C", opp_edge=0.01, opp_id="lose1")
     
-    rate, wins, losses = stats.win_rate
+    rate, wins, losses = stats.get_win_rate(set())
     assert wins == 1
     assert losses == 1
     assert abs(rate - 0.5) < 0.001
