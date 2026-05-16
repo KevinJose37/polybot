@@ -212,8 +212,16 @@ async def test_paper_executor_dedup() -> None:
     from bot.arbitrage.opportunity import ArbOpportunity, ArbLeg, ArbType
     from bot.settings import Settings
     from bot.utils.clocks import current_timestamp_ms as _ts
+    from pathlib import Path
+    
+    # Clean up kill switch from prior runs
+    ks = Path(".kill_switch")
+    if ks.exists():
+        ks.unlink()
     
     settings = Settings()
+    settings.risk.max_exposure_per_asset = 500.0
+    settings.risk.max_portfolio_exposure = 1000.0
     pm = PositionManager()
     fm = FillManager()
     risk = RiskEngine(settings, pm)

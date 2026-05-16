@@ -217,12 +217,11 @@ class TradingStats:
                     pnl -= matched_size * 1.0  # Liability from selling parity
             elif "TYPE-B" in opp_type:
                 pass
-        else:
-            # Leg imbalance / standalone — only fees are the realized loss
-            if include_fees:
-                pnl = -sum(t.fee for t in group)
-            else:
-                pnl = 0.0
+        # For single-leg groups (leg imbalance), the pnl computed above is
+        # already the correct cost/revenue of the fill.  Previously this
+        # branch threw away the fill's directional cost and reported only
+        # -fees, causing the stats engine to show artificially positive
+        # results while PositionManager tracked the real loss.
 
         return pnl
 

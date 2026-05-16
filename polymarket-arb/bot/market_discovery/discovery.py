@@ -31,35 +31,31 @@ class MarketDiscoveryService:
             for window in TARGET_WINDOWS:
                 divisor = 5 * 60 if window == "5m" else 15 * 60
                 
-                # Check current window and next window
-                for offset in [0, divisor]:
-                    window_ts = (now_ts + offset) - ((now_ts + offset) % divisor)
-                    exact_slug = f"{asset.lower()}-updown-{window}-{window_ts}"
-                    
-                    markets = await self.api.get_markets(slug_prefix=exact_slug)
+                slug_prefix = f"{asset.lower()}-updown-{window}-"
+                markets = await self.api.get_markets(slug_prefix=slug_prefix)
                 
-                    # Filter strictly — inside the offset loop
-                    for market in markets:
-                        if not market.active or market.closed:
-                            continue
-                        if market.id in seen_ids:
-                            continue
-                            
-                        parsed = parse_market_slug(market.slug)
-                        if parsed.is_valid and parsed.asset == asset.upper() and parsed.timeframe == window:
-                            seen_ids.add(market.id)
-                            discovered.append(market)
+                # Filter strictly
+                for market in markets:
+                    if not market.active or market.closed:
+                        continue
+                    if market.id in seen_ids:
+                        continue
+                        
+                    parsed = parse_market_slug(market.slug)
+                    if parsed.is_valid and parsed.asset == asset.upper() and parsed.timeframe == window:
+                        seen_ids.add(market.id)
+                        discovered.append(market)
 
-                            # Only log genuinely new markets (not re-discoveries)
-                            if market.id not in self._known_ids:
-                                self._known_ids.add(market.id)
-                                logger.info(
-                                    "market_discovered", 
-                                    market_id=market.id, 
-                                    slug=market.slug, 
-                                    asset=parsed.asset, 
-                                    window=parsed.timeframe
-                                )
+                        # Only log genuinely new markets (not re-discoveries)
+                        if market.id not in self._known_ids:
+                            self._known_ids.add(market.id)
+                            logger.info(
+                                "market_discovered", 
+                                market_id=market.id, 
+                                slug=market.slug, 
+                                asset=parsed.asset, 
+                                window=parsed.timeframe
+                            )
         
         logger.debug(
             "discovery_sweep_complete",

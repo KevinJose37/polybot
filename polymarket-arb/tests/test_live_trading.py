@@ -145,7 +145,16 @@ async def test_paper_executor_matched_sizing() -> None:
     """Paper executor should cap leg 2 to leg 1's actual fill size."""
     from bot.paper_trading.engine import PaperExecutor
     
+    # Clean up kill switch from prior runs
+    from pathlib import Path
+    ks = Path(".kill_switch")
+    if ks.exists():
+        ks.unlink()
+    
     settings = Settings()
+    # Set high limits so this test exercises matched sizing, not risk rejection
+    settings.risk.max_exposure_per_asset = 500.0
+    settings.risk.max_portfolio_exposure = 1000.0
     pm = PositionManager()
     fm = FillManager()
     risk = RiskEngine(settings, pm)

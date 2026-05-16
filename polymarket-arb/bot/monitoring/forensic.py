@@ -1,7 +1,7 @@
 """
 Forensic logger for structured trade-level JSON records.
 
-Writes one JSON line per opportunity (executed or skipped) to a JSONL file.
+Writes one JSON line per executed opportunity or settlement to a JSONL file.
 Designed for post-hoc analysis: trade reconstruction, slippage audit,
 legging risk detection, and parameter optimization.
 """
@@ -143,59 +143,6 @@ class ForensicLogger:
             "outcome": {
                 "status": "OPEN",
                 "realized_pnl_usd": 0.0,
-            },
-        }
-        self._write(record)
-
-    def log_skipped_opportunity(
-        self,
-        opp: ArbOpportunity,
-        reason: str,
-        details: str,
-        filters_passed: list[str],
-        filters_failed: list[str],
-        orderbooks: dict[str, LocalOrderBook] | None = None,
-    ) -> None:
-        """Log a skipped opportunity for opportunity-cost analysis."""
-        legs_data = []
-        for i, leg in enumerate(opp.legs):
-            l2 = {}
-            if orderbooks:
-                book = orderbooks.get(leg.market_id)
-                if book:
-                    age_ms = current_timestamp_ms() - book.last_updated_ts
-                    if leg.side == "BUY":
-                        l2["top_ask"] = book.best_ask()
-                        depth = book.ask_depth(levels=1)
-                        l2["ask_depth"] = depth[0][1] if depth else 0.0
-                    else:
-                        l2["top_bid"] = book.best_bid()
-                        depth = book.bid_depth(levels=1)
-                        l2["bid_depth"] = depth[0][1] if depth else 0.0
-                    l2["time_since_last_ws_update_ms"] = age_ms
-
-            legs_data.append({
-                "leg_id": f"leg_{i+1}",
-                "token_id": leg.market_id,
-                "l2_context": l2,
-            })
-
-        record = {
-            "opp_id": f"SKIP-{opp.opportunity_id}",
-            "type": "SKIPPED",
-            "strategy_type": opp.type.value,
-            "detection_time_ms": opp.timestamp_ms,
-            "log_time_ms": current_timestamp_ms(),
-            "theoretical": {
-                "edge_pct": round(opp.edge, 6),
-                "expected_profit_usd": round(opp.edge * opp.size, 4),
-            },
-            "legs": legs_data,
-            "skip_reason": {
-                "primary_reason": reason,
-                "details": details,
-                "filters_passed": filters_passed,
-                "filters_failed": filters_failed,
             },
         }
         self._write(record)

@@ -49,13 +49,6 @@ class LiveExecutor(ExecutorProtocol):
         """Execute a full arbitrage opportunity."""
         if self.fill_manager.is_duplicate(opportunity.opportunity_id):
             self.stats.record_dedup_rejection()
-            if self.forensic:
-                self.forensic.log_skipped_opportunity(
-                    opp=opportunity, reason="dedup_window",
-                    details="Opportunity already executed within dedup window",
-                    filters_passed=[], filters_failed=["dedup"],
-                    orderbooks=self.orderbooks,
-                )
             return []
             
         logger.info(
@@ -66,103 +59,106 @@ class LiveExecutor(ExecutorProtocol):
             size=f"${opportunity.size:.2f}",
         )
         
-        # 1. Validate against risk engine for all legs before ANY execution
-        for leg in opportunity.legs:
-            try:
-                if not self.risk_engine.validate_order(leg.market_id, leg.size, orderbooks=self.orderbooks):
+        # ── Atomic capacity reservation ──
+        # Compute total notional for ALL legs and validate that the combined
+        # exposure fits within limits BEFORE executing any leg.
+        total_notional = sum(leg.size * leg.price for leg in opportunity.legs)
+        if not self.risk_engine.reserve_exposure(total_notional):
+            self.stats.record_risk_rejection()
+            return []
+
+        try:
+            # 1. Validate against risk engine for all legs before ANY execution
+            for leg in opportunity.legs:
+                try:
+                    if not self.risk_engine.validate_order(
+                        leg.market_id, leg.size, price=leg.price, orderbooks=self.orderbooks, check_portfolio=False
+                    ):
+                        self.stats.record_risk_rejection()
+                        return []
+                except RiskKillSwitchTriggered:
                     self.stats.record_risk_rejection()
-                    if self.forensic:
-                        self.forensic.log_skipped_opportunity(
-                            opp=opportunity, reason="risk_rejected",
-                            details=f"Risk engine rejected leg {leg.market_id}",
-                            filters_passed=["dedup", "min_edge"],
-                            filters_failed=["risk_engine"],
-                            orderbooks=self.orderbooks,
-                        )
                     return []
-            except RiskKillSwitchTriggered as e:
-                self.stats.record_risk_rejection()
-                if self.forensic:
-                    self.forensic.log_skipped_opportunity(
-                        opp=opportunity, reason="kill_switch",
-                        details=str(e),
-                        filters_passed=[], filters_failed=["kill_switch"],
-                        orderbooks=self.orderbooks,
-                    )
-                return []
-                
-        self.fill_manager.mark_executed(opportunity.opportunity_id)
-        self.stats.record_opportunity_executed()
-        
-        acks = []
-        filled_legs = []
-        fill_details = []
-        matched_size: float | None = None
-        leg_fill_times: list[int] = []
-
-        for i, leg in enumerate(opportunity.legs):
-            # For parity arb, enforce matched sizing
-            leg_size = leg.size
-            if matched_size is not None and opportunity.type in (ArbType.PARITY, ArbType.EXHAUSTIVE):
-                leg_size = matched_size
-
-            order = OrderRequest(
-                market_id=leg.market_id,
-                side=leg.side, # type: ignore
-                price=leg.price,
-                size=leg_size
-            )
-            leg_start = current_timestamp_ms()
-            ack = await self.place_order(order, opp=opportunity)
-            leg_end = current_timestamp_ms()
-            acks.append(ack)
-
-            if ack.status == "FILLED":
-                if matched_size is None:
-                    pos = self.position_manager.get_position(leg.market_id)
-                    matched_size = abs(pos.size)
-                
-                fee_rate = self.fee_rates.get(leg.market_id, self.settings.trading.polymarket_fee)
-                fee = polymarket_taker_fee(leg.price, leg_size, fee_rate, side=str(leg.side))
-                fill_details.append({
-                    "fill_price": leg.price,
-                    "filled_size": leg_size,
-                    "fee": fee,
-                    "latency_ms": leg_end - leg_start,
-                })
-                leg_fill_times.append(leg_end)
-                filled_legs.append(i)
-            else:
-                fill_details.append({
-                    "fill_price": 0.0, "filled_size": 0.0, "fee": 0.0,
-                    "latency_ms": leg_end - leg_start,
-                })
-                if filled_legs:
-                    logger.warning(
-                        "leg_imbalance",
-                        opp_id=opportunity.opportunity_id[:8],
-                        filled=filled_legs, failed=i,
-                    )
-                    self.stats.record_leg_imbalance()
-
-        # Forensic log
-        if self.forensic:
-            legging_gap = (leg_fill_times[-1] - leg_fill_times[0]) if len(leg_fill_times) >= 2 else 0
-            self.forensic.log_executed_opportunity(
-                opp=opportunity, acks=acks, orderbooks=self.orderbooks,
-                fee_rates=self.fee_rates,
-                slippage_est=self.settings.trading.slippage_est,
-                kelly_multiplier=self.settings.trading.kelly_fraction_multiplier,
-                fill_details=fill_details,
-                legging_gap_ms=legging_gap,
-            )
+                    
+            self.fill_manager.mark_executed(opportunity.opportunity_id)
+            self.stats.record_opportunity_executed()
             
-        return acks
+            acks = []
+            filled_legs = []
+            fill_details = []
+            matched_size: float | None = None
+            leg_fill_times: list[int] = []
 
-    async def place_order(self, order: OrderRequest, opp: ArbOpportunity | None = None) -> OrderAck:
+            for i, leg in enumerate(opportunity.legs):
+                # For parity arb, enforce matched sizing
+                leg_size = leg.size
+                if matched_size is not None and opportunity.type in (ArbType.PARITY, ArbType.EXHAUSTIVE):
+                    leg_size = matched_size
+
+                order = OrderRequest(
+                    market_id=leg.market_id,
+                    side=leg.side, # type: ignore
+                    price=leg.price,
+                    size=leg_size
+                )
+                leg_start = current_timestamp_ms()
+                ack = await self.place_order(order, opp=opportunity, check_portfolio=False)
+                leg_end = current_timestamp_ms()
+                acks.append(ack)
+
+                if ack.status == "FILLED":
+                    # Use the actual fill size returned by place_order,
+                    # NOT the cumulative position size.
+                    actual_fill_size = ack.filled_size if ack.filled_size > 0 else leg_size
+                    if matched_size is None:
+                        matched_size = actual_fill_size
+                    
+                    fee_rate = self.fee_rates.get(leg.market_id, self.settings.trading.polymarket_fee)
+                    fee = polymarket_taker_fee(ack.fill_price or leg.price, actual_fill_size, fee_rate, side=str(leg.side))
+                    fill_details.append({
+                        "fill_price": ack.fill_price or leg.price,
+                        "filled_size": actual_fill_size,
+                        "fee": fee,
+                        "latency_ms": leg_end - leg_start,
+                    })
+                    leg_fill_times.append(leg_end)
+                    filled_legs.append(i)
+                else:
+                    fill_details.append({
+                        "fill_price": 0.0, "filled_size": 0.0, "fee": 0.0,
+                        "latency_ms": leg_end - leg_start,
+                    })
+                    if filled_legs:
+                        logger.warning(
+                            "leg_imbalance",
+                            opp_id=opportunity.opportunity_id[:8],
+                            filled=filled_legs, failed=i,
+                        )
+                        self.stats.record_leg_imbalance()
+                        self.risk_engine.activate_kill_switch(f"Unhedged leg imbalance on opp {opportunity.opportunity_id[:8]}. Leg {i} failed after {filled_legs} filled.")
+
+            # Forensic log
+            if self.forensic:
+                legging_gap = (leg_fill_times[-1] - leg_fill_times[0]) if len(leg_fill_times) >= 2 else 0
+                self.forensic.log_executed_opportunity(
+                    opp=opportunity, acks=acks, orderbooks=self.orderbooks,
+                    fee_rates=self.fee_rates,
+                    slippage_est=self.settings.trading.slippage_est,
+                    kelly_multiplier=self.settings.trading.kelly_fraction_multiplier,
+                    fill_details=fill_details,
+                    legging_gap_ms=legging_gap,
+                )
+                
+            return acks
+        finally:
+            self.risk_engine.release_exposure(total_notional)
+
+    async def place_order(self, order: OrderRequest, opp: ArbOpportunity | None = None, check_portfolio: bool = True) -> OrderAck:
         """Sign and place a single order."""
         try:
-            if not self.risk_engine.validate_order(order.market_id, order.size, orderbooks=self.orderbooks):
+            if not self.risk_engine.validate_order(
+                order.market_id, order.size, price=order.price, orderbooks=self.orderbooks, check_portfolio=check_portfolio
+            ):
                 return OrderAck(order_id="failed", status="REJECTED", message="Risk Engine Rejected")
         except RiskKillSwitchTriggered as e:
             return OrderAck(order_id="failed", status="REJECTED", message=str(e))
@@ -194,7 +190,11 @@ class LiveExecutor(ExecutorProtocol):
                 "signature": signature,
             })
             
-            status = response.get("status", "FILLED")
+            if "error" in response or "message" in response:
+                status = "REJECTED"
+                logger.warning("api_returned_error", error=response, order_id=order_id)
+            else:
+                status = response.get("status", "FILLED")
             self.fill_manager.remove_inflight_order(order_id)
             
             if status == "FILLED":
@@ -216,7 +216,12 @@ class LiveExecutor(ExecutorProtocol):
                     opp_id=opp_id,
                 )
 
-            return OrderAck(order_id=order_id, status=status)
+            return OrderAck(
+                order_id=order_id,
+                status=status,
+                filled_size=order.size if status == "FILLED" else 0.0,
+                fill_price=order.price if status == "FILLED" else 0.0,
+            )
             
         except Exception as e:
             logger.error("live_order_failed", error=str(e), market_id=order.market_id[:10])

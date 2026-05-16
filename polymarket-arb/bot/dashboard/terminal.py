@@ -57,21 +57,14 @@ class TerminalDashboard:
         stats: TradingStats | None = None,
     ) -> None:
         """Refresh the layout with new data."""
-        # Use position_manager's PnL which correctly values parity pairs at $1.00
         realized_pnl = position_manager.total_realized_pnl
         unrealized_pnl = position_manager.total_unrealized_pnl
         total_pnl = realized_pnl + unrealized_pnl
-        equity = self.capital + total_pnl
+        equity = position_manager.get_equity(self.capital)
         pnl_pct = (total_pnl / self.capital) * 100 if self.capital > 0 else 0
         
-        # Position value = cost basis of open positions
-        pos_cost = sum(
-            abs(p.size * p.avg_price)
-            for p in position_manager.positions.values()
-            if p.size != 0
-        )
-        # Available capital = equity minus what's tied up in positions (at cost)
-        avail_capital = self.capital + realized_pnl - pos_cost
+        avail_capital = position_manager.get_available_capital(self.capital)
+        pos_cost = equity - avail_capital - unrealized_pnl
         
         mode_text = "[bold yellow]PAPER TRADING — NOT REAL MONEY[/]" if self.mode == "paper" else "[bold red]🔴 LIVE TRADING[/]"
         pnl_color = "green" if total_pnl >= 0 else "red"
@@ -134,22 +127,18 @@ class TerminalDashboard:
                 market_pnl = pos_yes.realized_pnl + pos_no.realized_pnl
                 
                 # Parity-aware unrealized: matched YES+NO → $1.00 guaranteed
-                if pos_yes.size > 0 and pos_no.size > 0:
-                    matched = min(pos_yes.size, pos_no.size)
-                    parity_unreal = matched * 1.0 - (pos_yes.avg_price * matched + pos_no.avg_price * matched)
-                    excess_yes = pos_yes.size - matched
-                    excess_no = pos_no.size - matched
-                    unreal_excess = 0.0
-                    if excess_yes > 0 and up_bid is not None:
-                        unreal_excess += (up_bid - pos_yes.avg_price) * excess_yes
-                    if excess_no > 0 and dn_bid is not None:
-                        unreal_excess += (dn_bid - pos_no.avg_price) * excess_no
-                    unrealized = parity_unreal + unreal_excess
-                else:
-                    unrealized = (
-                        position_manager.mark_to_market(yes_id, up_bid) +
-                        position_manager.mark_to_market(no_id, dn_bid)
-                    )
+                mid_prices = {}
+                if up_bid is not None and up_ask is not None:
+                    mid_prices[yes_id] = (up_bid + up_ask) / 2.0
+                elif up_bid is not None: mid_prices[yes_id] = up_bid
+                elif up_ask is not None: mid_prices[yes_id] = up_ask
+                
+                if dn_bid is not None and dn_ask is not None:
+                    mid_prices[no_id] = (dn_bid + dn_ask) / 2.0
+                elif dn_bid is not None: mid_prices[no_id] = dn_bid
+                elif dn_ask is not None: mid_prices[no_id] = dn_ask
+
+                unrealized = position_manager.get_pair_unrealized_pnl(yes_id, no_id, mid_prices)
                 total_mkt_pnl = market_pnl + unrealized
                 pnl_str = f"[green]+${total_mkt_pnl:.2f}[/]" if total_mkt_pnl >= 0 else f"[red]-${abs(total_mkt_pnl):.2f}[/]"
                 

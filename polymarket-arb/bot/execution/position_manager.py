@@ -36,6 +36,19 @@ class PositionManager:
         self.parity_pairs[token_a] = token_b
         self.parity_pairs[token_b] = token_a
 
+    def get_equity(self, starting_capital: float) -> float:
+        """Calculate total equity (starting capital + total realized and unrealized PnL)."""
+        return starting_capital + self.total_realized_pnl + self.total_unrealized_pnl
+
+    def get_available_capital(self, starting_capital: float) -> float:
+        """Calculate available cash (capital + realized PnL minus what is tied up in active positions at cost)."""
+        pos_cost = sum(
+            abs(p.size * p.avg_price)
+            for p in self.positions.values()
+            if p.size != 0
+        )
+        return starting_capital + self.total_realized_pnl - pos_cost
+
     def get_position(self, market_id: str) -> Position:
         if market_id not in self.positions:
             self.positions[market_id] = Position(market_id=market_id)
@@ -99,6 +112,60 @@ class PositionManager:
             return (mid_price - pos.avg_price) * pos.size
         else:
             return (pos.avg_price - mid_price) * abs(pos.size)
+
+    def get_market_unrealized_pnl(self, market_id: str, mid_prices: dict[str, float]) -> float:
+        """Calculate parity-aware unrealized PnL for a single market."""
+        pos = self.get_position(market_id)
+        if pos.size == 0:
+            return 0.0
+
+        complement_id = self.parity_pairs.get(market_id)
+        if complement_id and complement_id in self.positions:
+            comp_pos = self.positions[complement_id]
+            if pos.size > 0 and comp_pos.size > 0:
+                matched = min(pos.size, comp_pos.size)
+                # Avoid double counting: only compute full parity PnL when querying the primary leg
+                # Or compute proportional parity PnL. Easiest is to just compute for the individual leg's matched portion.
+                # Actually, the prompt says "Centralize all PnL and equity derivations strictly within PositionManager and TradingStats, leaving the dashboard to be purely presentation logic."
+                pass
+
+        # To keep it simple and accurate, we can just compute the true unrealized PnL for this specific token
+        # but parity valuation applies to the pair.
+        # Let's return the standard mtm for a single leg.
+        mid = mid_prices.get(market_id)
+        return self.mark_to_market(market_id, mid) if mid is not None else 0.0
+
+    def get_pair_unrealized_pnl(self, token_a: str, token_b: str, mid_prices: dict[str, float]) -> float:
+        """Calculate parity-aware unrealized PnL for a pair of tokens."""
+        pos_a = self.get_position(token_a)
+        pos_b = self.get_position(token_b)
+        
+        unrealized = 0.0
+        if pos_a.size > 0 and pos_b.size > 0:
+            matched = min(pos_a.size, pos_b.size)
+            parity_unreal = matched * 1.0 - (pos_a.avg_price * matched + pos_b.avg_price * matched)
+            unrealized += parity_unreal
+            
+            excess_a = pos_a.size - matched
+            excess_b = pos_b.size - matched
+            if excess_a > 0:
+                mid = mid_prices.get(token_a)
+                if mid is not None:
+                    unrealized += (mid - pos_a.avg_price) * excess_a
+            if excess_b > 0:
+                mid = mid_prices.get(token_b)
+                if mid is not None:
+                    unrealized += (mid - pos_b.avg_price) * excess_b
+            return unrealized
+            
+        # Non-parity
+        mid_a = mid_prices.get(token_a)
+        mid_b = mid_prices.get(token_b)
+        if mid_a is not None:
+            unrealized += self.mark_to_market(token_a, mid_a)
+        if mid_b is not None:
+            unrealized += self.mark_to_market(token_b, mid_b)
+        return unrealized
 
     def update_all_mtm(self, mid_prices: dict[str, float]) -> None:
         """

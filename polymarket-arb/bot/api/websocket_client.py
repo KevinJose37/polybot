@@ -71,7 +71,8 @@ class PolymarketWSClient:
                         self.last_message_ts = current_timestamp_ms()
                         if self._callback:
                             try:
-                                data = json.loads(message)
+                                loop = asyncio.get_event_loop()
+                                data = await loop.run_in_executor(None, json.loads, message)
                                 await self._callback(data)
                             except json.JSONDecodeError:
                                 pass

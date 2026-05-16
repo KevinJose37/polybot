@@ -4,16 +4,12 @@ import logging
 from pathlib import Path
 import typer
 from rich.live import Live
-from typing import Annotated
 
 from bot.settings import Settings
 from bot.api.polymarket import PolymarketRESTClient
 from bot.api.websocket_client import PolymarketWSClient
 from bot.market_discovery.discovery import MarketDiscoveryService
-from bot.market_discovery.market_relationships import build_topology
 from bot.orderbook.local_book import LocalOrderBook
-from bot.orderbook.book_state import BookState
-from bot.api.schemas import OrderBookSnapshot
 from bot.execution.position_manager import PositionManager
 from bot.execution.fill_manager import FillManager
 from bot.execution.live_engine import LiveExecutor
@@ -24,7 +20,8 @@ from bot.paper_trading.stats import TradingStats
 from bot.monitoring.health import HealthServer
 from bot.monitoring.forensic import ForensicLogger
 from bot.persistence.postgres import DatabaseManager
-from bot.persistence.repositories import TradeRepository
+from bot.execution.events import MarketEventHandler
+from bot.execution.lifecycle import LifecycleManager
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -117,39 +114,8 @@ async def run_live_trading() -> None:
     )
     health_task = asyncio.create_task(health_server.start())
     
-    # 1. Discover markets
-    markets = await discovery.discover_markets()
-    topology = build_topology(markets)
-    
-    # 2. Fetch per-token fee rates from Polymarket API
-    async def fetch_fee_rate(tid: str):
-        rate = await rest_api.get_fee_rate(tid)
-        fee_rates[tid] = rate if rate is not None else settings.trading.polymarket_fee
-    
-    # 3. Initialize orderbooks with REST snapshots
-    async def init_book(tid: str):
-        book = LocalOrderBook(tid, stale_threshold_ms=settings.network.stale_feed_threshold_ms)
-        orderbooks[tid] = book
-        snapshot = await rest_api.get_orderbook(tid)
-        await book.apply_snapshot(snapshot)
+    scanner = ArbitrageScanner(settings, topology=None, fee_rates=fee_rates)
 
-    init_tasks = [init_book(t.token_id) for m in markets for t in m.tokens]
-    if init_tasks:
-        await asyncio.gather(*init_tasks)
-    
-    fee_tasks = [fetch_fee_rate(t.token_id) for m in markets for t in m.tokens]
-    if fee_tasks:
-        await asyncio.gather(*fee_tasks)
-    logger.info("fee_rates_loaded", count=len(fee_rates))
-    
-    # 4. Register parity pairs so position manager values YES+NO at $1.00
-    for market in markets:
-        if len(market.tokens) == 2:
-            position_manager.register_parity_pair(market.tokens[0].token_id, market.tokens[1].token_id)
-    
-    scanner = ArbitrageScanner(settings, topology, fee_rates=fee_rates)
-
-    # Create executor AFTER orderbooks so they can be passed by reference
     executor = LiveExecutor(
         settings, risk_engine, fill_manager, rest_api, 
         orderbooks=orderbooks, position_manager=position_manager, stats=stats,
@@ -158,203 +124,37 @@ async def run_live_trading() -> None:
             
     recent_opportunities: list[dict] = []
     
-    async def ws_callback(data: dict) -> None:
-        """Handle incoming WebSocket messages.
-        
-        Polymarket WS sends individual JSON objects with an event_type field:
-        - "book": full orderbook snapshot with bids/asks arrays
-        - "price_change": delta updates via price_changes array
-        """
-        # Normalize to a list for uniform processing
-        if isinstance(data, list):
-            messages = data
-        elif isinstance(data, dict):
-            messages = [data]
-        else:
-            return
-
-        for msg in messages:
-            event_type = msg.get("event_type", "")
-
-            if event_type == "book":
-                token_id = msg.get("asset_id")
-                if not token_id:
-                    continue
-                book = orderbooks.get(token_id)
-                if not book:
-                    continue
-
-                bids = [(float(b["price"]), float(b["size"])) for b in msg.get("bids", [])]
-                asks = [(float(a["price"]), float(a["size"])) for a in msg.get("asks", [])]
-                snapshot = OrderBookSnapshot(market_id=token_id, bids=bids, asks=asks)
-                await book.apply_snapshot(snapshot)
-
-            elif event_type == "price_change":
-                for change in msg.get("price_changes", []):
-                    token_id = change.get("asset_id")
-                    if not token_id:
-                        continue
-                    book = orderbooks.get(token_id)
-                    if not book:
-                        continue
-
-                    price = float(change["price"])
-                    size = float(change["size"])
-                    side = change.get("side", "").upper()
-
-                    if side == "BUY":
-                        bids = [(price, size)]
-                        asks = []
-                    elif side == "SELL":
-                        bids = []
-                        asks = [(price, size)]
-                    else:
-                        continue
-
-                    ts = int(msg.get("timestamp", 0)) or 0
-                    if book.state == BookState.PENDING:
-                        continue
-                    await book.apply_delta(bids, asks, sequence=ts)
-
-            elif event_type in ("last_trade_price", "best_bid_ask", "tick_size_change"):
-                pass
-                
-        # Run Scanner
-        opportunities = scanner.scan(orderbooks)
-        
-        async def execute_and_persist(opp, opp_data):
-            acks = await executor.execute_opportunity(opp)
-            if not acks:
-                opp_data["status"] = "REJECTED"
-                opp_data["color"] = "red"
-            else:
-                all_filled = all(ack.status == "FILLED" for ack in acks)
-                any_rejected = any(ack.status == "REJECTED" for ack in acks)
-                if all_filled:
-                    opp_data["status"] = "FILLED"
-                    opp_data["color"] = "green"
-                elif any_rejected:
-                    opp_data["status"] = "LEG IMBALANCE"
-                    opp_data["color"] = "red"
-                else:
-                    opp_data["status"] = "PARTIAL"
-                    opp_data["color"] = "yellow"
-
-                try:
-                    async for session in db.get_session():
-                        repo = TradeRepository(session)
-                        for leg, ack in zip(opp.legs, acks):
-                            if ack.status == "FILLED":
-                                await repo.add_trade(
-                                    opp_id=opp.opportunity_id,
-                                    order_id=ack.order_id,
-                                    market_id=leg.market_id,
-                                    side=leg.side,
-                                    price=leg.price,
-                                    size=leg.size,
-                                    mode="live"
-                                )
-                        break
-                except Exception as e:
-                    logger.error("persistence_error", error=str(e))
-
-        for opp in opportunities:
-            stats.record_opportunity_detected()
-            opp_data = {
-                "type": opp.type.value,
-                "edge": opp.edge,
-                "size": opp.size,
-                "status": "PENDING",
-                "color": "yellow"
-            }
-            recent_opportunities.append(opp_data)
-            if len(recent_opportunities) > 8:
-                recent_opportunities.pop(0)
-            
-            asyncio.create_task(execute_and_persist(opp, opp_data))
-            
-    ws_client.set_callback(ws_callback)
+    lifecycle = LifecycleManager(
+        settings=settings,
+        discovery=discovery,
+        rest_api=rest_api,
+        ws_client=ws_client,
+        scanner=scanner,
+        position_manager=position_manager,
+        fill_manager=fill_manager,
+        executor=executor,
+        orderbooks=orderbooks,
+        fee_rates=fee_rates
+    )
+    await lifecycle.initial_discovery()
+    
+    event_handler = MarketEventHandler(
+        orderbooks=orderbooks,
+        scanner=scanner,
+        executor=executor,
+        stats=stats,
+        recent_opportunities=recent_opportunities,
+        db=db,
+        mode="live"
+    )
+    
+    ws_client.set_callback(event_handler.handle_message)
     token_ids = list(orderbooks.keys())
-    ws_client.subscribe(token_ids)
+    if token_ids:
+        ws_client.subscribe(token_ids)
     
     ws_task = asyncio.create_task(ws_client.connect_and_run())
-    
-    async def market_discovery_loop():
-        nonlocal markets, topology, token_ids
-        while True:
-            await asyncio.sleep(60)
-            try:
-                new_markets = await discovery.discover_markets()
-                if not new_markets:
-                    continue
-                    
-                new_topology = build_topology(new_markets)
-                new_token_ids = []
-                
-                for m in new_markets:
-                    for t in m.tokens:
-                        new_token_ids.append(t.token_id)
-                
-                # Subscribe to newly discovered tokens
-                tokens_to_sub = set(new_token_ids) - set(token_ids)
-                if tokens_to_sub:
-                    async def init_new_book(tid: str):
-                        book = LocalOrderBook(tid, stale_threshold_ms=settings.network.stale_feed_threshold_ms)
-                        orderbooks[tid] = book
-                        snapshot = await rest_api.get_orderbook(tid)
-                        await book.apply_snapshot(snapshot)
-                    
-                    async def fetch_new_fee_rate(tid: str):
-                        rate = await rest_api.get_fee_rate(tid)
-                        fee_rates[tid] = rate if rate is not None else settings.trading.polymarket_fee
-                        
-                    await asyncio.gather(*(init_new_book(tid) for tid in tokens_to_sub))
-                    await asyncio.gather(*(fetch_new_fee_rate(tid) for tid in tokens_to_sub))
-                    ws_client.subscribe(list(tokens_to_sub))
-                    
-                # Update references safely
-                markets = new_markets
-                topology = new_topology
-                scanner.topology = new_topology
-                token_ids = new_token_ids
-                
-                # Register parity pairs for new markets
-                for m in new_markets:
-                    if len(m.tokens) == 2:
-                        position_manager.register_parity_pair(m.tokens[0].token_id, m.tokens[1].token_id)
-                
-                # Market resolution check
-                active_token_ids = {t.token_id for m in new_markets for t in m.tokens}
-                resolved_tokens = [mid for mid in list(orderbooks.keys()) if mid not in active_token_ids]
-                
-                for mid in resolved_tokens:
-                    logger.info("market_resolved", market_id=mid[:12])
-                    for oid, data in list(fill_manager.inflight_orders.items()):
-                        if data.get("market") == mid:
-                            await executor.cancel_order(oid)
-                            fill_manager.remove_inflight_order(oid)
-                    
-                    # Determine resolution price for parity pairs
-                    complement_id = position_manager.parity_pairs.get(mid)
-                    book = orderbooks.get(mid)
-                    
-                    if complement_id and complement_id in resolved_tokens:
-                        if book and book.bids:
-                            last_bid = max(book.bids.keys())
-                            settle_price = 1.0 if last_bid > 0.5 else 0.0
-                        else:
-                            settle_price = 0.5
-                    else:
-                        settle_price = 0.5
-                    
-                    position_manager.settle_market(mid, settle_price=settle_price)
-                    
-                    if mid in orderbooks:
-                        del orderbooks[mid]
-            except Exception as e:
-                logger.error("discovery_loop_error", error=str(e))
-                
-    discovery_task = asyncio.create_task(market_discovery_loop())
+    discovery_task = asyncio.create_task(lifecycle.discovery_loop())
 
     async def order_ttl_loop():
         """Cancel orders that exceed the configured timeout."""
@@ -390,7 +190,7 @@ async def run_live_trading() -> None:
                     "WS": ws_client._running,
                     "RISK": not risk_engine.kill_switch_active
                 }
-                dashboard.update(position_manager, markets, orderbooks, recent_opportunities, health, stats=stats)
+                dashboard.update(position_manager, lifecycle.markets, orderbooks, recent_opportunities, health, stats=stats)
                 
                 # Check for silent WebSocket drops
                 try:
@@ -404,6 +204,7 @@ async def run_live_trading() -> None:
         except asyncio.CancelledError:
             pass
         finally:
+            await event_handler.shutdown()
             forensic.close()
             await ws_client.close()
             await rest_api.close()

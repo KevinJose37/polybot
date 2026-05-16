@@ -23,6 +23,7 @@ def clean_kill_switch():
 def test_risk_exposure_limit() -> None:
     settings = Settings()
     settings.risk.max_exposure_per_asset = 100.0  # Max $100
+    settings.risk.max_portfolio_exposure = 500.0  # High portfolio cap
     pm = PositionManager()
     
     # Add a position of 100 size at $1 (Notional = $100)
@@ -30,11 +31,11 @@ def test_risk_exposure_limit() -> None:
     
     risk = RiskEngine(settings, pm)
     
-    # Trying to buy 10 more should fail
-    assert not risk.validate_order("m1", 10.0)
+    # Trying to buy 10 more at $0.90 → new notional=$9, total=$109 > $100 → reject
+    assert not risk.validate_order("m1", 10.0, price=0.90)
     
     # Trying to buy for another market should succeed
-    assert risk.validate_order("m2", 50.0)
+    assert risk.validate_order("m2", 50.0, price=0.60)
 
 
 def test_risk_drawdown_killswitch() -> None:
@@ -52,7 +53,7 @@ def test_risk_drawdown_killswitch() -> None:
     
     # Trying to place any order should trigger kill switch
     with pytest.raises(RiskKillSwitchTriggered):
-        risk.validate_order("m1", 10.0)
+        risk.validate_order("m1", 10.0, price=0.50)
         
     assert risk.kill_switch_active
 
@@ -72,7 +73,7 @@ def test_risk_portfolio_cap() -> None:
     risk = RiskEngine(settings, pm)
     
     # New order should be rejected (total would exceed $200)
-    assert not risk.validate_order("m4", 50.0)
+    assert not risk.validate_order("m4", 50.0, price=0.60)
 
 
 def test_risk_stale_feed_rejection() -> None:
@@ -93,7 +94,7 @@ def test_risk_stale_feed_rejection() -> None:
     
     orderbooks = {"t1": book}
     
-    assert not risk.validate_order("t1", 10.0, orderbooks=orderbooks)
+    assert not risk.validate_order("t1", 10.0, price=0.50, orderbooks=orderbooks)
 
 
 def test_risk_kill_switch_persists() -> None:

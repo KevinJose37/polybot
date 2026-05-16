@@ -44,3 +44,5 @@ class OrderAck(BaseModel):
     order_id: str
     status: str
     message: str = ""
+    filled_size: float = 0.0
+    fill_price: float = 0.0

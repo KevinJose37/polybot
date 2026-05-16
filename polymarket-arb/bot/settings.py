@@ -50,9 +50,9 @@ class ApiSettings(BaseSettings):
 
 class RiskSettings(BaseSettings):
     """Risk constraints."""
-    max_daily_drawdown: float = 50.0
-    max_exposure_per_asset: float = 200.0
-    max_portfolio_exposure: float = 500.0
+    max_daily_drawdown: float = 10.0
+    max_exposure_per_asset: float = 10.0
+    max_portfolio_exposure: float = 25.0
     kill_switch_file: str = ".kill_switch"
 
 
@@ -97,6 +97,14 @@ class Settings(BaseSettings):
         if config_path.exists():
             with open(config_path, "rb") as f:
                 toml_data = tomllib.load(f)
+        else:
+            import warnings
+            warnings.warn(
+                f"Config file not found at {config_path}. Using hardcoded defaults. "
+                "Risk limits may not match intended values.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         settings = cls()
         
