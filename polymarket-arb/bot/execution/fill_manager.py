@@ -34,6 +34,16 @@ class FillManager:
         """Mark an opportunity as executed."""
         self.active_opportunities[opportunity_id] = current_timestamp_ms()
 
+    def check_and_mark(self, opportunity_id: str) -> bool:
+        """Atomically check for duplicate and mark as executed if not.
+        Returns True if the opportunity was already executed (is a duplicate).
+        Returns False and marks it as executed if it was not a duplicate.
+        """
+        if self.is_duplicate(opportunity_id):
+            return True
+        self.mark_executed(opportunity_id)
+        return False
+
     def add_inflight_order(self, order_id: str, order_data: dict) -> None:
         """Track an order that is currently pending on the exchange."""
         order_data["created_at_ms"] = current_timestamp_ms()

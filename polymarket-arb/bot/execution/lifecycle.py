@@ -79,11 +79,19 @@ class LifecycleManager:
                 
     async def discovery_loop(self) -> None:
         """Background loop to poll for new markets and settle resolved ones."""
+        # Track how many consecutive cycles a token has been absent,
+        # to avoid premature settlement from transient API failures.
+        absence_counter: dict[str, int] = {}
+        ABSENCE_THRESHOLD = 2  # require 2+ consecutive absences
+
         while True:
             await asyncio.sleep(60)
             try:
                 new_markets = await self.discovery.discover_markets()
+                
+                # Guard: don't replace existing topology with empty results (likely API error)
                 if not new_markets:
+                    logger.warning("discovery_empty_result", keeping_existing=len(self.markets))
                     continue
                     
                 new_topology = build_topology(new_markets)
@@ -117,34 +125,58 @@ class LifecycleManager:
                     if len(m.tokens) == 2:
                         self.position_manager.register_parity_pair(m.tokens[0].token_id, m.tokens[1].token_id)
                 
-                # Market resolution check
+                # Market resolution check — safe copy of keys
                 active_token_ids = {t.token_id for m in new_markets for t in m.tokens}
-                resolved_tokens = [mid for mid in list(self.orderbooks.keys()) if mid not in active_token_ids]
+                current_book_tokens = list(self.orderbooks.keys())
+                
+                # Update absence counters
+                for mid in current_book_tokens:
+                    if mid not in active_token_ids:
+                        absence_counter[mid] = absence_counter.get(mid, 0) + 1
+                    else:
+                        absence_counter.pop(mid, None)
+                
+                # Only settle tokens absent for ABSENCE_THRESHOLD consecutive cycles
+                resolved_tokens = [
+                    mid for mid in current_book_tokens
+                    if absence_counter.get(mid, 0) >= ABSENCE_THRESHOLD
+                ]
                 
                 for mid in resolved_tokens:
                     logger.info("market_resolved", market_id=mid[:12])
+                    # Cancel inflight orders for resolved market
                     for oid, data in list(self.fill_manager.inflight_orders.items()):
                         if data.get("market") == mid:
                             await self.executor.cancel_order(oid)
                             self.fill_manager.remove_inflight_order(oid)
                     
-                    # Determine resolution price for parity pairs
+                    # ── Deterministic parity-aware settlement ──
+                    # For binary parity markets: one token resolves to 1.0, the other to 0.0.
+                    # We check if the complement is also resolved. If both are resolved,
+                    # we settle the first token at 1.0 and the second at 0.0 deterministically
+                    # (the actual winner doesn't matter for parity arb PnL: cost = p_yes + p_no,
+                    #  payout = 1.0 regardless of which side wins).
                     complement_id = self.position_manager.parity_pairs.get(mid)
-                    book = self.orderbooks.get(mid)
-                    
                     if complement_id and complement_id in resolved_tokens:
-                        if book and book.bids:
-                            last_bid = max(book.bids.keys())
-                            settle_price = 1.0 if last_bid > 0.5 else 0.0
+                        # Both legs resolved — settle first alphabetically at 1.0, other at 0.0
+                        # For parity arb, total payout = 1.0 regardless of assignment.
+                        if mid < complement_id:
+                            settle_price = 1.0
                         else:
-                            settle_price = 0.5
+                            settle_price = 0.0
                     else:
+                        # Standalone token or complement not yet resolved
+                        # Conservative default: 0.5 (neutral assumption)
                         settle_price = 0.5
                     
                     self.position_manager.settle_market(mid, settle_price=settle_price)
+                    if hasattr(self.executor, 'stats') and self.executor.stats:
+                        self.executor.stats.record_settlement(mid, settle_price)
                     
-                    if mid in self.orderbooks:
-                        del self.orderbooks[mid]
+                    # Safe deletion (already working with a copy of keys)
+                    self.orderbooks.pop(mid, None)
+                    absence_counter.pop(mid, None)
                         
             except Exception as e:
                 logger.error("discovery_loop_error", error=str(e))
+

@@ -190,7 +190,7 @@ async def run_live_trading() -> None:
                     "WS": ws_client._running,
                     "RISK": not risk_engine.kill_switch_active
                 }
-                dashboard.update(position_manager, lifecycle.markets, orderbooks, recent_opportunities, health, stats=stats)
+                dashboard.update(position_manager, lifecycle.markets, orderbooks, recent_opportunities, health, stats=stats, warmup_until_ms=event_handler._warmup_until_ms)
                 
                 # Check for silent WebSocket drops
                 try:

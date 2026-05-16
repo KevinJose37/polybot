@@ -7,7 +7,6 @@ from bot.api.schemas import MarketSnapshot
 from bot.orderbook.local_book import LocalOrderBook
 from bot.market_discovery.market_relationships import MarketTopology
 from bot.arbitrage.opportunity import ArbOpportunity
-from bot.arbitrage.parity import detect_parity
 from bot.arbitrage.monotonicity import detect_monotonicity
 from bot.arbitrage.exhaustive_sets import detect_exhaustive_parity
 from bot.settings import Settings
@@ -20,10 +19,11 @@ class ArbitrageScanner:
     """
     Orchestrates the pure detector functions against the current orderbook state.
     """
-    def __init__(self, settings: Settings, topology: MarketTopology, fee_rates: dict[str, float] | None = None):
+    def __init__(self, settings: Settings, topology: MarketTopology, fee_rates: dict[str, float] | None = None, position_manager=None):
         self.settings = settings
         self.topology = topology
         self.fee_rates = fee_rates or {}
+        self.position_manager = position_manager
         self._scan_count: int = 0
         self._total_opportunities: int = 0
 
@@ -35,6 +35,8 @@ class ArbitrageScanner:
         opportunities = []
         
         capital = self.settings.starting_capital
+        if self.position_manager:
+            capital = self.position_manager.get_available_capital(capital)
         default_fee = self.settings.trading.polymarket_fee
         slippage = self.settings.trading.slippage_est
         min_edge = self.settings.trading.min_edge

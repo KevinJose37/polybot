@@ -65,7 +65,7 @@ class HealthServer:
         lines.append(f'polybot_risk_rejections {stats.opportunities_rejected_risk if stats else 0}')
         lines.append(f'polybot_volume_usd {stats.total_volume if stats else 0}')
         lines.append(f'polybot_fees_usd {stats.total_fees_paid if stats else 0}')
-        lines.append(f'polybot_pnl_net {stats.net_pnl if stats else 0}')
+        lines.append(f'polybot_pnl_net {stats.get_net_pnl(set()) if stats else 0}')
         lines.append(f'polybot_ws_connected {1 if self._ws_connected_fn() else 0}')
         lines.append(f'polybot_kill_switch_active {1 if self._kill_switch_fn() else 0}')
         active, stale = self._books_fn()

@@ -45,10 +45,10 @@ class PolymarketRESTClient(PolymarketAdapter):
             self._session = aiohttp.ClientSession()
         return self._session
 
-    def _get_auth_headers(self) -> dict[str, str]:
+    def _get_auth_headers(self, method: str = "GET", path: str = "/balance-allowance") -> dict[str, str]:
         """Generate HMAC authentication headers for authenticated CLOB endpoints."""
         timestamp = str(int(time.time()))
-        message = timestamp + "GET" + "/balance-allowance"
+        message = timestamp + method.upper() + path
         signature = hmac.new(
             self.api_secret.encode("utf-8"),
             message.encode("utf-8"),
@@ -143,8 +143,9 @@ class PolymarketRESTClient(PolymarketAdapter):
         """Submit a signed order to the Polymarket CLOB API."""
         session = await self._get_session()
         url = f"{self.clob_api_url}/order"
+        headers = self._get_auth_headers(method="POST", path="/order")
         try:
-            async with session.post(url, json=order_data) as response:
+            async with session.post(url, json=order_data, headers=headers) as response:
                 if response.status != 200:
                     logger.warning("place_order_failed", status=response.status)
                     return {"status": "REJECTED", "message": f"HTTP {response.status}"}
@@ -158,8 +159,9 @@ class PolymarketRESTClient(PolymarketAdapter):
         """Cancel an order via the Polymarket CLOB API."""
         session = await self._get_session()
         url = f"{self.clob_api_url}/order/{order_id}"
+        headers = self._get_auth_headers(method="DELETE", path=f"/order/{order_id}")
         try:
-            async with session.delete(url) as response:
+            async with session.delete(url, headers=headers) as response:
                 return response.status == 200
         except Exception as e:
             logger.error("cancel_order_error", error=str(e), order_id=order_id)

@@ -31,8 +31,8 @@ class MarketDiscoveryService:
             for window in TARGET_WINDOWS:
                 divisor = 5 * 60 if window == "5m" else 15 * 60
                 
-                # Check previous, current, next, and next-next windows to handle clock drift
-                for offset in [-divisor, 0, divisor, 2 * divisor]:
+                # Check previous and current windows only
+                for offset in [-divisor, 0]:
                     window_ts = (now_ts + offset) - ((now_ts + offset) % divisor)
                     exact_slug = f"{asset.lower()}-updown-{window}-{window_ts}"
                     
@@ -64,7 +64,7 @@ class MarketDiscoveryService:
         logger.debug(
             "discovery_sweep_complete",
             total=len(discovered),
-            new=len(seen_ids - (self._known_ids - seen_ids)),
+            new=len(seen_ids - self._known_ids),
         )
                         
         return discovered

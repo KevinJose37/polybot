@@ -15,7 +15,7 @@ def test_settings_load_defaults() -> None:
         settings = Settings.load(config_path=Path("nonexistent.toml"))
         assert settings.environment == "local"
         assert settings.starting_capital == 1000.0
-        assert settings.trading.polymarket_fee == 0.02
+        assert settings.trading.polymarket_fee == 0.03
         assert settings.trading.min_notional == 10.0
         assert settings.network.stale_feed_threshold_ms == 5000
 

@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from bot.api.schemas import MarketSnapshot
 from bot.market_discovery.parsers import parse_market_slug
+from bot.constants import TARGET_WINDOWS
 
 
 @dataclass
@@ -56,12 +57,20 @@ def build_topology(markets: list[MarketSnapshot]) -> MarketTopology:
         if tf in asset_groups[asset]:
             asset_groups[asset][tf].append(market.id)
         
-    # Cross-join all 5m × 15m markets per asset
+    # Cross-join 5m × 15m per asset, but only where 5m is contained within 15m
     complete_pairs: list[tuple[str, str]] = []
     for asset, groups in asset_groups.items():
         for m5 in groups["5m"]:
+            m5_parsed = parse_market_slug(market_map[m5].slug)
+            if not m5_parsed.is_valid:
+                continue
             for m15 in groups["15m"]:
-                complete_pairs.append((m5, m15))
+                m15_parsed = parse_market_slug(market_map[m15].slug)
+                if not m15_parsed.is_valid:
+                    continue
+                # Temporal containment: 5m window [ts, ts+300] must be within 15m window [ts, ts+900]
+                if m5_parsed.timestamp >= m15_parsed.timestamp and (m5_parsed.timestamp + 300) <= (m15_parsed.timestamp + 900):
+                    complete_pairs.append((m5, m15))
             
     return MarketTopology(
         markets=market_map,

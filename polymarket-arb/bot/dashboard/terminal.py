@@ -56,6 +56,7 @@ class TerminalDashboard:
         opportunities: list[dict],
         health_status: dict[str, bool],
         stats: TradingStats | None = None,
+        warmup_until_ms: int = 0,
     ) -> None:
         """Refresh the layout with new data."""
         realized_pnl = position_manager.total_realized_pnl
@@ -73,6 +74,17 @@ class TerminalDashboard:
         # ── Header ──
         uptime = stats.uptime_str if stats else "00:00:00"
         total_fees = stats.total_fees_paid if stats else 0.0
+        
+        # Warmup countdown
+        from bot.utils.clocks import current_timestamp_ms
+        now_ms = current_timestamp_ms()
+        if warmup_until_ms > now_ms:
+            rem_s = int((warmup_until_ms - now_ms) / 1000)
+            m, s = divmod(rem_s, 60)
+            warmup_text = f"[bold yellow]WARMUP: {m:02d}:{s:02d}[/]  \u2502  "
+        else:
+            warmup_text = ""
+            
         header_text = (
             f"  \U0001f4b0 Capital: [bold]${self.capital:,.2f}[/]  \u2502  "
             f"\U0001f4b5 Cash: [bold cyan]${max(0, avail_capital):,.2f}[/]  \u2502  "
@@ -80,6 +92,7 @@ class TerminalDashboard:
             f"\U0001f4ca Equity: [bold]${equity:,.2f}[/]  \u2502  "
             f"PnL: [{pnl_color}]${total_pnl:,.2f} ({pnl_pct:+.2f}%)[/]  \u2502  "
             f"Fees: [red]-${total_fees:,.2f}[/]  \u2502  "
+            f"{warmup_text}"
             f"\u23f1 {uptime}  \u2502  {mode_text}"
         )
         self.layout["header"].update(
@@ -187,7 +200,8 @@ class TerminalDashboard:
 
         # ── Resolved Positions ──
         res_table = Table(show_header=True, expand=True, border_style="dim")
-        res_table.add_column("Market", max_width=30)
+        res_table.add_column("Market", max_width=26)
+        res_table.add_column("Side", justify="center")
         res_table.add_column("Size", justify="right")
         res_table.add_column("Avg Px", justify="right")
         res_table.add_column("Settle", justify="right")
@@ -197,15 +211,22 @@ class TerminalDashboard:
             for rp in position_manager.resolved_positions[-15:]:
                 res_name = self.token_to_base_name.get(rp["market_id"], rp["market_id"][:15] + "…")
                 rpnl_color = "green" if rp["pnl"] >= 0 else "red"
+                side = "[green]LONG[/]" if rp["size"] > 0 else "[red]SHORT[/]"
+                settle_display = f"${rp['settle_price']:.2f}"
+                if rp['settle_price'] == 1.0:
+                    settle_display = "[green]$1.00 ✓[/]"
+                elif rp['settle_price'] == 0.0:
+                    settle_display = "[red]$0.00 ✗[/]"
                 res_table.add_row(
                     res_name,
+                    side,
                     f"{abs(rp['size']):.1f}",
-                    f"{rp['avg_price']:.4f}",
-                    f"{rp['settle_price']:.4f}",
+                    f"${rp['avg_price']:.4f}",
+                    settle_display,
                     f"[{rpnl_color}]${rp['pnl']:.2f}[/]",
                 )
         else:
-            res_table.add_row("[dim]No positions resolved yet[/]", "", "", "", "")
+            res_table.add_row("[dim]No positions resolved yet[/]", "", "", "", "", "")
 
         self.layout["resolved"].update(
             Panel(res_table, title="[bold]Last Positions Resolved[/]", border_style="green")
@@ -294,22 +315,35 @@ class TerminalDashboard:
         if active_positions:
             from bot.utils.clocks import current_timestamp_ms
             now_s = current_timestamp_ms() / 1000.0
+            # Build set of token IDs that Polymarket currently reports as active
+            active_token_ids = set()
+            for m in markets:
+                if m.active and not m.closed:
+                    for t in m.tokens:
+                        active_token_ids.add(t.token_id)
             for mid, p in active_positions[:10]:  # Show top 10
                 side = "[green]LONG[/]" if p.size > 0 else "[red]SHORT[/]"
                 rpnl_color = "green" if p.realized_pnl >= 0 else "red"
                 readable_name = self.token_to_name.get(mid, mid[:10] + "…")
                 notional = abs(p.size * p.avg_price)
                 
-                close_ts = self.token_to_ts.get(mid, 0)
-                if close_ts > 0:
-                    rem = int(close_ts - now_s)
-                    if rem > 0:
-                        m, s = divmod(rem, 60)
-                        closes_in = f"{m:02d}:{s:02d}"
+                # Determine position status from Polymarket market state
+                # (active_token_ids built from current discovery results)
+                if mid in active_token_ids:
+                    # Market is live on Polymarket — show countdown
+                    close_ts = self.token_to_ts.get(mid, 0)
+                    if close_ts > 0:
+                        rem = int(close_ts - now_s)
+                        if rem > 0:
+                            m, s = divmod(rem, 60)
+                            closes_in = f"{m:02d}:{s:02d}"
+                        else:
+                            closes_in = "[yellow]Closing...[/]"
                     else:
-                        closes_in = "[dim]Settling...[/]"
+                        closes_in = "---"
                 else:
-                    closes_in = "---"
+                    # Market no longer in active discovery — Polymarket removed it
+                    closes_in = "[dim]Settling...[/]"
 
                 pos_table.add_row(
                     readable_name,
@@ -321,9 +355,9 @@ class TerminalDashboard:
                     f"[{rpnl_color}]${p.realized_pnl:.2f}[/]",
                 )
             if len(active_positions) > 10:
-                pos_table.add_row(f"...+{len(active_positions)-10} more", "", "", "", "", "")
+                pos_table.add_row(f"...+{len(active_positions)-10} more", "", "", "", "", "", "")
         else:
-            pos_table.add_row("[dim]No open positions[/]", "", "", "", "", "")
+            pos_table.add_row("[dim]No open positions[/]", "", "", "", "", "", "")
         
         self.layout["positions"].update(
             Panel(pos_table, title=f"[bold]Positions ({len(active_positions)})[/]", border_style="yellow")

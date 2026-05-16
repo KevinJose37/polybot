@@ -41,6 +41,20 @@ def test_mtm_parity_pair_valuation() -> None:
     assert abs(pm.total_unrealized_pnl - 12.0) < 0.001
 
 
+def test_mtm_short_short_parity_valuation() -> None:
+    """Short-short parity (Type-C SELL): selling both YES+NO creates $1.00 liability."""
+    pm = PositionManager()
+    pm.register_parity_pair("yes", "no")
+    
+    # SELL 100 YES @ 0.56, SELL 100 NO @ 0.50 → revenue = 1.06 per share, liability = 1.00
+    pm.add_fill("yes", "SELL", 0.56, 100)
+    pm.add_fill("no", "SELL", 0.50, 100)
+    
+    # Unrealized = revenue - liability = (0.56*100 + 0.50*100) - 100*1.0 = 106 - 100 = +6.0
+    pm.update_all_mtm({"yes": 0.55, "no": 0.49})
+    assert abs(pm.total_unrealized_pnl - 6.0) < 0.001
+
+
 # ─── Stats PnL Accuracy Tests ───────────────────────────────────────────
 
 def test_pnl_type_c_buy_parity() -> None:
@@ -54,9 +68,9 @@ def test_pnl_type_c_buy_parity() -> None:
     # Net PnL = payout - cost - fees = 100*1.0 - (42 + 46) - (0.30 + 0.35) = 11.35
     assert abs(stats.get_net_pnl(set()) - 11.35) < 0.01
     
-    # Should be a win
+    # Should be a win — both legs counted
     rate, wins, losses = stats.get_win_rate(set())
-    assert wins == 1
+    assert wins == 2
     assert losses == 0
 
 
@@ -123,7 +137,8 @@ def test_matched_sizing_enforcement() -> None:
 
 
 def test_win_rate_multiple_opportunities() -> None:
-    """Win rate should correctly classify multiple opportunities."""
+    """Win rate should correctly classify multiple opportunities.
+    TYPE-C counts each leg: 2-leg win = 2W, 2-leg loss = 2L."""
     stats = TradingStats()
     
     # Winning Type-C trade: cost < 1.0
@@ -135,8 +150,9 @@ def test_win_rate_multiple_opportunities() -> None:
     stats.record_fill("n2", "BUY", 0.49, 100, fee=2.00, opp_type="TYPE-C", opp_edge=0.01, opp_id="lose1")
     
     rate, wins, losses = stats.get_win_rate(set())
-    assert wins == 1
-    assert losses == 1
+    # Each TYPE-C counts both legs: 2W from win1 + 2L from lose1
+    assert wins == 2
+    assert losses == 2
     assert abs(rate - 0.5) < 0.001
 
 

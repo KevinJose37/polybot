@@ -28,6 +28,7 @@ class TradingStats:
     Thread-safe for single async loop usage.
     """
     trades: List[TradeRecord] = field(default_factory=list)
+    settlements: dict[str, float] = field(default_factory=dict)
     total_fees_paid: float = 0.0
     total_volume: float = 0.0
     opportunities_detected: int = 0
@@ -83,6 +84,9 @@ class TradingStats:
     def record_leg_imbalance(self) -> None:
         self.leg_imbalances_count += 1
 
+    def record_settlement(self, market_id: str, settle_price: float) -> None:
+        self.settlements[market_id] = settle_price
+
     @property
     def uptime_seconds(self) -> float:
         return (current_timestamp_ms() - self._start_time_ms) / 1000.0
@@ -109,6 +113,10 @@ class TradingStats:
         """
         Win rate based on per-opportunity net PnL.
         Returns (rate, wins, losses).
+        
+        TYPE-C (parity) trades count each leg individually (2 legs = 2 W or 2 L)
+        since they execute both sides. TYPE-B counts as 1 per opportunity.
+        TYPE-B trades are excluded while their markets are still active.
         """
         if len(self.trades) < 2:
             return (0.0, 0, 0)
@@ -118,19 +126,23 @@ class TradingStats:
         for group in self._group_trades():
             if not group:
                 continue
-            if any(t.market_id in active_market_ids for t in group):
+            if self._should_exclude_group(group, active_market_ids):
                 continue
+            opp_type = group[0].opp_type or "UNKNOWN"
             pnl = self._compute_opp_pnl(group, include_fees=True)
-            if pnl >= 0:
-                wins += 1
-            else:
-                losses += 1
+            if pnl is not None:
+                # Parity trades: count each leg (both sides executed)
+                leg_count = len(group) if ("TYPE-C" in opp_type or "TYPE-A" in opp_type) else 1
+                if pnl >= 0:
+                    wins += leg_count
+                else:
+                    losses += leg_count
         
         total = wins + losses
         return (wins / total if total > 0 else 0.0, wins, losses)
 
     def get_win_rates_by_type(self, active_market_ids: set[str]) -> dict[str, tuple[float, int, int]]:
-        """Win rates segmented by opportunity type."""
+        """Win rates segmented by opportunity type. Parity trades count each leg."""
         from collections import defaultdict
         wins_by_type = defaultdict(int)
         totals_by_type = defaultdict(int)
@@ -138,13 +150,15 @@ class TradingStats:
         for group in self._group_trades():
             if not group:
                 continue
-            if any(t.market_id in active_market_ids for t in group):
+            if self._should_exclude_group(group, active_market_ids):
                 continue
             opp_type = group[0].opp_type or "UNKNOWN"
             pnl = self._compute_opp_pnl(group, include_fees=True)
-            totals_by_type[opp_type] += 1
-            if pnl >= 0:
-                wins_by_type[opp_type] += 1
+            if pnl is not None:
+                leg_count = len(group) if ("TYPE-C" in opp_type or "TYPE-A" in opp_type) else 1
+                totals_by_type[opp_type] += leg_count
+                if pnl >= 0:
+                    wins_by_type[opp_type] += leg_count
                 
         result = {}
         for t in ["TYPE-B", "TYPE-C"]:
@@ -172,13 +186,14 @@ class TradingStats:
         for group in self._group_trades():
             if not group:
                 continue
-            if any(t.market_id in active_market_ids for t in group):
+            if self._should_exclude_group(group, active_market_ids):
                 continue
             market_name = token_to_market_name.get(group[0].market_id, "Unknown Market")
             pnl = self._compute_opp_pnl(group, include_fees=True)
-            totals_by_mkt[market_name] += 1
-            if pnl >= 0:
-                wins_by_mkt[market_name] += 1
+            if pnl is not None:
+                totals_by_mkt[market_name] += 1
+                if pnl >= 0:
+                    wins_by_mkt[market_name] += 1
                 
         result = {}
         for mkt, total in totals_by_mkt.items():
@@ -189,13 +204,15 @@ class TradingStats:
                 
         return result
 
-    def _compute_opp_pnl(self, group: list, include_fees: bool = True) -> float:
+    def _compute_opp_pnl(self, group: list, include_fees: bool = True) -> float | None:
         """Compute PnL for a single opportunity group of trades.
         
         Args:
             group: List of TradeRecord for one opportunity.
             include_fees: If True, fees are deducted inline (net PnL).
                           If False, fees are excluded (gross PnL).
+        Returns:
+            float PnL or None if the trade is unsettled and payout cannot be determined.
         """
         if not group:
             return 0.0
@@ -221,15 +238,25 @@ class TradingStats:
                     pnl -= matched_size * 1.0  # Liability from selling parity
             elif "TYPE-B" in opp_type:
                 # TYPE-B (Cross-interval) has no guaranteed payout until settlement.
-                # Returning the initial cash flow creates a fake massive PnL.
-                # Since TradingStats doesn't track settlement, we just return 0.0
-                # to prevent dashboard corruption.
-                return 0.0
-        # For single-leg groups (leg imbalance), the pnl computed above is
-        # already the correct cost/revenue of the fill.  Previously this
-        # branch threw away the fill's directional cost and reported only
-        # -fees, causing the stats engine to show artificially positive
-        # results while PositionManager tracked the real loss.
+                if group[0].market_id in self.settlements and group[1].market_id in self.settlements:
+                    payout = 0.0
+                    for t in group:
+                        settle = self.settlements[t.market_id]
+                        if t.side == "BUY":
+                            payout += t.size * settle
+                        else:  # SELL
+                            payout -= t.size * settle
+                    return pnl + payout
+                return None
+
+        # For single-leg groups (leg imbalance)
+        if len(group) == 1:
+            t = group[0]
+            if t.market_id in self.settlements:
+                settle = self.settlements[t.market_id]
+                payout = t.size * settle if t.side == "BUY" else -t.size * settle
+                return pnl + payout
+            return None
 
         return pnl
 
@@ -252,10 +279,12 @@ class TradingStats:
         for group in self._group_trades():
             if not group:
                 continue
-            if any(t.market_id in active_market_ids for t in group):
+            if self._should_exclude_group(group, active_market_ids):
                 continue
             opp_type = group[0].opp_type or "UNKNOWN"
-            pnl_by[opp_type] += self._compute_opp_pnl(group, include_fees=True)
+            pnl = self._compute_opp_pnl(group, include_fees=True)
+            if pnl is not None:
+                pnl_by[opp_type] += pnl
 
         # Ensure active types are present
         for t in ["TYPE-B", "TYPE-C"]:
@@ -272,29 +301,45 @@ class TradingStats:
         for group in self._group_trades():
             if not group:
                 continue
-            if any(t.market_id in active_market_ids for t in group):
+            if self._should_exclude_group(group, active_market_ids):
                 continue
             market_name = token_to_market_name.get(group[0].market_id, "Unknown Market")
-            pnl_by[market_name] += self._compute_opp_pnl(group, include_fees=True)
+            pnl = self._compute_opp_pnl(group, include_fees=True)
+            if pnl is not None:
+                pnl_by[market_name] += pnl
 
         return dict(pnl_by)
 
     def get_gross_pnl(self, active_market_ids: set[str]) -> float:
         """Total P&L ignoring fees."""
-        if not self.trades:
-            return 0.0
-        return sum(
-            self._compute_opp_pnl(group, include_fees=False)
-            for group in self._group_trades()
-            if group and not any(t.market_id in active_market_ids for t in group)
-        )
+        total_gross = 0.0
+        for group in self._group_trades():
+            if not group or self._should_exclude_group(group, active_market_ids):
+                continue
+            pnl = self._compute_opp_pnl(group, include_fees=False)
+            if pnl is not None:
+                total_gross += pnl
+        return total_gross
 
     def get_net_pnl(self, active_market_ids: set[str]) -> float:
         """P&L after fees. Equals sum of pnl_by_type values."""
-        if not self.trades:
-            return 0.0
-        return sum(
-            self._compute_opp_pnl(group, include_fees=True)
-            for group in self._group_trades()
-            if group and not any(t.market_id in active_market_ids for t in group)
-        )
+        total_net = 0.0
+        for group in self._group_trades():
+            if not group or self._should_exclude_group(group, active_market_ids):
+                continue
+            pnl = self._compute_opp_pnl(group, include_fees=True)
+            if pnl is not None:
+                total_net += pnl
+        return total_net
+
+    def _should_exclude_group(self, group: list, active_market_ids: set[str]) -> bool:
+        """Determine if a trade group should be excluded from stats.
+        
+        TYPE-C/TYPE-A parity trades have deterministic PnL ($1.00 guaranteed
+        payout) so they are ALWAYS included. TYPE-B trades depend on actual
+        market resolution and are excluded while their markets are still active.
+        """
+        opp_type = group[0].opp_type or "UNKNOWN"
+        if "TYPE-C" in opp_type or "TYPE-A" in opp_type:
+            return False  # Parity trades always countable
+        return any(t.market_id in active_market_ids for t in group)

@@ -37,6 +37,19 @@ class MarketEventHandler:
         self.mode = mode
         self.persistence_queue: asyncio.Queue[tuple[Any, list, dict]] = asyncio.Queue()
         self._worker_task = asyncio.create_task(self._persistence_worker())
+        self._last_scan_ts: int = 0
+        self._scan_throttle_ms: int = 200  # min ms between scans
+        
+        # Warmup: suppress scanning until the next 5m window boundary
+        # so orderbooks have time to populate and prices stabilize
+        import time
+        now_s = int(time.time())
+        divisor = 5 * 60  # 5 minutes
+        next_boundary = now_s - (now_s % divisor) + divisor
+        self._warmup_until_ms: int = next_boundary * 1000
+        wait_s = next_boundary - now_s
+        logger.info("warmup_started", wait_seconds=wait_s, next_window_utc=next_boundary)
+        self._warmup_logged: bool = False
 
     async def _persistence_worker(self) -> None:
         """Background worker to save trades to the database without blocking the WS loop."""
@@ -129,30 +142,24 @@ class MarketEventHandler:
             else:
                 logger.debug("ws_unknown_event", event_type=event_type, keys=list(msg.keys()))
 
+        # Warmup gate: suppress scanning until next 5m window boundary
+        from bot.utils.clocks import current_timestamp_ms
+        now = current_timestamp_ms()
+        if now < self._warmup_until_ms:
+            return  # Still warming up — orderbooks populating
+        if not self._warmup_logged:
+            self._warmup_logged = True
+            logger.info("warmup_complete", msg="Scanning enabled — orderbooks stabilized")
+
+        # Scan throttle: skip if less than 200ms since last scan
+        if now - self._last_scan_ts < self._scan_throttle_ms:
+            return
+        self._last_scan_ts = now
+
         # Run Scanner
         opportunities = self.scanner.scan(self.orderbooks)
 
-        async def execute_and_persist(opp, opp_data):
-            acks = await self.executor.execute_opportunity(opp)
-            if not acks:
-                opp_data["status"] = "REJECTED"
-                opp_data["color"] = "red"
-            else:
-                all_filled = all(ack.status == "FILLED" for ack in acks)
-                any_rejected = any(ack.status == "REJECTED" for ack in acks)
-                if all_filled:
-                    opp_data["status"] = "FILLED"
-                    opp_data["color"] = "green"
-                elif any_rejected:
-                    opp_data["status"] = "LEG IMBALANCE"
-                    opp_data["color"] = "red"
-                else:
-                    opp_data["status"] = "PARTIAL"
-                    opp_data["color"] = "yellow"
-
-                # Offload persistence to background queue
-                self.persistence_queue.put_nowait((opp, acks, opp_data))
-
+        # Execute opportunities serially (awaited, not fire-and-forget)
         for opp in opportunities:
             self.stats.record_opportunity_detected()
             opp_data = {
@@ -166,7 +173,30 @@ class MarketEventHandler:
             if len(self.recent_opportunities) > 8:
                 self.recent_opportunities.pop(0)
 
-            asyncio.create_task(execute_and_persist(opp, opp_data))
+            try:
+                acks = await self.executor.execute_opportunity(opp)
+                if not acks:
+                    opp_data["status"] = "REJECTED"
+                    opp_data["color"] = "red"
+                else:
+                    all_filled = all(ack.status == "FILLED" for ack in acks)
+                    any_rejected = any(ack.status == "REJECTED" for ack in acks)
+                    if all_filled:
+                        opp_data["status"] = "FILLED"
+                        opp_data["color"] = "green"
+                    elif any_rejected:
+                        opp_data["status"] = "LEG IMBALANCE"
+                        opp_data["color"] = "red"
+                    else:
+                        opp_data["status"] = "PARTIAL"
+                        opp_data["color"] = "yellow"
+
+                    # Offload persistence to background queue
+                    self.persistence_queue.put_nowait((opp, acks, opp_data))
+            except Exception as e:
+                logger.error("execution_error", opp_id=opp.opportunity_id, error=str(e))
+                opp_data["status"] = "ERROR"
+                opp_data["color"] = "red"
             
     async def shutdown(self):
         if self._worker_task:

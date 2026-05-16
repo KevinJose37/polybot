@@ -47,7 +47,7 @@ class LiveExecutor(ExecutorProtocol):
 
     async def execute_opportunity(self, opportunity: ArbOpportunity) -> list[OrderAck]:
         """Execute a full arbitrage opportunity."""
-        if self.fill_manager.is_duplicate(opportunity.opportunity_id):
+        if self.fill_manager.check_and_mark(opportunity.opportunity_id):
             self.stats.record_dedup_rejection()
             return []
             
@@ -79,8 +79,7 @@ class LiveExecutor(ExecutorProtocol):
                 except RiskKillSwitchTriggered:
                     self.stats.record_risk_rejection()
                     return []
-                    
-            self.fill_manager.mark_executed(opportunity.opportunity_id)
+
             self.stats.record_opportunity_executed()
             
             acks = []
@@ -190,17 +189,23 @@ class LiveExecutor(ExecutorProtocol):
                 "signature": signature,
             })
             
-            if "error" in response or "message" in response:
+            # Check for explicit error field (not "message", which can appear in success responses)
+            if "error" in response:
                 status = "REJECTED"
-                logger.warning("api_returned_error", error=response, order_id=order_id)
+                logger.warning("api_returned_error", error=response.get("error"), order_id=order_id)
             else:
                 status = response.get("status", "FILLED")
             self.fill_manager.remove_inflight_order(order_id)
             
+            # Extract actual fill price and size from API response, falling back to request values
+            fill_price = float(response.get("avg_price") or response.get("fill_price") or order.price)
+            filled_size = float(response.get("filled_size") or response.get("size") or order.size)
+            
             if status == "FILLED":
                 fee_rate = self.fee_rates.get(order.market_id, self.settings.trading.polymarket_fee)
-                fee = polymarket_taker_fee(order.price, order.size, fee_rate, side=order.side)
-                self.position_manager.add_fill(order.market_id, order.side, order.price, order.size, fee=fee)
+                fee = polymarket_taker_fee(fill_price, filled_size, fee_rate, side=order.side)
+                # Use actual fill price/size, not request values
+                self.position_manager.add_fill(order.market_id, order.side, fill_price, filled_size, fee=fee)
                 
                 opp_type = opp.type.value if opp else ""
                 opp_edge = opp.edge if opp else 0.0
@@ -208,8 +213,8 @@ class LiveExecutor(ExecutorProtocol):
                 self.stats.record_fill(
                     market_id=order.market_id,
                     side=order.side,
-                    price=order.price,
-                    size=order.size,
+                    price=fill_price,
+                    size=filled_size,
                     fee=fee,
                     opp_type=opp_type,
                     opp_edge=opp_edge,
@@ -219,8 +224,8 @@ class LiveExecutor(ExecutorProtocol):
             return OrderAck(
                 order_id=order_id,
                 status=status,
-                filled_size=order.size if status == "FILLED" else 0.0,
-                fill_price=order.price if status == "FILLED" else 0.0,
+                filled_size=filled_size if status == "FILLED" else 0.0,
+                fill_price=fill_price if status == "FILLED" else 0.0,
             )
             
         except Exception as e:
@@ -229,10 +234,12 @@ class LiveExecutor(ExecutorProtocol):
             return OrderAck(order_id="failed", status="REJECTED", message=str(e))
 
     async def cancel_order(self, order_id: str) -> bool:
-        """Cancel a single order."""
+        """Cancel a single order. Returns True on success, False on failure."""
         try:
-            await self.api_client.cancel_order(order_id)
+            result = await self.api_client.cancel_order(order_id)
+            self.fill_manager.remove_inflight_order(order_id)
+            return result
         except Exception as e:
             logger.error("cancel_order_failed", order_id=order_id, error=str(e))
-        self.fill_manager.remove_inflight_order(order_id)
-        return True
+            self.fill_manager.remove_inflight_order(order_id)
+            return False

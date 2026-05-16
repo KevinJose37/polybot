@@ -50,7 +50,7 @@ def test_topology_monotonicity_pairs_different_timestamps() -> None:
 
 
 def test_topology_monotonicity_multiple_windows() -> None:
-    """Multiple 5m and 15m markets for same asset produce all combinations."""
+    """Multiple 5m and 15m markets: only temporally contained pairs are valid."""
     markets = [
         _make_market("btc_5m_a", "btc-updown-5m-1778774100"),
         _make_market("btc_5m_b", "btc-updown-5m-1778774400"),
@@ -59,8 +59,12 @@ def test_topology_monotonicity_multiple_windows() -> None:
     ]
     topo = build_topology(markets)
     
-    # 2 × 2 = 4 cross-product pairs
-    assert len(topo.monotonicity_pairs) == 4
+    # With temporal containment:
+    #   btc_5m_a (1778774100, +300=1778774400) is within btc_15m_a (1778773500, +900=1778774400) ✓
+    #   btc_5m_b (1778774400, +300=1778774700) is within btc_15m_b (1778774400, +900=1778775300) ✓
+    #   btc_5m_a is NOT within btc_15m_b (starts before 15m_b starts) ✗
+    #   btc_5m_b is NOT within btc_15m_a (ends after 15m_a ends) ✗
+    assert len(topo.monotonicity_pairs) == 2
     # Every pair should be (5m_market, 15m_market)
     for m5, m15 in topo.monotonicity_pairs:
         assert "5m" in m5

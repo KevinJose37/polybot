@@ -12,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class TradingSettings(BaseSettings):
     """Trading and execution related settings."""
-    polymarket_fee: float = 0.02
+    polymarket_fee: float = 0.03  # Polymarket docs: feeRate = 0.03
     slippage_est: float = 0.005
     min_edge: float = 0.01
     min_notional: float = 10.0

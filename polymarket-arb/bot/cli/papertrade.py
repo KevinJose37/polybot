@@ -179,7 +179,7 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
                 position_manager.update_all_mtm(mid_prices)
 
                 health = {"WS": ws_client._running, "RISK": not risk_engine.kill_switch_active}
-                dashboard.update(position_manager, lifecycle.markets, orderbooks, recent_opportunities, health, stats=stats)
+                dashboard.update(position_manager, lifecycle.markets, orderbooks, recent_opportunities, health, stats=stats, warmup_until_ms=event_handler._warmup_until_ms)
                 
                 # Check for silent WebSocket drops
                 try:

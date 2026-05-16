@@ -184,7 +184,7 @@ class PositionManager:
             if complement_id and complement_id in self.positions:
                 comp_pos = self.positions[complement_id]
                 
-                # Both sides held — value matched shares at $1.00
+                # Both sides held long — value matched shares at $1.00
                 if pos.size > 0 and comp_pos.size > 0:
                     matched = min(pos.size, comp_pos.size)
                     # Matched parity: guaranteed $1.00 payout per share
@@ -203,6 +203,32 @@ class PositionManager:
                         mid = mid_prices.get(complement_id)
                         if mid is not None:
                             unrealized += (mid - comp_pos.avg_price) * excess_b
+                    
+                    valued_tokens.add(market_id)
+                    valued_tokens.add(complement_id)
+                    continue
+
+                # Both sides held short (Type-C SELL) — matched shorts owe $1.00
+                if pos.size < 0 and comp_pos.size < 0:
+                    matched = min(abs(pos.size), abs(comp_pos.size))
+                    # Sold parity: received (avg_price_a + avg_price_b) per matched share
+                    # Must pay out $1.00 at settlement
+                    # Unrealized = revenue - liability
+                    revenue = (pos.avg_price * matched + comp_pos.avg_price * matched)
+                    parity_pnl = revenue - matched * 1.0
+                    unrealized += parity_pnl
+                    
+                    # Value any unmatched excess at mid-price (short valuation)
+                    excess_a = abs(pos.size) - matched
+                    excess_b = abs(comp_pos.size) - matched
+                    if excess_a > 0:
+                        mid = mid_prices.get(market_id)
+                        if mid is not None:
+                            unrealized += (pos.avg_price - mid) * excess_a
+                    if excess_b > 0:
+                        mid = mid_prices.get(complement_id)
+                        if mid is not None:
+                            unrealized += (comp_pos.avg_price - mid) * excess_b
                     
                     valued_tokens.add(market_id)
                     valued_tokens.add(complement_id)
@@ -247,7 +273,7 @@ class PositionManager:
             "pnl": pnl,
             "total_realized_pnl": pos.realized_pnl
         })
-        if len(self.resolved_positions) > 10:
+        if len(self.resolved_positions) > 100:
             self.resolved_positions.pop(0)
             
         # Zero out the position after settlement

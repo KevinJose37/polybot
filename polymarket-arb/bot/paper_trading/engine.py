@@ -46,7 +46,7 @@ class PaperExecutor(ExecutorProtocol):
 
     async def execute_opportunity(self, opportunity: ArbOpportunity) -> list[OrderAck]:
         """Execute a full arbitrage opportunity."""
-        if self.fill_manager.is_duplicate(opportunity.opportunity_id):
+        if self.fill_manager.check_and_mark(opportunity.opportunity_id):
             self.stats.record_dedup_rejection()
             return []
 
@@ -69,8 +69,6 @@ class PaperExecutor(ExecutorProtocol):
                 except RiskKillSwitchTriggered:
                     self.stats.record_risk_rejection()
                     return []
-                
-            self.fill_manager.mark_executed(opportunity.opportunity_id)
             self.stats.record_opportunity_executed()
             
             logger.info(
