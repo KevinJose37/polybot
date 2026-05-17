@@ -133,18 +133,29 @@ class LifecycleManager:
                 active_token_ids = {t.token_id for m in new_markets for t in m.tokens}
                 current_book_tokens = list(self.orderbooks.keys())
                 
-                # Update absence counters
-                for mid in current_book_tokens:
-                    if mid not in active_token_ids:
-                        absence_counter[mid] = absence_counter.get(mid, 0) + 1
+                # Update absence counters for tokens we hold positions in that are no longer active
+                position_tokens = list(self.position_manager.positions.keys())
+                for tid in position_tokens:
+                    if tid not in active_token_ids:
+                        absence_counter[tid] = absence_counter.get(tid, 0) + 1
                     else:
-                        absence_counter.pop(mid, None)
+                        absence_counter.pop(tid, None)
+                        
+                # Clean up absence counters for tokens we no longer hold
+                for tid in list(absence_counter.keys()):
+                    if tid not in position_tokens:
+                        absence_counter.pop(tid, None)
+
+                # Clean up orderbooks for tokens that are no longer in our active discovery window
+                for tid in current_book_tokens:
+                    if tid not in active_token_ids:
+                        self.orderbooks.pop(tid, None)
                 
                 # Only settle tokens absent for ABSENCE_THRESHOLD consecutive cycles
                 # AND explicitly confirmed closed/inactive via the API
                 absent_candidates = [
-                    mid for mid in current_book_tokens
-                    if absence_counter.get(mid, 0) >= ABSENCE_THRESHOLD
+                    tid for tid, count in absence_counter.items()
+                    if count >= ABSENCE_THRESHOLD
                 ]
                 
                 resolved_tokens = []

@@ -213,7 +213,7 @@ class TerminalDashboard:
         if getattr(position_manager, "resolved_positions", None):
             resolved_list = list(position_manager.resolved_positions)
             for rp in reversed(resolved_list[-15:]):
-                res_name = self.token_to_base_name.get(rp["market_id"], rp["market_id"][:15] + "…")
+                res_name = self.token_to_name.get(rp["market_id"], rp["market_id"][:15] + "…")
                 
                 market_ts = self.token_to_ts.get(rp["market_id"], 0)
                 if market_ts > 0:
