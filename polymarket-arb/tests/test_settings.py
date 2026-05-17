@@ -38,4 +38,4 @@ def test_settings_load_toml() -> None:
         settings = Settings.load()  # Uses config/default.toml
         assert settings.trading.polymarket_fee == 0.03
         assert settings.trading.min_notional == 1.0
-        assert settings.risk.max_daily_drawdown == 10.0
+        assert settings.risk.max_daily_drawdown == 20.0

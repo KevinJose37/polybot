@@ -108,7 +108,7 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
     )
     health_task = asyncio.create_task(health_server.start())
     
-    scanner = ArbitrageScanner(settings, topology=None, fee_rates=fee_rates)
+    scanner = ArbitrageScanner(settings, topology=None, fee_rates=fee_rates, position_manager=position_manager)
     
     executor = PaperExecutor(
         settings, risk_engine, position_manager, fill_manager, orderbooks, stats=stats, fee_rates=fee_rates, forensic=forensic

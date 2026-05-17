@@ -21,7 +21,8 @@ def test_monotonicity_opportunity() -> None:
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
-        capital=1000.0
+        capital=1000.0,
+        multiplier=0.25
     )
     
     assert opp is not None
@@ -54,7 +55,8 @@ def test_monotonicity_no_edge() -> None:
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
-        capital=1000.0
+        capital=1000.0,
+        multiplier=0.25
     )
     assert opp is None
 
@@ -75,6 +77,7 @@ def test_monotonicity_inverted() -> None:
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
-        capital=1000.0
+        capital=1000.0,
+        multiplier=0.25
     )
     assert opp is None

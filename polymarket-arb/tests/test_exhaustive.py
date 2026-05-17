@@ -25,7 +25,8 @@ def test_exhaustive_buy_opportunity() -> None:
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
-        capital=1000.0
+        capital=1000.0,
+        multiplier=0.25
     )
     
     assert opp is not None
@@ -54,7 +55,8 @@ def test_exhaustive_sell_opportunity() -> None:
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
-        capital=1000.0
+        capital=1000.0,
+        multiplier=0.25
     )
     
     assert opp is not None
@@ -84,7 +86,8 @@ def test_exhaustive_sum_exactly_1() -> None:
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
-        capital=1000.0
+        capital=1000.0,
+        multiplier=0.25
     )
     assert opp is None
 
@@ -108,6 +111,7 @@ def test_exhaustive_no_opportunity() -> None:
         slippage=0.005,
         min_edge=0.01,
         min_notional=1.0,
-        capital=1000.0
+        capital=1000.0,
+        multiplier=0.25
     )
     assert opp is None

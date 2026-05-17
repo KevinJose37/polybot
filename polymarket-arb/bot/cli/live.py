@@ -114,7 +114,7 @@ async def run_live_trading() -> None:
     )
     health_task = asyncio.create_task(health_server.start())
     
-    scanner = ArbitrageScanner(settings, topology=None, fee_rates=fee_rates)
+    scanner = ArbitrageScanner(settings, topology=None, fee_rates=fee_rates, position_manager=position_manager)
 
     executor = LiveExecutor(
         settings, risk_engine, fill_manager, rest_api, 
