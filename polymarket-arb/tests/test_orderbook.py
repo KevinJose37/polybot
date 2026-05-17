@@ -92,3 +92,27 @@ async def test_orderbook_stale() -> None:
     finally:
         reset_clock()
 
+
+@pytest.mark.asyncio
+async def test_orderbook_mid_price() -> None:
+    book = LocalOrderBook("t1", stale_threshold_ms=5000)
+    
+    # 1. Neither bid nor ask (empty or pending)
+    assert book.mid_price() is None
+    
+    # 2. Both bid and ask
+    snapshot = OrderBookSnapshot(
+        market_id="t1", bids=[(0.40, 100)], asks=[(0.42, 50)]
+    )
+    await book.apply_snapshot(snapshot, sequence=1)
+    assert book.mid_price() == pytest.approx(0.41)
+    
+    # 3. Only bid
+    await book.apply_delta(bids=[], asks=[(0.42, 0.0)], sequence=2)
+    assert book.best_ask() is None
+    assert book.mid_price() == pytest.approx(0.40)
+    
+    # 4. Only ask
+    await book.apply_delta(bids=[(0.40, 0.0)], asks=[(0.44, 50)], sequence=3)
+    assert book.best_bid() is None
+    assert book.mid_price() == pytest.approx(0.44)
