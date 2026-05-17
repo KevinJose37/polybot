@@ -115,6 +115,12 @@ class RiskEngine:
         """Rate-limit warnings to at most once per _RATE_LIMIT_WINDOW_MS per key."""
         now = current_timestamp_ms()
         last = self._last_warn_ts.get(key, 0)
+        
+        # Periodic cleanup of old entries to prevent memory leak
+        if len(self._last_warn_ts) > 100 and getattr(self, "_warn_counter", 0) % 100 == 0:
+            self._last_warn_ts = {k: v for k, v in self._last_warn_ts.items() if now - v < _RATE_LIMIT_WINDOW_MS * 10}
+        self._warn_counter = getattr(self, "_warn_counter", 0) + 1
+
         if now - last >= _RATE_LIMIT_WINDOW_MS:
             self._last_warn_ts[key] = now
             return True
@@ -126,7 +132,9 @@ class RiskEngine:
         size: float,
         price: float = 0.5,
         orderbooks: Optional[dict] = None,
-        check_portfolio: bool = True
+        check_portfolio: bool = True,
+        side: str = "BUY",
+        is_reserved: bool = False
     ) -> bool:
         """
         Validates if an order is safe to place.
@@ -160,6 +168,11 @@ class RiskEngine:
         order_notional = size * price
         pos = self.position_manager.get_position(token_id)
         
+        if side == "SELL" and pos.size < size:
+            if self._should_warn(f"naked_short_{token_id}"):
+                logger.warning("naked_short_rejected", token_id=token_id, holding=pos.size, requested=size)
+            return False
+            
         current_exposure = 0.0
         if pos.size != 0:
             assert pos.avg_price > 0, f"Position {token_id} has size {pos.size} but avg_price {pos.avg_price}"
@@ -171,7 +184,11 @@ class RiskEngine:
                     valuation_price = max(pos.avg_price, mid)
             current_exposure = abs(pos.size) * valuation_price
             
-        new_exposure = current_exposure + order_notional
+        if side == "SELL":
+            # Selling reduces exposure since it closes a long position
+            new_exposure = max(0.0, current_exposure - order_notional)
+        else:
+            new_exposure = current_exposure + order_notional
 
         if new_exposure > self.settings.risk.max_exposure_per_asset:
             if self._should_warn(f"asset_{token_id}"):
@@ -186,12 +203,13 @@ class RiskEngine:
         # 5. Portfolio exposure cap
         if check_portfolio:
             total_exposure = self.get_total_exposure(orderbooks) + self.inflight_exposure
-            if total_exposure + order_notional > self.settings.risk.max_portfolio_exposure:
+            effective_notional = 0.0 if is_reserved else order_notional
+            if total_exposure + effective_notional > self.settings.risk.max_portfolio_exposure:
                 if self._should_warn("portfolio"):
                     logger.warning(
                         "portfolio_exposure_breached",
                         total_exposure=total_exposure,
-                        new_order_notional=order_notional,
+                        new_order_notional=effective_notional,
                         limit=self.settings.risk.max_portfolio_exposure
                     )
                 return False

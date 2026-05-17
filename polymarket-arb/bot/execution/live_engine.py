@@ -72,7 +72,7 @@ class LiveExecutor(ExecutorProtocol):
             for leg in opportunity.legs:
                 try:
                     if not self.risk_engine.validate_order(
-                        leg.market_id, leg.size, price=leg.price, orderbooks=self.orderbooks, check_portfolio=False
+                        leg.market_id, leg.size, price=leg.price, orderbooks=self.orderbooks, check_portfolio=False, side=leg.side
                     ):
                         self.stats.record_risk_rejection()
                         return []
@@ -135,7 +135,25 @@ class LiveExecutor(ExecutorProtocol):
                             filled=filled_legs, failed=i,
                         )
                         self.stats.record_leg_imbalance()
-                        self.risk_engine.activate_kill_switch(f"Unhedged leg imbalance on opp {opportunity.opportunity_id[:8]}. Leg {i} failed after {filled_legs} filled.")
+                        
+                        # Unwind previously filled legs
+                        for filled_idx in filled_legs:
+                            filled_leg = opportunity.legs[filled_idx]
+                            filled_detail = fill_details[filled_idx]
+                            actual_filled_size = filled_detail["filled_size"]
+                            if actual_filled_size > 0:
+                                unwind_side = "SELL" if filled_leg.side == "BUY" else "BUY"
+                                unwind_price = 0.001 if unwind_side == "SELL" else 0.999
+                                unwind_order = OrderRequest(
+                                    market_id=filled_leg.market_id,
+                                    side=unwind_side,
+                                    price=unwind_price,
+                                    size=actual_filled_size
+                                )
+                                logger.critical("unwinding_leg", market_id=filled_leg.market_id, side=unwind_side, size=actual_filled_size)
+                                asyncio.create_task(self.place_order(unwind_order, check_portfolio=False))
+                                
+                        self.risk_engine.activate_kill_switch(f"Unhedged leg imbalance on opp {opportunity.opportunity_id[:8]}. Leg {i} failed after {filled_legs} filled. Initiated unwind.")
 
             # Forensic log
             if self.forensic:
@@ -157,7 +175,7 @@ class LiveExecutor(ExecutorProtocol):
         """Sign and place a single order."""
         try:
             if not self.risk_engine.validate_order(
-                order.market_id, order.size, price=order.price, orderbooks=self.orderbooks, check_portfolio=check_portfolio
+                order.market_id, order.size, price=order.price, orderbooks=self.orderbooks, check_portfolio=check_portfolio, side=order.side
             ):
                 return OrderAck(order_id="failed", status="REJECTED", message="Risk Engine Rejected")
         except RiskKillSwitchTriggered as e:

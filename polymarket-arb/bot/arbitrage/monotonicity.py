@@ -25,6 +25,7 @@ def detect_monotonicity(
     ask_15m: float,
     vol_5m: float,
     vol_15m: float,
+    inventory_yes_5m: float,
     fee_rate_5m: float,
     fee_rate_15m: float,
     slippage: float,
@@ -50,7 +51,9 @@ def detect_monotonicity(
     edge = receive - pay
 
     if edge > min_edge:
-        max_size = min(vol_5m, vol_15m)
+        max_size = min(vol_5m, vol_15m, inventory_yes_5m)
+        if max_size <= 0:
+            return None
         
         # Unlike parity arb (guaranteed $1.00 payout), monotonicity trades
         # depend on actual settlement outcomes across different timeframes.

@@ -92,9 +92,15 @@ class ArbitrageScanner:
             # Type A is subsumed by Type C (exhaustive checks both BUY and SELL parity)
             # Running both would double-execute on the same BUY-side dislocation.
 
-            # Type C
             up_fee = self.fee_rates.get(yes_token, default_fee)
             down_fee = self.fee_rates.get(no_token, default_fee)
+            
+            inventory_up = 0.0
+            inventory_down = 0.0
+            if self.position_manager:
+                inventory_up = self.position_manager.get_position(yes_token).size
+                inventory_down = self.position_manager.get_position(no_token).size
+
             exhaustive_opp = detect_exhaustive_parity(
                 market_id=market.id,
                 token_up_id=yes_token,
@@ -107,6 +113,8 @@ class ArbitrageScanner:
                 down_ask_vol=no_ask_vol,
                 up_bid_vol=yes_bid_vol,
                 down_bid_vol=no_bid_vol,
+                inventory_up=inventory_up,
+                inventory_down=inventory_down,
                 up_fee_rate=up_fee,
                 down_fee_rate=down_fee,
                 slippage=slippage,
@@ -163,6 +171,10 @@ class ArbitrageScanner:
             fee_5m = self.fee_rates.get(yes_5m, default_fee)
             fee_15m = self.fee_rates.get(yes_15m, default_fee)
 
+            inventory_yes_5m = 0.0
+            if self.position_manager:
+                inventory_yes_5m = self.position_manager.get_position(yes_5m).size
+
             mono_opp = detect_monotonicity(
                 market_5m_id=market_5m_id,
                 market_15m_id=market_15m_id,
@@ -172,6 +184,7 @@ class ArbitrageScanner:
                 ask_15m=ask_15m,
                 vol_5m=vol_5m,
                 vol_15m=vol_15m,
+                inventory_yes_5m=inventory_yes_5m,
                 fee_rate_5m=fee_5m,
                 fee_rate_15m=fee_15m,
                 slippage=slippage,

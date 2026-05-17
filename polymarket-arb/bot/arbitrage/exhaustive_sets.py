@@ -29,6 +29,8 @@ def detect_exhaustive_parity(
     down_ask_vol: float,
     up_bid_vol: float,
     down_bid_vol: float,
+    inventory_up: float,
+    inventory_down: float,
     up_fee_rate: float,
     down_fee_rate: float,
     slippage: float,
@@ -74,7 +76,10 @@ def detect_exhaustive_parity(
         else:
             up_price = up_bid
             down_price = down_bid
-            max_size = min(up_bid_vol, down_bid_vol)
+            max_size = min(up_bid_vol, down_bid_vol, inventory_up, inventory_down)
+            
+        if max_size <= 0:
+            return None
             
         p = 1.0
         cost = 1.0 - edge

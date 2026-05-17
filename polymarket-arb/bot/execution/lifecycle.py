@@ -47,12 +47,15 @@ class LifecycleManager:
         self.markets: list[MarketSnapshot] = []
         self.topology: MarketTopology | None = None
         self.token_ids: list[str] = []
+        # Mapping from token_id to condition_id for settlement lookup
+        self.token_to_condition: dict[str, str] = {}
 
     async def initial_discovery(self) -> None:
         """Run initial discovery and setup."""
         self.markets = await self.discovery.discover_markets()
         self.topology = build_topology(self.markets)
         self.token_ids = [t.token_id for m in self.markets for t in m.tokens]
+        self.token_to_condition = {t.token_id: m.id for m in self.markets for t in m.tokens}
         self.scanner.topology = self.topology
         
         async def init_book(tid: str):
@@ -119,6 +122,7 @@ class LifecycleManager:
                 self.topology = new_topology
                 self.scanner.topology = new_topology
                 self.token_ids = new_token_ids
+                self.token_to_condition.update({t.token_id: m.id for m in new_markets for t in m.tokens})
                 
                 # Register parity pairs for new markets
                 for m in new_markets:
@@ -137,10 +141,27 @@ class LifecycleManager:
                         absence_counter.pop(mid, None)
                 
                 # Only settle tokens absent for ABSENCE_THRESHOLD consecutive cycles
-                resolved_tokens = [
+                # AND explicitly confirmed closed/inactive via the API
+                absent_candidates = [
                     mid for mid in current_book_tokens
                     if absence_counter.get(mid, 0) >= ABSENCE_THRESHOLD
                 ]
+                
+                resolved_tokens = []
+                resolutions = {}
+                
+                for mid in absent_candidates:
+                    condition_id = self.token_to_condition.get(mid)
+                    if condition_id:
+                        res = await self.rest_api.get_market_resolution(condition_id)
+                        if res is not None:
+                            resolved_tokens.append(mid)
+                            resolutions[mid] = res
+                        else:
+                            logger.info("market_absent_but_active_api", token_id=mid[:12])
+                    else:
+                        # Fallback if we somehow never mapped it
+                        resolved_tokens.append(mid)
                 
                 for mid in resolved_tokens:
                     logger.info("market_resolved", market_id=mid[:12])
@@ -150,24 +171,26 @@ class LifecycleManager:
                             await self.executor.cancel_order(oid)
                             self.fill_manager.remove_inflight_order(oid)
                     
-                    # ── Deterministic parity-aware settlement ──
-                    # For binary parity markets: one token resolves to 1.0, the other to 0.0.
-                    # We check if the complement is also resolved. If both are resolved,
-                    # we settle the first token at 1.0 and the second at 0.0 deterministically
-                    # (the actual winner doesn't matter for parity arb PnL: cost = p_yes + p_no,
-                    #  payout = 1.0 regardless of which side wins).
-                    complement_id = self.position_manager.parity_pairs.get(mid)
-                    if complement_id and complement_id in resolved_tokens:
-                        # Both legs resolved — settle first alphabetically at 1.0, other at 0.0
-                        # For parity arb, total payout = 1.0 regardless of assignment.
-                        if mid < complement_id:
-                            settle_price = 1.0
+                    # ── Oracle-aware settlement ──
+                    settle_price = 0.5 # Default fallback
+                    condition_id = self.token_to_condition.get(mid)
+                    
+                    if condition_id:
+                        resolution = resolutions.get(mid)
+                        if resolution and mid in resolution:
+                            settle_price = resolution[mid]
+                            logger.info("oracle_resolution_fetched", token_id=mid[:12], condition=condition_id[:12], price=settle_price)
                         else:
-                            settle_price = 0.0
+                            # If API resolution fetch fails, fallback to alphabetical parity logic
+                            complement_id = self.position_manager.parity_pairs.get(mid)
+                            if complement_id and complement_id in resolved_tokens:
+                                if mid < complement_id:
+                                    settle_price = 1.0
+                                else:
+                                    settle_price = 0.0
+                                logger.warning("oracle_fetch_failed_using_heuristic", token_id=mid[:12], price=settle_price)
                     else:
-                        # Standalone token or complement not yet resolved
-                        # Conservative default: 0.5 (neutral assumption)
-                        settle_price = 0.5
+                        logger.warning("no_condition_id_for_token", token_id=mid[:12])
                     
                     self.position_manager.settle_market(mid, settle_price=settle_price)
                     if hasattr(self.executor, 'stats') and self.executor.stats:

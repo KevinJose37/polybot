@@ -190,6 +190,24 @@ class PositionManager:
                     unrealized += (mid - pos_b.avg_price) * excess_b
             return unrealized
             
+        elif pos_a.size < 0 and pos_b.size < 0:
+            matched = min(abs(pos_a.size), abs(pos_b.size))
+            revenue = (pos_a.avg_price * matched + pos_b.avg_price * matched)
+            parity_unreal = revenue - matched * 1.0
+            unrealized += parity_unreal
+            
+            excess_a = abs(pos_a.size) - matched
+            excess_b = abs(pos_b.size) - matched
+            if excess_a > 0:
+                mid = mid_prices.get(token_a)
+                if mid is not None:
+                    unrealized += (pos_a.avg_price - mid) * excess_a
+            if excess_b > 0:
+                mid = mid_prices.get(token_b)
+                if mid is not None:
+                    unrealized += (pos_b.avg_price - mid) * excess_b
+            return unrealized
+            
         # Non-parity
         mid_a = mid_prices.get(token_a)
         mid_b = mid_prices.get(token_b)
