@@ -101,3 +101,15 @@ class LocalOrderBook:
             return []
         sorted_asks = sorted(self.asks.items(), key=lambda x: x[0])
         return sorted_asks[:levels]
+
+    def mid_price(self) -> Optional[float]:
+        """Returns the mid price of the orderbook, or None if bids/asks are missing."""
+        bid = self.best_bid()
+        ask = self.best_ask()
+        if bid is not None and ask is not None:
+            return (bid + ask) / 2.0
+        elif bid is not None:
+            return bid
+        elif ask is not None:
+            return ask
+        return None
