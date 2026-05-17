@@ -37,7 +37,8 @@ def detect_exhaustive_parity(
     min_edge: float,
     min_notional: float,
     capital: float,
-    multiplier: float
+    multiplier: float,
+    gas_fee_est: float = 0.0
 ) -> Optional[ArbOpportunity]:
     """
     Pure function to detect exhaustive set parity based on execution prices.
@@ -53,7 +54,7 @@ def detect_exhaustive_parity(
     down_fee_buy = fee_per_share(down_ask, down_fee_rate, side="BUY")
     up_cost = up_ask + up_fee_buy + slippage
     down_cost = down_ask + down_fee_buy + slippage
-    buy_cost = up_cost + down_cost
+    buy_cost = up_cost + down_cost + gas_fee_est
     buy_edge = 1.0 - buy_cost
     
     # Check SELL parity (sum of bids - fees > 1.0)
@@ -62,7 +63,7 @@ def detect_exhaustive_parity(
     down_fee_sell = fee_per_share(down_bid, down_fee_rate, side="SELL")  # returns 0
     up_receive = up_bid - up_fee_sell - slippage
     down_receive = down_bid - down_fee_sell - slippage
-    sell_rev = up_receive + down_receive
+    sell_rev = up_receive + down_receive - gas_fee_est
     sell_edge = sell_rev - 1.0
     
     is_buy = buy_edge > sell_edge
