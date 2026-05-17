@@ -2,6 +2,7 @@
 Position and PnL management.
 """
 import structlog
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Optional
 from bot.utils.clocks import current_timestamp_ms
@@ -27,10 +28,14 @@ class PositionManager:
         self.positions: dict[str, Position] = {}
         self.total_realized_pnl = 0.0
         self.total_unrealized_pnl = 0.0
-        self.resolved_positions: list[dict] = []
+        # Use deque with maxlen for O(1) eviction — oldest entries auto-drop
+        self.resolved_positions: deque[dict] = deque(maxlen=100)
         # Parity pair mapping: token_id -> complementary_token_id
         # e.g., {"yes_token": "no_token", "no_token": "yes_token"}
         self.parity_pairs: dict[str, str] = {}
+        # Track tokens that were settled standalone (at 0.5) so we can
+        # retroactively adjust when the complement resolves later.
+        self._pending_complement_adjustments: dict[str, dict] = {}
 
     def register_parity_pair(self, token_a: str, token_b: str) -> None:
         """Register two tokens as a parity pair (YES/NO of the same market)."""
@@ -40,6 +45,10 @@ class PositionManager:
     def get_equity(self, starting_capital: float) -> float:
         """Calculate total equity (starting capital + total realized and unrealized PnL)."""
         return starting_capital + self.total_realized_pnl + self.total_unrealized_pnl
+
+    def get_total_equity(self, starting_capital: float) -> float:
+        """Alias for get_equity — used by scanner when capital_source='total_equity'."""
+        return self.get_equity(starting_capital)
 
     def get_available_capital(self, starting_capital: float) -> float:
         """Calculate available cash (capital + realized PnL minus what is tied up in active positions at cost)."""
@@ -58,47 +67,64 @@ class PositionManager:
     def add_fill(self, market_id: str, side: str, price: float, size: float, fee: float = 0.0) -> None:
         """
         Update position with a new fill.
-        Fee is the total fee for this fill (subtracted from PnL).
+
+        Three mutually exclusive branches:
+          1. CLOSE-ONLY: fill fully closes the position (or partially closes it)
+          2. FLIP: fill closes the position AND opens a new one in the opposite direction
+          3. INCREASE: fill adds to the existing position (same direction)
+
+        Fee is the total fee for this fill (subtracted from PnL immediately).
         """
+        pos = self.get_position(market_id)
+
         # Deduct fee from realized PnL immediately
         if fee > 0:
-            pos = self.get_position(market_id)
             pos.realized_pnl -= fee
             self.total_realized_pnl -= fee
-        pos = self.get_position(market_id)
-        
+
         # BUY = positive size, SELL = negative size
         fill_qty = size if side == "BUY" else -size
-        
-        # Check if this trade reduces or flips position
-        if (pos.size > 0 and fill_qty < 0) or (pos.size < 0 and fill_qty > 0):
-            # We are closing some or all of the position
+
+        is_closing = (pos.size > 0 and fill_qty < 0) or (pos.size < 0 and fill_qty > 0)
+
+        if is_closing:
             close_qty = min(abs(pos.size), abs(fill_qty))
-            
-            # Realized PnL logic
+
+            # Compute realized PnL on the closed portion
             if side == "SELL":
-                # Closing a long position: pnl = (sell_price - avg_buy_price) * size
+                # Closing a long: pnl = (sell_price - avg_buy_price) × qty
                 pnl = (price - pos.avg_price) * close_qty
             else:
-                # Closing a short position: pnl = (avg_sell_price - buy_price) * size
+                # Closing a short: pnl = (avg_sell_price - buy_price) × qty
                 pnl = (pos.avg_price - price) * close_qty
-                
+
             pos.realized_pnl += pnl
             self.total_realized_pnl += pnl
-            
-            remaining_qty = fill_qty + (close_qty if fill_qty < 0 else -close_qty)
-            pos.size += fill_qty
-            
-            if abs(pos.size) < 1e-6:
+
+            new_size = pos.size + fill_qty
+
+            if abs(new_size) < 1e-6:
+                # ── Branch 1: CLOSE-ONLY — position fully closed ──
                 pos.size = 0.0
                 pos.avg_price = 0.0
-            elif remaining_qty != 0:
-                # Flipped position
-                pos.avg_price = price
+            elif (new_size > 0) == (pos.size > 0):
+                # ── Branch 1b: PARTIAL CLOSE — same direction, keep avg_price ──
+                pos.size = new_size
+                # avg_price stays unchanged — remaining shares keep original cost basis
+            else:
+                # ── Branch 2: FLIP — position reversed to opposite direction ──
+                pos.size = new_size
+                pos.avg_price = price  # new position opens at fill price
         else:
-            # Increasing position
+            # ── Branch 3: INCREASE — adding to existing position ──
             new_size = pos.size + fill_qty
-            pos.avg_price = ((pos.avg_price * abs(pos.size)) + (price * abs(fill_qty))) / abs(new_size)
+            assert abs(new_size) > 0, (
+                f"Unexpected zero new_size when increasing position: "
+                f"pos.size={pos.size}, fill_qty={fill_qty}"
+            )
+            pos.avg_price = (
+                (pos.avg_price * abs(pos.size)) + (price * abs(fill_qty))
+            ) / abs(new_size)
             pos.size = new_size
 
     def mark_to_market(self, market_id: str, mid_price: Optional[float]) -> float:
@@ -115,7 +141,11 @@ class PositionManager:
             return (pos.avg_price - mid_price) * abs(pos.size)
 
     def get_market_unrealized_pnl(self, market_id: str, mid_prices: dict[str, float]) -> float:
-        """Calculate parity-aware unrealized PnL for a single market."""
+        """Calculate parity-aware unrealized PnL for a single market.
+        
+        Delegates to get_pair_unrealized_pnl when a parity complement exists
+        and both tokens have active positions. Returns only this token's share.
+        """
         pos = self.get_position(market_id)
         if pos.size == 0:
             return 0.0
@@ -123,16 +153,17 @@ class PositionManager:
         complement_id = self.parity_pairs.get(market_id)
         if complement_id and complement_id in self.positions:
             comp_pos = self.positions[complement_id]
-            if pos.size > 0 and comp_pos.size > 0:
-                matched = min(pos.size, comp_pos.size)
-                # Avoid double counting: only compute full parity PnL when querying the primary leg
-                # Or compute proportional parity PnL. Easiest is to just compute for the individual leg's matched portion.
-                # Actually, the prompt says "Centralize all PnL and equity derivations strictly within PositionManager and TradingStats, leaving the dashboard to be purely presentation logic."
-                pass
+            if comp_pos.size != 0:
+                # Both legs active — compute pair-level parity PnL
+                pair_pnl = self.get_pair_unrealized_pnl(market_id, complement_id, mid_prices)
+                # Return this token's proportional share of the pair PnL
+                total_notional = abs(pos.size * pos.avg_price) + abs(comp_pos.size * comp_pos.avg_price)
+                if total_notional > 0:
+                    my_weight = abs(pos.size * pos.avg_price) / total_notional
+                    return pair_pnl * my_weight
+                return pair_pnl * 0.5
 
-        # To keep it simple and accurate, we can just compute the true unrealized PnL for this specific token
-        # but parity valuation applies to the pair.
-        # Let's return the standard mtm for a single leg.
+        # Non-parity: standard mid-price valuation
         mid = mid_prices.get(market_id)
         return self.mark_to_market(market_id, mid) if mid is not None else 0.0
 
@@ -246,7 +277,9 @@ class PositionManager:
     def settle_market(self, market_id: str, settle_price: float = 0.5) -> None:
         """
         Settle a position when a market resolves.
-        Approximates resolution to 0.5 per leg, mathematically correct for arbitrage sets.
+
+        If this token's parity complement was previously settled at 0.5 (standalone),
+        retroactively adjusts the complement's PnL so the pair sums to 1.0.
         """
         if market_id not in self.positions:
             return
@@ -255,9 +288,35 @@ class PositionManager:
         if pos.size == 0:
             del self.positions[market_id]
             return
-            
-        # PnL = (settle_price - avg_price) * size for Long
-        # PnL = (avg_price - settle_price) * size for Short
+
+        # ── Retroactive complement adjustment ──
+        # If the complement was previously settled alone at 0.5 and we now know
+        # the pair should sum to 1.0, adjust the PnL delta.
+        complement_id = self.parity_pairs.get(market_id)
+        if complement_id and complement_id in self._pending_complement_adjustments:
+            prev = self._pending_complement_adjustments.pop(complement_id)
+            # The complement was settled at 0.5. For parity correctness,
+            # it should have been (1.0 - settle_price). Compute the delta.
+            correct_complement_price = 1.0 - settle_price
+            old_complement_price = prev["settle_price"]  # was 0.5
+            prev_size = prev["size"]
+
+            if prev_size > 0:
+                adjustment = (correct_complement_price - old_complement_price) * prev_size
+            else:
+                adjustment = (old_complement_price - correct_complement_price) * abs(prev_size)
+
+            if abs(adjustment) > 1e-9:
+                self.total_realized_pnl += adjustment
+                logger.info(
+                    "retroactive_complement_adjustment",
+                    market_id=complement_id[:12],
+                    old_price=old_complement_price,
+                    correct_price=correct_complement_price,
+                    adjustment=round(adjustment, 6),
+                )
+
+        # ── Normal settlement ──
         if pos.size > 0:
             pnl = (settle_price - pos.avg_price) * pos.size
         else:
@@ -275,9 +334,16 @@ class PositionManager:
             "total_realized_pnl": pos.realized_pnl,
             "settled_at": current_timestamp_ms()
         })
-        if len(self.resolved_positions) > 100:
-            self.resolved_positions.pop(0)
-            
+        # deque(maxlen=100) handles eviction automatically — no manual pop needed
+
+        # If this was a standalone settlement (no complement resolved simultaneously),
+        # record it for potential retroactive adjustment later.
+        if complement_id and settle_price == 0.5:
+            self._pending_complement_adjustments[market_id] = {
+                "size": pos.size,
+                "settle_price": settle_price,
+            }
+
         # Zero out the position after settlement
         pos.size = 0.0
         pos.avg_price = 0.0

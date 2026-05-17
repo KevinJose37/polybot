@@ -7,6 +7,10 @@ from rich.table import Table
 from rich.text import Text
 from rich.console import Console, Group
 
+from datetime import datetime
+from bot.utils.clocks import current_timestamp_ms
+from bot.market_discovery.parsers import parse_market_slug
+
 from bot.execution.position_manager import PositionManager
 from bot.api.schemas import MarketSnapshot
 from bot.orderbook.local_book import LocalOrderBook
@@ -66,7 +70,7 @@ class TerminalDashboard:
         pnl_pct = (total_pnl / self.capital) * 100 if self.capital > 0 else 0
         
         avail_capital = position_manager.get_available_capital(self.capital)
-        pos_cost = equity - avail_capital - unrealized_pnl
+        pos_cost = sum(abs(p.size * p.avg_price) for p in position_manager.positions.values() if p.size != 0)
         
         mode_text = "[bold yellow]PAPER TRADING — NOT REAL MONEY[/]" if self.mode == "paper" else "[bold red]🔴 LIVE TRADING[/]"
         pnl_color = "green" if total_pnl >= 0 else "red"
@@ -76,7 +80,6 @@ class TerminalDashboard:
         total_fees = stats.total_fees_paid if stats else 0.0
         
         # Warmup countdown
-        from bot.utils.clocks import current_timestamp_ms
         now_ms = current_timestamp_ms()
         if warmup_until_ms > now_ms:
             rem_s = int((warmup_until_ms - now_ms) / 1000)
@@ -181,7 +184,6 @@ class TerminalDashboard:
         )
         
         # Build token_id -> readable name mapping
-        from bot.market_discovery.parsers import parse_market_slug
         for m in markets:
             if not m.tokens: continue
             if m.tokens[0].token_id not in self.token_to_base_name:
@@ -209,8 +211,8 @@ class TerminalDashboard:
         res_table.add_column("PnL", justify="right")
 
         if getattr(position_manager, "resolved_positions", None):
-            from datetime import datetime
-            for rp in reversed(position_manager.resolved_positions[-15:]):
+            resolved_list = list(position_manager.resolved_positions)
+            for rp in reversed(resolved_list[-15:]):
                 res_name = self.token_to_base_name.get(rp["market_id"], rp["market_id"][:15] + "…")
                 
                 market_ts = self.token_to_ts.get(rp["market_id"], 0)
@@ -328,7 +330,6 @@ class TerminalDashboard:
         ]
         
         if active_positions:
-            from bot.utils.clocks import current_timestamp_ms
             now_s = current_timestamp_ms() / 1000.0
             # Build set of token IDs that Polymarket currently reports as active
             active_token_ids = set()

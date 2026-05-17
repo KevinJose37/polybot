@@ -56,7 +56,11 @@ class HealthServer:
         return web.json_response(body)
 
     async def _handle_metrics(self, request: web.Request) -> web.Response:
-        """GET /metrics handler."""
+        """
+        GET /metrics handler.
+        Note: net_pnl reports total PnL including unsettled TYPE-B positions,
+        as we don't pass active_market_ids here.
+        """
         stats = self._stats_fn()
         lines = []
         lines.append(f'polybot_fills_total {stats.fills_count if stats else 0}')
@@ -75,11 +79,12 @@ class HealthServer:
 
     async def start(self) -> None:
         """Start the health HTTP server as a background task."""
-        app = web.AppRunner(web.Application())
-        app.app.router.add_get("/health", self._handle_health)
-        app.app.router.add_get("/metrics", self._handle_metrics)
-        await app.setup()
-        site = web.TCPSite(app, "0.0.0.0", self.port)
+        app = web.Application()
+        app.router.add_get("/health", self._handle_health)
+        app.router.add_get("/metrics", self._handle_metrics)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", self.port)
         try:
             await site.start()
             logger.info("health_server_started", port=self.port)
@@ -87,6 +92,6 @@ class HealthServer:
             while True:
                 await asyncio.sleep(3600)
         except asyncio.CancelledError:
-            await app.cleanup()
+            await runner.cleanup()
         except OSError as e:
             logger.warning("health_server_bind_failed", port=self.port, error=str(e))

@@ -48,15 +48,6 @@ def fee_per_share(price: float, fee_rate: float, side: str = "BUY") -> float:
     return price * fee_rate * (price * (1.0 - price))
 
 
-def net_cost_buy(price: float, size: float, fee_rate: float) -> float:
-    """Total cost to BUY: (price × size) + fee."""
-    return price * size + polymarket_taker_fee(price, size, fee_rate, side="BUY")
-
-
-def net_revenue_sell(price: float, size: float, fee_rate: float) -> float:
-    """Total revenue from SELL: (price × size) — no taker fee on sells."""
-    return price * size  # Sell orders are fee-free
-
 
 def calculate_kelly_fraction(p: float, b: float) -> float:
     """
@@ -86,11 +77,27 @@ def calculate_order_size(
     b: float, 
     capital: float, 
     max_size: float, 
-    multiplier: float = 0.25
+    multiplier: float = 0.25,
+    avg_price: float = 1.0,
 ) -> float:
     """
-    Calculate the order size in USD using fractional Kelly, bounded by max_size.
-    order_size = min(max_size, fractional_kelly * capital)
+    Calculate the order size in USD using fractional Kelly, bounded by
+    available liquidity.
+
+    Args:
+        p: Estimated probability of winning the trade.
+        b: Net odds (edge / cost).
+        capital: Available capital in USD.
+        max_size: Maximum available liquidity in **shares** (from orderbook depth).
+        multiplier: Fractional Kelly multiplier (default 0.25).
+        avg_price: Average price per share used to convert max_size to notional.
+                   Ensures the cap is compared in the same dollar units as the
+                   Kelly result.
+
+    Returns:
+        Order size in USD, capped by the notional value of available liquidity.
     """
     fractional_kelly = calculate_fractional_kelly(p, b, multiplier)
-    return min(max_size, fractional_kelly * capital)
+    kelly_size = fractional_kelly * capital
+    max_notional = max_size * avg_price
+    return min(max_notional, kelly_size)

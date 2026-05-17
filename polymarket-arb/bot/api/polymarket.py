@@ -213,7 +213,10 @@ class PolymarketRESTClient(PolymarketAdapter):
                 # Response typically contains balance in USDC (6 decimals)
                 balance = data.get("balance") or data.get("available_balance")
                 if balance is not None:
-                    return float(balance) / 1e6  # Convert from USDC micros to dollars
+                    usd_balance = float(balance) / 1e6  # Convert from USDC micros to dollars
+                    if usd_balance < 10.0:
+                        logger.warning("suspiciously_low_balance", raw=balance, formatted=usd_balance)
+                    return usd_balance
                 logger.warning("get_balance_no_value", response_keys=list(data.keys()))
                 return None
         except Exception as e:

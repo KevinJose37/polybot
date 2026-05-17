@@ -33,19 +33,29 @@ class RiskEngine:
         self._last_warn_ts: dict[str, int] = {}
         self.inflight_exposure = 0.0
 
-    def get_total_exposure(self) -> float:
-        return sum(
-            abs(p.size) * (p.avg_price if p.avg_price > 0 else 0.5)
-            for p in self.position_manager.positions.values()
-        )
+    def get_total_exposure(self, orderbooks: Optional[dict] = None) -> float:
+        total = 0.0
+        for p in self.position_manager.positions.values():
+            if p.size == 0:
+                continue
+            assert p.avg_price > 0, f"Position {p.market_id} has size {p.size} but avg_price {p.avg_price}"
+            valuation_price = p.avg_price
+            if orderbooks and p.market_id in orderbooks:
+                book = orderbooks[p.market_id]
+                mid = book.mid_price()
+                if mid is not None:
+                    valuation_price = max(p.avg_price, mid)
+            total += abs(p.size) * valuation_price
+        return total
 
-    def reserve_exposure(self, amount: float) -> bool:
+    def reserve_exposure(self, amount: float, orderbooks: Optional[dict] = None) -> bool:
         """Atomically check and reserve portfolio exposure for inflight trades."""
-        if self.get_total_exposure() + self.inflight_exposure + amount > self.settings.risk.max_portfolio_exposure:
+        total_exposure = self.get_total_exposure(orderbooks)
+        if total_exposure + self.inflight_exposure + amount > self.settings.risk.max_portfolio_exposure:
             if self._should_warn("portfolio"):
                 logger.warning(
                     "portfolio_exposure_breached",
-                    total_exposure=self.get_total_exposure(),
+                    total_exposure=total_exposure,
                     inflight=self.inflight_exposure,
                     new_order_notional=amount,
                     limit=self.settings.risk.max_portfolio_exposure
@@ -149,7 +159,18 @@ class RiskEngine:
         #    Use actual price for accurate notional estimation
         order_notional = size * price
         pos = self.position_manager.get_position(token_id)
-        current_exposure = abs(pos.size) * (pos.avg_price if pos.avg_price > 0 else 0.5)
+        
+        current_exposure = 0.0
+        if pos.size != 0:
+            assert pos.avg_price > 0, f"Position {token_id} has size {pos.size} but avg_price {pos.avg_price}"
+            valuation_price = pos.avg_price
+            if orderbooks and token_id in orderbooks:
+                book = orderbooks[token_id]
+                mid = book.mid_price()
+                if mid is not None:
+                    valuation_price = max(pos.avg_price, mid)
+            current_exposure = abs(pos.size) * valuation_price
+            
         new_exposure = current_exposure + order_notional
 
         if new_exposure > self.settings.risk.max_exposure_per_asset:
@@ -164,7 +185,7 @@ class RiskEngine:
 
         # 5. Portfolio exposure cap
         if check_portfolio:
-            total_exposure = self.get_total_exposure() + self.inflight_exposure
+            total_exposure = self.get_total_exposure(orderbooks) + self.inflight_exposure
             if total_exposure + order_notional > self.settings.risk.max_portfolio_exposure:
                 if self._should_warn("portfolio"):
                     logger.warning(

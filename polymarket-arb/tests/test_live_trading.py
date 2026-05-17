@@ -212,3 +212,106 @@ async def test_paper_executor_matched_sizing() -> None:
     # NO leg should be MATCHED to 50, not 100
     pos_no = pm.get_position("no_tok")
     assert abs(pos_no.size - 50.0) < 0.001
+
+
+# ─── Position Manager Branch Tests (Audit 04 Fixes) ─────────────────────
+
+def test_add_fill_partial_close_preserves_avg_price() -> None:
+    """Partial close should NOT change avg_price of remaining shares."""
+    pm = PositionManager()
+    pm.add_fill("m1", "BUY", 0.50, 100)
+    
+    # Sell 30 @ 0.60 — partial close, 70 shares remain
+    pm.add_fill("m1", "SELL", 0.60, 30)
+    pos = pm.get_position("m1")
+    assert pos.size == 70
+    assert pos.avg_price == 0.50  # Must stay at original cost basis
+    assert abs(pos.realized_pnl - 3.0) < 0.0001  # (0.60 - 0.50) * 30
+
+
+def test_add_fill_flip_uses_fill_price() -> None:
+    """Position flip should set avg_price to the fill price of the new direction."""
+    pm = PositionManager()
+    pm.add_fill("m1", "BUY", 0.50, 50)
+    
+    # Sell 80 @ 0.60 — closes 50 long, opens 30 short
+    pm.add_fill("m1", "SELL", 0.60, 80)
+    pos = pm.get_position("m1")
+    assert pos.size == -30  # Short 30
+    assert pos.avg_price == 0.60  # New short at fill price
+    # Realized PnL from closing the 50 long: (0.60 - 0.50) * 50 = 5.0
+    assert abs(pos.realized_pnl - 5.0) < 0.0001
+
+
+def test_add_fill_increase_weighted_avg() -> None:
+    """Increasing a position should compute weighted average price."""
+    pm = PositionManager()
+    pm.add_fill("m1", "BUY", 0.40, 60)
+    pm.add_fill("m1", "BUY", 0.50, 40)
+    
+    pos = pm.get_position("m1")
+    assert pos.size == 100
+    # Weighted avg: (0.40*60 + 0.50*40) / 100 = (24 + 20) / 100 = 0.44
+    assert abs(pos.avg_price - 0.44) < 0.0001
+
+
+def test_resolved_positions_deque_maxlen() -> None:
+    """resolved_positions should auto-evict oldest entries beyond 100."""
+    pm = PositionManager()
+    
+    for i in range(110):
+        mid = f"market_{i}"
+        pm.add_fill(mid, "BUY", 0.50, 10)
+        pm.settle_market(mid, settle_price=0.50)
+    
+    # deque(maxlen=100) should cap at 100
+    assert len(pm.resolved_positions) == 100
+    # Oldest should be market_10 (0-9 were evicted)
+    assert pm.resolved_positions[0]["market_id"] == "market_10"
+
+
+def test_retroactive_complement_settlement() -> None:
+    """When parity legs resolve in different cycles, PnL should be retroactively adjusted."""
+    pm = PositionManager()
+    pm.register_parity_pair("yes_tok", "no_tok")
+    
+    # BUY YES @ 0.42 and NO @ 0.46 (total cost = 0.88)
+    pm.add_fill("yes_tok", "BUY", 0.42, 100)
+    pm.add_fill("no_tok", "BUY", 0.46, 100)
+    
+    # Cycle 1: YES resolves alone → settled at 0.5 (conservative default)
+    pm.settle_market("yes_tok", settle_price=0.5)
+    pnl_after_yes = pm.total_realized_pnl
+    # YES PnL = (0.5 - 0.42) * 100 = 8.0
+    assert abs(pnl_after_yes - 8.0) < 0.0001
+    
+    # Cycle 2: NO resolves → should retroactively adjust YES from 0.5 to (1.0 - 0.0) = 1.0
+    pm.settle_market("no_tok", settle_price=0.0)
+    pnl_after_no = pm.total_realized_pnl
+    # Retroactive YES adjustment: (1.0 - 0.5) * 100 = +50.0
+    # NO PnL = (0.0 - 0.46) * 100 = -46.0
+    # Total: 8.0 + 50.0 + (-46.0) = 12.0
+    # Which equals the true arb profit: (1.0 - 0.42 - 0.46) * 100 = 12.0
+    assert abs(pnl_after_no - 12.0) < 0.01
+
+
+def test_get_market_unrealized_pnl_parity() -> None:
+    """get_market_unrealized_pnl should use parity valuation when complement exists."""
+    pm = PositionManager()
+    pm.register_parity_pair("yes", "no")
+    
+    pm.add_fill("yes", "BUY", 0.42, 100)
+    pm.add_fill("no", "BUY", 0.46, 100)
+    
+    mid_prices = {"yes": 0.40, "no": 0.45}
+    
+    # Individual token PnL should be a portion of the pair PnL
+    yes_pnl = pm.get_market_unrealized_pnl("yes", mid_prices)
+    no_pnl = pm.get_market_unrealized_pnl("no", mid_prices)
+    pair_pnl = pm.get_pair_unrealized_pnl("yes", "no", mid_prices)
+    
+    # Both should contribute to the total
+    assert yes_pnl + no_pnl == pytest.approx(pair_pnl, abs=0.01)
+    # And the pair PnL should be positive (parity arb)
+    assert pair_pnl == pytest.approx(12.0, abs=0.01)
+

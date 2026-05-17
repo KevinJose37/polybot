@@ -24,14 +24,3 @@ class TradeRecord(Base):
     mode: Mapped[str] = mapped_column(String(20)) # "paper" or "live"
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-class SessionRecord(Base):
-    """
-    Records paper trading session stats.
-    """
-    __tablename__ = "sessions"
-    
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    mode: Mapped[str] = mapped_column(String(20))
-    capital: Mapped[float] = mapped_column(Float)
-    realized_pnl: Mapped[float] = mapped_column(Float)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

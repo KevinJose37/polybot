@@ -13,6 +13,7 @@ from bot.execution.executor import ExecutorProtocol
 from bot.paper_trading.stats import TradingStats
 from bot.persistence.postgres import DatabaseManager
 from bot.persistence.repositories import TradeRepository
+from bot.utils.clocks import current_timestamp_ms
 
 logger = structlog.get_logger(__name__)
 
@@ -41,9 +42,10 @@ class MarketEventHandler:
         self._scan_throttle_ms: int = 200  # min ms between scans
         
         # Warmup: suppress scanning until the next 5m window boundary
-        # so orderbooks have time to populate and prices stabilize
-        import time
-        now_s = int(time.time())
+        # so orderbooks have time to populate and prices stabilize.
+        # Uses the pluggable clock for testability.
+        now_ms = current_timestamp_ms()
+        now_s = now_ms // 1000
         divisor = 5 * 60  # 5 minutes
         next_boundary = now_s - (now_s % divisor) + divisor
         self._warmup_until_ms: int = next_boundary * 1000
@@ -57,7 +59,7 @@ class MarketEventHandler:
             try:
                 opp, acks, opp_data = await self.persistence_queue.get()
                 try:
-                    async for session in self.db.get_session():
+                    async with self.db.SessionLocal() as session:
                         repo = TradeRepository(session)
                         for leg, ack in zip(opp.legs, acks):
                             if ack.status == "FILLED":
@@ -70,7 +72,6 @@ class MarketEventHandler:
                                     size=leg.size,
                                     mode=self.mode
                                 )
-                        break
                 except Exception as e:
                     logger.error("persistence_error", error=str(e))
                 finally:
@@ -143,7 +144,6 @@ class MarketEventHandler:
                 logger.debug("ws_unknown_event", event_type=event_type, keys=list(msg.keys()))
 
         # Warmup gate: suppress scanning until next 5m window boundary
-        from bot.utils.clocks import current_timestamp_ms
         now = current_timestamp_ms()
         if now < self._warmup_until_ms:
             return  # Still warming up — orderbooks populating

@@ -52,16 +52,21 @@ def detect_monotonicity(
     if edge > min_edge:
         max_size = min(vol_5m, vol_15m)
         
-        p = 1.0
+        # Unlike parity arb (guaranteed $1.00 payout), monotonicity trades
+        # depend on actual settlement outcomes across different timeframes.
+        # Using p=0.80 as a conservative discount for settlement uncertainty.
+        p = 0.80
         cost = 1.0 - edge
         b = edge / cost if cost > 0 else 0.0
         
+        avg_price = (bid_5m + ask_15m) / 2.0
         order_size = calculate_order_size(
             p=p,
             b=b,
             capital=capital,
             max_size=max_size,
-            multiplier=multiplier
+            multiplier=multiplier,
+            avg_price=avg_price
         )
         
         if order_size < min_notional:

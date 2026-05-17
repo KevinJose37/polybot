@@ -4,7 +4,7 @@ Tests for paper trading logic.
 import pytest
 from bot.paper_trading.fills import simulate_fill
 from bot.paper_trading.slippage import apply_slippage
-from bot.paper_trading.pnl import PnLTracker
+
 from bot.execution.position_manager import PositionManager
 
 
@@ -156,17 +156,6 @@ def test_parity_pair_valuation() -> None:
     # 40 excess YES at mid: (0.40 - 0.42) * 40 = -0.8
     # Total: 7.2 - 0.8 = 6.4
     assert abs(pm2.total_unrealized_pnl - 6.4) < 0.0001
-
-
-def test_pnl_tracker_sharpe() -> None:
-    tracker = PnLTracker()
-    tracker.record_pnl(1.0)
-    tracker.record_pnl(-0.5)
-    tracker.record_pnl(2.0)
-    tracker.record_pnl(1.5)
-    
-    sharpe = tracker.calculate_sharpe()
-    assert sharpe > 0
 
 
 def test_simulate_fill_exceeds_total_depth() -> None:

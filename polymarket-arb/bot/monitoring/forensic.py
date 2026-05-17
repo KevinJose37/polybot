@@ -105,8 +105,11 @@ class ForensicLogger:
 
         # Compute slippage vs theoretical
         if opp.type in (ArbType.PARITY, ArbType.EXHAUSTIVE):
-            # BUY parity: expected cost per share = sum(asks) + fees + slippage
-            theoretical_cost = sum(l.price for l in opp.legs) + slippage_est * len(opp.legs)
+            from bot.utils.math import fee_per_share
+            theoretical_cost = 0.0
+            for l in opp.legs:
+                fee_rate = fee_rates.get(l.market_id, 0.0)
+                theoretical_cost += l.price + fee_per_share(l.price, fee_rate, l.side) + slippage_est
             actual_cost = (total_cost / opp.size) if opp.size > 0 else 0
             slippage_delta = actual_cost - theoretical_cost
         else:

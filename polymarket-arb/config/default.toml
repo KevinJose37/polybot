@@ -4,6 +4,10 @@ slippage_est = 0.005
 min_edge = 0.015
 min_notional = 1.0
 kelly_fraction_multiplier = 0.35
+# Capital basis for Kelly sizing. Options:
+#   "available_cash" — starting_capital + realized_pnl - position_cost (conservative, no compounding)
+#   "total_equity"   — starting_capital + realized_pnl + unrealized_pnl (compounds gains into sizing)
+capital_source = "available_cash"
 
 [network]
 websocket_reconnect_min_backoff = 1.0

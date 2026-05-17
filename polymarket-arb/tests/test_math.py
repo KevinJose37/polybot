@@ -7,8 +7,6 @@ from bot.utils.math import (
     calculate_order_size,
     polymarket_taker_fee,
     fee_per_share,
-    net_cost_buy,
-    net_revenue_sell,
 )
 
 
@@ -51,16 +49,34 @@ def test_calculate_fractional_kelly() -> None:
 
 
 def test_calculate_order_size() -> None:
-    """Test order size calculation."""
-    # p=1.0, b=0.0526315, capital=1000, max_size=50
+    """Test order size calculation with avg_price liquidity cap."""
+    # p=1.0, b=0.0526315, capital=1000, max_size=50 shares, avg_price=0.50
     # fractional_kelly = 0.25
-    # size = 1000 * 0.25 = 250, capped at 50 -> 50
-    size = calculate_order_size(1.0, 0.0526315, 1000.0, 50.0, 0.25)
-    assert size == 50.0
+    # kelly_size = 1000 * 0.25 = $250
+    # max_notional = 50 * 0.50 = $25  <-- cap
+    size = calculate_order_size(1.0, 0.0526315, 1000.0, 50.0, 0.25, avg_price=0.50)
+    assert size == 25.0
+
+    # Same but with avg_price=1.0 (default): max_notional = 50 * 1.0 = $50
+    size_default = calculate_order_size(1.0, 0.0526315, 1000.0, 50.0, 0.25)
+    assert size_default == 50.0
+
+    # Kelly result smaller than cap: capital=100, kelly=0.25 → $25
+    # max_notional = 50 * 0.60 = $30 → kelly wins at $25
+    size_kelly = calculate_order_size(1.0, 0.0526315, 100.0, 50.0, 0.25, avg_price=0.60)
+    assert size_kelly == 25.0
+
+
+def test_calculate_order_size_mixed_units_regression() -> None:
+    """Regression: max_size in shares must be converted to notional before capping.
     
-    # size_capped = 10.0
-    size_capped = calculate_order_size(1.0, 0.0526315, 1000.0, 10.0, 0.25)
-    assert size_capped == 10.0
+    Before the fix, max_size=50 (shares) was compared directly against
+    kelly_size=$25 (dollars). At price=0.45, 50 shares = $22.50 notional,
+    which should cap at $22.50, not $50.
+    """
+    # 50 shares at $0.45 = $22.50 notional
+    size = calculate_order_size(1.0, 0.0526315, 1000.0, 50.0, 0.25, avg_price=0.45)
+    assert size == 50.0 * 0.45  # $22.50, not $50
 
 
 def test_polymarket_taker_fee() -> None:
@@ -99,17 +115,3 @@ def test_fee_per_share() -> None:
     assert abs(fee_per_share(0.40, 0.03) - 0.00288) < 0.0001
     # SELL should return 0
     assert fee_per_share(0.50, 0.03, side="SELL") == 0.0
-
-
-def test_net_cost_buy() -> None:
-    """Buy cost = price*size + fee."""
-    # price=0.50, size=100 -> cost = 50.0 + 0.375 = 50.375
-    cost = net_cost_buy(0.50, 100.0, 0.03)
-    assert abs(cost - 50.375) < 0.001
-
-
-def test_net_revenue_sell() -> None:
-    """Sell revenue = price*size (no taker fee on sells)."""
-    # price=0.62, size=100 -> revenue = 62.0 (fee-free)
-    rev = net_revenue_sell(0.62, 100.0, 0.03)
-    assert abs(rev - 62.0) < 0.0001

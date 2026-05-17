@@ -36,7 +36,10 @@ class ArbitrageScanner:
         
         capital = self.settings.starting_capital
         if self.position_manager:
-            capital = self.position_manager.get_available_capital(capital)
+            if self.settings.trading.capital_source == "total_equity":
+                capital = self.position_manager.get_total_equity(capital)
+            else:  # "available_cash" (default, conservative)
+                capital = self.position_manager.get_available_capital(capital)
         default_fee = self.settings.trading.polymarket_fee
         slippage = self.settings.trading.slippage_est
         min_edge = self.settings.trading.min_edge

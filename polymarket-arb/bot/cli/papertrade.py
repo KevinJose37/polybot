@@ -32,37 +32,7 @@ logger = structlog.get_logger(__name__)
 app = typer.Typer()
 
 
-def _setup_file_logging() -> None:
-    """Redirect all logs to a file so they don't corrupt the Rich dashboard."""
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
-
-    structlog.configure(
-        processors=[
-            structlog.stdlib.add_log_level,
-            structlog.stdlib.add_logger_name,
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer(),
-        ],
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        cache_logger_on_first_use=True,
-    )
-
-    from logging.handlers import RotatingFileHandler
-    file_handler = RotatingFileHandler(
-        log_dir / "paper_trading.log",
-        maxBytes=50 * 1024 * 1024,  # 50 MB
-        backupCount=1,              # keep at most 1 old file
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(logging.Formatter("%(message)s"))
-
-    root = logging.getLogger()
-    root.handlers.clear()          # remove any default stderr/stdout handlers
-    root.addHandler(file_handler)
-    root.setLevel(logging.DEBUG)
+from bot.utils.logging import setup_file_logging
 
 
 @app.command()
@@ -71,7 +41,7 @@ def main(
     reset: Annotated[bool, typer.Option(help="Reset paper trading database")] = False
 ) -> None:
     """Run paper trading session."""
-    _setup_file_logging()
+    setup_file_logging("paper_trading.log")
     asyncio.run(run_paper_trading(capital, reset))
 
 async def run_paper_trading(capital: float, reset: bool) -> None:
@@ -84,7 +54,7 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
     discovery = MarketDiscoveryService(rest_api)
     
     position_manager = PositionManager()
-    fill_manager = FillManager()
+    fill_manager = FillManager(dedup_window_ms=int(settings.execution.opportunity_dedup_window_s * 1000))
     risk_engine = RiskEngine(settings, position_manager)
     orderbooks: dict[str, LocalOrderBook] = {}
     fee_rates: dict[str, float] = {}
@@ -205,6 +175,9 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
                 ttl_task.cancel()
             if not health_task.done():
                 health_task.cancel()
+                
+            await asyncio.gather(ws_task, discovery_task, ttl_task, health_task, return_exceptions=True)
+            await db.engine.dispose()
 
 if __name__ == "__main__":
     app()

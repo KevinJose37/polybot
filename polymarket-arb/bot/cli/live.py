@@ -29,43 +29,13 @@ logger = structlog.get_logger(__name__)
 app = typer.Typer()
 
 
-def _setup_file_logging() -> None:
-    """Redirect all logs to a file so they don't corrupt the Rich dashboard."""
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
-
-    structlog.configure(
-        processors=[
-            structlog.stdlib.add_log_level,
-            structlog.stdlib.add_logger_name,
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.dev.ConsoleRenderer(),
-        ],
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        cache_logger_on_first_use=True,
-    )
-
-    from logging.handlers import RotatingFileHandler
-    file_handler = RotatingFileHandler(
-        log_dir / "live_trading.log",
-        maxBytes=50 * 1024 * 1024,
-        backupCount=1,
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(logging.Formatter("%(message)s"))
-
-    root = logging.getLogger()
-    root.handlers.clear()
-    root.addHandler(file_handler)
-    root.setLevel(logging.DEBUG)
+from bot.utils.logging import setup_file_logging
 
 
 @app.command()
 def main() -> None:
     """Run live trading session."""
-    _setup_file_logging()
+    setup_file_logging("live_trading.log")
     asyncio.run(run_live_trading())
 
 async def run_live_trading() -> None:
@@ -89,7 +59,7 @@ async def run_live_trading() -> None:
         logger.warning("live_balance_fetch_failed", fallback=f"${settings.starting_capital:,.2f}")
     
     position_manager = PositionManager()
-    fill_manager = FillManager()
+    fill_manager = FillManager(dedup_window_ms=int(settings.execution.opportunity_dedup_window_s * 1000))
     risk_engine = RiskEngine(settings, position_manager)
     fee_rates: dict[str, float] = {}
     stats = TradingStats()
@@ -216,6 +186,9 @@ async def run_live_trading() -> None:
                 ttl_task.cancel()
             if not health_task.done():
                 health_task.cancel()
+                
+            await asyncio.gather(ws_task, discovery_task, ttl_task, health_task, return_exceptions=True)
+            await db.engine.dispose()
 
 if __name__ == "__main__":
     app()

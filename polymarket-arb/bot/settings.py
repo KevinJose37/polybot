@@ -17,6 +17,10 @@ class TradingSettings(BaseSettings):
     min_edge: float = 0.01
     min_notional: float = 10.0
     kelly_fraction_multiplier: float = 0.25
+    # Capital basis for Kelly sizing:
+    #   "available_cash" — starting_capital + realized_pnl - position_cost (conservative)
+    #   "total_equity"   — starting_capital + realized_pnl + unrealized_pnl (compounds gains)
+    capital_source: str = "available_cash"
 
 
 class NetworkSettings(BaseSettings):
@@ -110,18 +114,18 @@ class Settings(BaseSettings):
         
         # Override with TOML settings if they exist
         if "trading" in toml_data:
-            settings.trading = TradingSettings(**toml_data["trading"])
+            settings.trading = settings.trading.model_copy(update=toml_data["trading"])
         if "network" in toml_data:
-            settings.network = NetworkSettings(**toml_data["network"])
+            settings.network = settings.network.model_copy(update=toml_data["network"])
         if "execution" in toml_data:
-            settings.execution = ExecutionSettings(**toml_data["execution"])
+            settings.execution = settings.execution.model_copy(update=toml_data["execution"])
         if "paper_trading" in toml_data:
-            settings.paper_trading = PaperTradingSettings(**toml_data["paper_trading"])
+            settings.paper_trading = settings.paper_trading.model_copy(update=toml_data["paper_trading"])
         if "api" in toml_data:
-            settings.api = ApiSettings(**toml_data["api"])
+            settings.api = settings.api.model_copy(update=toml_data["api"])
         if "risk" in toml_data:
-            settings.risk = RiskSettings(**toml_data["risk"])
+            settings.risk = settings.risk.model_copy(update=toml_data["risk"])
         if "monitoring" in toml_data:
-            settings.monitoring = MonitoringSettings(**toml_data["monitoring"])
+            settings.monitoring = settings.monitoring.model_copy(update=toml_data["monitoring"])
 
         return settings

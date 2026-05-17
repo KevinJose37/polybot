@@ -106,9 +106,10 @@ class LiveExecutor(ExecutorProtocol):
                 acks.append(ack)
 
                 if ack.status == "FILLED":
-                    # Use the actual fill size returned by place_order,
-                    # NOT the cumulative position size.
-                    actual_fill_size = ack.filled_size if ack.filled_size > 0 else leg_size
+                    # Use the actual fill size returned by place_order.
+                    # place_order() now guards against zero fills, so filled_size
+                    # should always be positive when status is FILLED.
+                    actual_fill_size = ack.filled_size
                     if matched_size is None:
                         matched_size = actual_fill_size
                     
@@ -180,26 +181,39 @@ class LiveExecutor(ExecutorProtocol):
             logger.info("live_order_signed", market_id=order.market_id[:10], side=order.side, price=order.price, size=order.size)
             self.fill_manager.add_inflight_order(order_id, {"market": order.market_id, "size": order.size, "side": order.side})
             
-            response = await self.api_client.place_order({
-                "order_id": order_id,
-                "market_id": order.market_id,
-                "side": order.side,
-                "price": order.price,
-                "size": order.size,
-                "signature": signature,
-            })
+            try:
+                response = await self.api_client.place_order({
+                    "order_id": order_id,
+                    "market_id": order.market_id,
+                    "side": order.side,
+                    "price": order.price,
+                    "size": order.size,
+                    "signature": signature,
+                })
+            finally:
+                # Always remove inflight regardless of API success/failure
+                self.fill_manager.remove_inflight_order(order_id)
             
-            # Check for explicit error field (not "message", which can appear in success responses)
+            # ── Determine fill status ──
+            # Default to UNKNOWN (conservative) — never assume FILLED on missing key.
+            # A missing status field likely means a malformed or error response.
             if "error" in response:
                 status = "REJECTED"
                 logger.warning("api_returned_error", error=response.get("error"), order_id=order_id)
             else:
-                status = response.get("status", "FILLED")
-            self.fill_manager.remove_inflight_order(order_id)
+                status = response.get("status", "UNKNOWN")
+                if status not in ("FILLED", "MATCHED", "LIVE"):
+                    logger.warning("unexpected_order_status", status=status, order_id=order_id)
+                    status = "REJECTED"
             
             # Extract actual fill price and size from API response, falling back to request values
             fill_price = float(response.get("avg_price") or response.get("fill_price") or order.price)
             filled_size = float(response.get("filled_size") or response.get("size") or order.size)
+
+            # Guard against zero-fill responses being recorded as fills
+            if status == "FILLED" and filled_size <= 0:
+                logger.warning("zero_fill_anomaly", order_id=order_id, raw_response=response)
+                status = "REJECTED"
             
             if status == "FILLED":
                 fee_rate = self.fee_rates.get(order.market_id, self.settings.trading.polymarket_fee)
@@ -227,10 +241,20 @@ class LiveExecutor(ExecutorProtocol):
                 filled_size=filled_size if status == "FILLED" else 0.0,
                 fill_price=fill_price if status == "FILLED" else 0.0,
             )
-            
+
+        except ConnectionError as e:
+            # Network / connection issues — distinct from liquidity
+            logger.error("live_order_network_error", error=str(e), market_id=order.market_id[:10])
+            self.stats.record_risk_rejection()
+            return OrderAck(order_id="failed", status="REJECTED", message=f"Network error: {e}")
+        except ValueError as e:
+            # Signer validation errors (bad token_id, price out of range, etc.)
+            logger.error("live_order_signing_error", error=str(e), market_id=order.market_id[:10])
+            self.stats.record_risk_rejection()
+            return OrderAck(order_id="failed", status="REJECTED", message=f"Signing error: {e}")
         except Exception as e:
             logger.error("live_order_failed", error=str(e), market_id=order.market_id[:10])
-            self.stats.record_no_liquidity()
+            self.stats.record_risk_rejection()
             return OrderAck(order_id="failed", status="REJECTED", message=str(e))
 
     async def cancel_order(self, order_id: str) -> bool:

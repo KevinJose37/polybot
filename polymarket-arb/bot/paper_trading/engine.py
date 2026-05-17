@@ -162,58 +162,66 @@ class PaperExecutor(ExecutorProtocol):
         except RiskKillSwitchTriggered as e:
             return OrderAck(order_id="failed", status="REJECTED", message=str(e))
 
-        # 1. Inject Latency
-        await inject_latency(
-            self.settings.paper_trading.mean_latency_ms,
-            self.settings.paper_trading.std_latency_ms
-        )
-        
-        # 2. Fill logic via depth-weighted VWAP
+        # 1. Generate order ID and track as inflight (mirrors LiveExecutor)
         book = self.orderbooks.get(order.market_id)
         order_id = hashlib.sha256(f"{order.market_id}_{order.side}_{order.price}".encode()).hexdigest()[:16]
-        
+
         if not book:
             return OrderAck(order_id=order_id, status="REJECTED")
 
-        is_filled, filled_size, vwap_price = simulate_fill(
-            order.size, book, str(order.side), slippage_pct=self.settings.trading.slippage_est
-        )
-        
-        if is_filled and filled_size > 0:
-            fee_rate = self.fee_rates.get(order.market_id, self.settings.trading.polymarket_fee)
-            from bot.utils.math import polymarket_taker_fee
-            total_fee = polymarket_taker_fee(vwap_price, filled_size, fee_rate, side=str(order.side))
-            self.position_manager.add_fill(
-                market_id=order.market_id,
-                side=order.side,
-                price=vwap_price,
-                size=filled_size,
-                fee=total_fee
+        self.fill_manager.add_inflight_order(order_id, {
+            "market": order.market_id, "size": order.size, "side": order.side,
+        })
+
+        try:
+            # 2. Inject Latency
+            await inject_latency(
+                self.settings.paper_trading.mean_latency_ms,
+                self.settings.paper_trading.std_latency_ms
             )
-            
-            opp_type = opp.type.value if opp else ""
-            opp_edge = opp.edge if opp else 0.0
-            opp_id = opp.opportunity_id if opp else ""
-            self.stats.record_fill(
-                market_id=order.market_id,
-                side=order.side,
-                price=vwap_price,
-                size=filled_size,
-                fee=total_fee,
-                opp_type=opp_type,
-                opp_edge=opp_edge,
-                opp_id=opp_id,
+
+            # 3. Fill logic via depth-weighted VWAP
+            is_filled, filled_size, vwap_price = simulate_fill(
+                order.size, book, str(order.side), slippage_pct=self.settings.trading.slippage_est
             )
-            
-            return OrderAck(
-                order_id=order_id,
-                status="FILLED",
-                filled_size=filled_size,
-                fill_price=vwap_price,
-            )
-        else:
-            self.stats.record_no_liquidity()
-            return OrderAck(order_id=order_id, status="REJECTED")
+
+            if is_filled and filled_size > 0:
+                fee_rate = self.fee_rates.get(order.market_id, self.settings.trading.polymarket_fee)
+                from bot.utils.math import polymarket_taker_fee
+                total_fee = polymarket_taker_fee(vwap_price, filled_size, fee_rate, side=str(order.side))
+                self.position_manager.add_fill(
+                    market_id=order.market_id,
+                    side=order.side,
+                    price=vwap_price,
+                    size=filled_size,
+                    fee=total_fee
+                )
+
+                opp_type = opp.type.value if opp else ""
+                opp_edge = opp.edge if opp else 0.0
+                opp_id = opp.opportunity_id if opp else ""
+                self.stats.record_fill(
+                    market_id=order.market_id,
+                    side=order.side,
+                    price=vwap_price,
+                    size=filled_size,
+                    fee=total_fee,
+                    opp_type=opp_type,
+                    opp_edge=opp_edge,
+                    opp_id=opp_id,
+                )
+
+                return OrderAck(
+                    order_id=order_id,
+                    status="FILLED",
+                    filled_size=filled_size,
+                    fill_price=vwap_price,
+                )
+            else:
+                self.stats.record_no_liquidity()
+                return OrderAck(order_id=order_id, status="REJECTED")
+        finally:
+            self.fill_manager.remove_inflight_order(order_id)
 
     async def cancel_order(self, order_id: str) -> bool:
         """Cancel a single order."""

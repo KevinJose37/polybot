@@ -36,7 +36,11 @@ class PolymarketWSClient:
         """Add token IDs to subscriptions."""
         self._subs.update(token_ids)
         if self._ws and self._running:
-            asyncio.create_task(self._send_subscriptions())
+            task = asyncio.create_task(self._send_subscriptions())
+            task.add_done_callback(
+                lambda t: logger.error("ws_subscribe_task_failed", error=str(t.exception())) 
+                if not t.cancelled() and t.exception() else None
+            )
 
     def set_callback(self, callback: Callable[[dict], Awaitable[None]]) -> None:
         """Set the async callback for incoming messages."""
@@ -71,8 +75,7 @@ class PolymarketWSClient:
                         self.last_message_ts = current_timestamp_ms()
                         if self._callback:
                             try:
-                                loop = asyncio.get_event_loop()
-                                data = await loop.run_in_executor(None, json.loads, message)
+                                data = json.loads(message)
                                 await self._callback(data)
                             except json.JSONDecodeError:
                                 pass

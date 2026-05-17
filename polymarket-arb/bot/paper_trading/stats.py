@@ -116,6 +116,10 @@ class TradingStats:
         
         TYPE-C (parity) trades count each leg individually (2 legs = 2 W or 2 L)
         since they execute both sides. TYPE-B counts as 1 per opportunity.
+        Note: The absolute wins/losses returned represent leg counts, not trade
+        counts. This can inflate the displayed numbers (e.g., 42W/2L) compared
+        to the actual number of opportunities executed.
+        
         TYPE-B trades are excluded while their markets are still active.
         """
         if len(self.trades) < 2:

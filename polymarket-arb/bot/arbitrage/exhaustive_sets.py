@@ -80,12 +80,14 @@ def detect_exhaustive_parity(
         cost = 1.0 - edge
         b = edge / cost if cost > 0 else 0.0
             
+        avg_price = (up_price + down_price) / 2.0
         order_size = calculate_order_size(
             p=p,
             b=b,
             capital=capital,
             max_size=max_size,
-            multiplier=multiplier
+            multiplier=multiplier,
+            avg_price=avg_price
         )
         
         if order_size < min_notional:
