@@ -150,7 +150,7 @@ class PaperExecutor(ExecutorProtocol):
                                     size=actual_filled_size
                                 )
                                 logger.critical("unwinding_leg", market_id=filled_leg.market_id, side=unwind_side, size=actual_filled_size)
-                                asyncio.create_task(self.place_order(unwind_order, check_portfolio=False))
+                                asyncio.create_task(self.place_order(unwind_order, check_portfolio=False, ignore_kill_switch=True))
                                 
                         self.risk_engine.activate_kill_switch(f"Unhedged leg imbalance on opp {opportunity.opportunity_id[:8]}. Leg {i} failed after {filled_legs} filled. Initiated unwind.")
 
@@ -170,11 +170,11 @@ class PaperExecutor(ExecutorProtocol):
         finally:
             self.risk_engine.release_exposure(total_notional)
 
-    async def place_order(self, order: OrderRequest, opp: ArbOpportunity | None = None, check_portfolio: bool = True) -> OrderAck:
+    async def place_order(self, order: OrderRequest, opp: ArbOpportunity | None = None, check_portfolio: bool = True, ignore_kill_switch: bool = False) -> OrderAck:
         """Place a single order and simulate fill."""
         try:
             if not self.risk_engine.validate_order(
-                order.market_id, order.size, price=order.price, orderbooks=self.orderbooks, check_portfolio=check_portfolio, side=order.side
+                order.market_id, order.size, price=order.price, orderbooks=self.orderbooks, check_portfolio=check_portfolio, side=order.side, ignore_kill_switch=ignore_kill_switch
             ):
                 return OrderAck(order_id="failed", status="REJECTED", message="Risk Engine Rejected")
         except RiskKillSwitchTriggered as e:
@@ -202,7 +202,7 @@ class PaperExecutor(ExecutorProtocol):
 
             # 3. Fill logic via depth-weighted VWAP
             is_filled, filled_size, vwap_price = simulate_fill(
-                order.size, book, str(order.side), slippage_pct=self.settings.trading.slippage_est, order_type=order.order_type, latency_ms=latency_ms
+                order.size, book, str(order.side), slippage_pct=self.settings.trading.slippage_est, order_type="IOC", latency_ms=latency_ms, limit_price=order.price
             )
 
             if is_filled and filled_size > 0:

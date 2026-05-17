@@ -8,10 +8,10 @@ import math
 import random
 
 
-def simulate_fill(order_size: float, book: LocalOrderBook, side: str, slippage_pct: float = 0.005, order_type: str = "FOK", latency_ms: int = 0) -> tuple[bool, float, float]:
+def simulate_fill(order_size: float, book: LocalOrderBook, side: str, slippage_pct: float = 0.005, order_type: str = "IOC", latency_ms: int = 0, limit_price: float | None = None) -> tuple[bool, float, float]:
     """
     Simulate a fill by walking the L2 orderbook to compute depth-weighted VWAP.
-    Models adverse selection and enforces FOK (Fill Or Kill) mechanics.
+    Models adverse selection and enforces FOK/IOC and Limit Price mechanics.
     """
     if book.is_stale():
         return False, 0.0, 0.0
@@ -39,6 +39,12 @@ def simulate_fill(order_size: float, book: LocalOrderBook, side: str, slippage_p
         if remaining <= 0:
             break
             
+        if limit_price is not None:
+            if side == "BUY" and price > limit_price:
+                break
+            if side == "SELL" and price < limit_price:
+                break
+                
         take_size = min(remaining, size)
         total_cost += take_size * price
         filled_size += take_size

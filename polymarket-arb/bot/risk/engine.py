@@ -134,7 +134,8 @@ class RiskEngine:
         orderbooks: Optional[dict] = None,
         check_portfolio: bool = True,
         side: str = "BUY",
-        is_reserved: bool = False
+        is_reserved: bool = False,
+        ignore_kill_switch: bool = False
     ) -> bool:
         """
         Validates if an order is safe to place.
@@ -147,7 +148,7 @@ class RiskEngine:
             orderbooks: Optional dict of token_id -> LocalOrderBook for stale-feed checks.
         """
         # 1. Kill switch check
-        if self.kill_switch_active:
+        if self.kill_switch_active and not ignore_kill_switch:
             raise RiskKillSwitchTriggered("Kill switch is active. Halting execution.")
 
         # 2. Check total daily drawdown

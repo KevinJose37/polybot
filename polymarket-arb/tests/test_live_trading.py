@@ -171,6 +171,8 @@ async def test_paper_executor_matched_sizing() -> None:
     # Set high limits so this test exercises matched sizing, not risk rejection
     settings.risk.max_exposure_per_asset = 500.0
     settings.risk.max_portfolio_exposure = 1000.0
+    settings.paper_trading.mean_latency_ms = 0
+    settings.paper_trading.std_latency_ms = 0
     pm = PositionManager()
     fm = FillManager()
     risk = RiskEngine(settings, pm)

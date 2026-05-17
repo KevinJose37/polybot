@@ -28,7 +28,7 @@ def test_simulate_fill() -> None:
     
     # order_size = 100, depth = 10
     book.asks = {0.51: 10.0}
-    is_filled, filled_size, vwap = simulate_fill(100.0, book, "BUY")
+    is_filled, filled_size, vwap = simulate_fill(100.0, book, "BUY", limit_price=1.00)
     assert is_filled
     assert filled_size == 10.0
     assert abs(vwap - 0.51) < 0.001
@@ -166,7 +166,7 @@ def test_simulate_fill_exceeds_total_depth() -> None:
     
     # Total depth = 30 + 20 = 50
     book.asks = {0.50: 30.0, 0.55: 20.0}
-    is_filled, filled_size, vwap = simulate_fill(200.0, book, "BUY")
+    is_filled, filled_size, vwap = simulate_fill(200.0, book, "BUY", limit_price=1.00)
     
     assert is_filled
     assert filled_size == 50.0  # Partial fill at total depth
