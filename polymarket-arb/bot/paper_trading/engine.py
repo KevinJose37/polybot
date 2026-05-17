@@ -152,7 +152,7 @@ class PaperExecutor(ExecutorProtocol):
                                 logger.critical("unwinding_leg", market_id=filled_leg.market_id, side=unwind_side, size=actual_filled_size)
                                 asyncio.create_task(self.place_order(unwind_order, check_portfolio=False, ignore_kill_switch=True))
                                 
-                        self.risk_engine.activate_kill_switch(f"Unhedged leg imbalance on opp {opportunity.opportunity_id[:8]}. Leg {i} failed after {filled_legs} filled. Initiated unwind.")
+                        logger.error("leg_imbalance_unwinding", opp_id=opportunity.opportunity_id[:8], failed_leg=i, filled_legs=filled_legs)
 
             # Forensic log
             if self.forensic:

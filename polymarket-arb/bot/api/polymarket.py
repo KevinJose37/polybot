@@ -118,34 +118,17 @@ class PolymarketRESTClient(PolymarketAdapter):
     async def get_market_resolution(self, condition_id: str) -> dict[str, float] | None:
         """Fetch exact settlement prices for a resolved market using its condition_id."""
         session = await self._get_session()
-        url = f"{self.gamma_api_url}/markets?condition_id={condition_id}"
+        url = f"{self.clob_api_url}/markets/{condition_id}"
         try:
             async with session.get(url) as response:
                 if response.status == 200:
-                    data = await response.json()
-                    if isinstance(data, list) and len(data) > 0:
-                        m = data[0]
-                        # Only return resolution if actually closed or inactive
-                        if m.get("closed") or not m.get("active"):
-                            import json
-                            clob_token_ids = m.get("clobTokenIds", [])
-                            if isinstance(clob_token_ids, str):
-                                try:
-                                    clob_token_ids = json.loads(clob_token_ids)
-                                except json.JSONDecodeError:
-                                    clob_token_ids = []
-                            outcome_prices = m.get("outcomePrices", [])
-                            if isinstance(outcome_prices, str):
-                                try:
-                                    outcome_prices = json.loads(outcome_prices)
-                                except json.JSONDecodeError:
-                                    outcome_prices = []
-                            
-                            res = {}
-                            for idx, tid in enumerate(clob_token_ids):
-                                price = float(outcome_prices[idx]) if idx < len(outcome_prices) else 0.5
-                                res[tid] = price
-                            return res
+                    m = await response.json()
+                    # Only return resolution if actually closed or inactive
+                    if m.get("closed") or not m.get("active"):
+                        res = {}
+                        for t in m.get("tokens", []):
+                            res[t["token_id"]] = float(t.get("price", 0.5))
+                        return res
         except Exception as e:
             logger.error("get_market_resolution_error", error=str(e), condition_id=condition_id)
         return None
