@@ -26,10 +26,10 @@ def setup_file_logging(filename: str) -> None:
         maxBytes=50 * 1024 * 1024,
         backupCount=1,
     )
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(logging.Formatter("%(message)s"))
 
     root = logging.getLogger()
     root.handlers.clear()
     root.addHandler(file_handler)
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
