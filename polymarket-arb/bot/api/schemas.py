@@ -37,6 +37,7 @@ class OrderRequest(BaseModel):
     side: Literal["BUY", "SELL"]
     price: float
     size: float
+    order_type: Literal["FOK", "GTC"] = "FOK"
 
 
 class OrderAck(BaseModel):

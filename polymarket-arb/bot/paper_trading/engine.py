@@ -193,14 +193,16 @@ class PaperExecutor(ExecutorProtocol):
 
         try:
             # 2. Inject Latency
+            start_lat = current_timestamp_ms()
             await inject_latency(
                 self.settings.paper_trading.mean_latency_ms,
                 self.settings.paper_trading.std_latency_ms
             )
+            latency_ms = current_timestamp_ms() - start_lat
 
             # 3. Fill logic via depth-weighted VWAP
             is_filled, filled_size, vwap_price = simulate_fill(
-                order.size, book, str(order.side), slippage_pct=self.settings.trading.slippage_est
+                order.size, book, str(order.side), slippage_pct=self.settings.trading.slippage_est, order_type=order.order_type, latency_ms=latency_ms
             )
 
             if is_filled and filled_size > 0:

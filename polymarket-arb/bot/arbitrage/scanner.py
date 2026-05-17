@@ -121,7 +121,8 @@ class ArbitrageScanner:
                 min_edge=min_edge,
                 min_notional=min_notional,
                 capital=capital,
-                multiplier=self.settings.trading.kelly_fraction_multiplier
+                multiplier=self.settings.trading.kelly_fraction_multiplier,
+                gas_fee_est=self.settings.trading.gas_fee_per_leg * 2
             )
             if exhaustive_opp:
                 exhaustive_opp.timestamp_ms = current_timestamp_ms()
@@ -134,64 +135,60 @@ class ArbitrageScanner:
             
             if not market_5m or not market_15m:
                 continue
-            if len(market_5m.tokens) < 1 or len(market_15m.tokens) < 1:
+            if len(market_5m.tokens) < 2 or len(market_15m.tokens) < 1:
                 continue
 
-            yes_5m = market_5m.tokens[0].token_id
+            no_5m = market_5m.tokens[1].token_id
             yes_15m = market_15m.tokens[0].token_id
             
-            book_5m = orderbooks.get(yes_5m)
-            book_15m = orderbooks.get(yes_15m)
+            book_5m_no = orderbooks.get(no_5m)
+            book_15m_yes = orderbooks.get(yes_15m)
                     
-            if not book_5m or not book_15m:
+            if not book_5m_no or not book_15m_yes:
                 skipped_no_data += 1
                 continue
 
-            if book_5m.is_stale() or book_15m.is_stale():
+            if book_5m_no.is_stale() or book_15m_yes.is_stale():
                 skipped_stale += 1
                 continue
 
-            bid_5m = book_5m.best_bid()
-            ask_15m = book_15m.best_ask()
+            ask_5m_no = book_5m_no.best_ask()
+            ask_15m_yes = book_15m_yes.best_ask()
             
-            if bid_5m is None or ask_15m is None:
+            if ask_5m_no is None or ask_15m_yes is None:
                 skipped_no_data += 1
                 continue
 
-            depth_5m = book_5m.bid_depth(levels=1)
-            depth_15m = book_15m.ask_depth(levels=1)
+            depth_5m_no = book_5m_no.ask_depth(levels=1)
+            depth_15m_yes = book_15m_yes.ask_depth(levels=1)
 
-            if not depth_5m or not depth_15m:
+            if not depth_5m_no or not depth_15m_yes:
                 skipped_no_data += 1
                 continue
 
-            _, vol_5m = depth_5m[0]
-            _, vol_15m = depth_15m[0]
+            _, vol_5m_no = depth_5m_no[0]
+            _, vol_15m_yes = depth_15m_yes[0]
 
-            fee_5m = self.fee_rates.get(yes_5m, default_fee)
+            fee_5m = self.fee_rates.get(no_5m, default_fee)
             fee_15m = self.fee_rates.get(yes_15m, default_fee)
-
-            inventory_yes_5m = 0.0
-            if self.position_manager:
-                inventory_yes_5m = self.position_manager.get_position(yes_5m).size
 
             mono_opp = detect_monotonicity(
                 market_5m_id=market_5m_id,
                 market_15m_id=market_15m_id,
-                token_yes_5m=yes_5m,
+                token_no_5m=no_5m,
                 token_yes_15m=yes_15m,
-                bid_5m=bid_5m,
-                ask_15m=ask_15m,
-                vol_5m=vol_5m,
-                vol_15m=vol_15m,
-                inventory_yes_5m=inventory_yes_5m,
+                ask_5m_no=ask_5m_no,
+                ask_15m_yes=ask_15m_yes,
+                vol_5m_no=vol_5m_no,
+                vol_15m_yes=vol_15m_yes,
                 fee_rate_5m=fee_5m,
                 fee_rate_15m=fee_15m,
                 slippage=slippage,
                 min_edge=min_edge,
                 min_notional=min_notional,
                 capital=capital,
-                multiplier=self.settings.trading.kelly_fraction_multiplier
+                multiplier=self.settings.trading.kelly_fraction_multiplier,
+                gas_fee_est=self.settings.trading.gas_fee_per_leg * 2
             )
             if mono_opp:
                 mono_opp.timestamp_ms = current_timestamp_ms()
