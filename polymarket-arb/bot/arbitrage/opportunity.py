@@ -1,7 +1,7 @@
 """
 Arbitrage opportunity models.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 
@@ -29,3 +29,4 @@ class ArbOpportunity:
     size: float
     legs: list[ArbLeg]
     timestamp_ms: int
+    metadata: dict = field(default_factory=dict)

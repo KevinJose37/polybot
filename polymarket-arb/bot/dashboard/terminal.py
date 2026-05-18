@@ -324,6 +324,7 @@ class TerminalDashboard:
         pos_table.add_column("Avg Px", justify="right")
         pos_table.add_column("Notional", justify="right")
         pos_table.add_column("Realized", justify="right")
+        pos_table.add_column("Unrealized", justify="right")
         
         active_positions = [
             (mid, p) for mid, p in position_manager.positions.items() if p.size != 0
@@ -337,11 +338,31 @@ class TerminalDashboard:
                 if m.active and not m.closed:
                     for t in m.tokens:
                         active_token_ids.add(t.token_id)
+                        
+            # Build mid prices for unrealized pnl calculation
+            mid_prices = {}
+            for t_id, b in orderbooks.items():
+                bid = max(b.bids.keys()) if b.bids else None
+                ask = min(b.asks.keys()) if b.asks else None
+                if bid is not None and ask is not None:
+                    mid_prices[t_id] = (bid + ask) / 2.0
+                elif bid is not None:
+                    mid_prices[t_id] = bid
+                elif ask is not None:
+                    mid_prices[t_id] = ask
             for mid, p in active_positions[:10]:  # Show top 10
                 side = "[green]LONG[/]" if p.size > 0 else "[red]SHORT[/]"
                 rpnl_color = "green" if p.realized_pnl >= 0 else "red"
                 readable_name = self.token_to_name.get(mid, mid[:10] + "…")
+                market_ts = self.token_to_ts.get(mid, 0)
+                if market_ts > 0:
+                    ts_str = datetime.fromtimestamp(market_ts).strftime("%H:%M")
+                    readable_name = f"{readable_name} {ts_str}"
+                
                 notional = abs(p.size * p.avg_price)
+                
+                unrealized = position_manager.get_market_unrealized_pnl(mid, mid_prices)
+                upnl_color = "green" if unrealized >= 0 else "red"
                 
                 # Determine position status from Polymarket market state
                 # (active_token_ids built from current discovery results)
@@ -369,11 +390,12 @@ class TerminalDashboard:
                     f"{p.avg_price:.4f}",
                     f"${notional:,.2f}",
                     f"[{rpnl_color}]${p.realized_pnl:.2f}[/]",
+                    f"[{upnl_color}]${unrealized:.2f}[/]",
                 )
             if len(active_positions) > 10:
-                pos_table.add_row(f"...+{len(active_positions)-10} more", "", "", "", "", "", "")
+                pos_table.add_row(f"...+{len(active_positions)-10} more", "", "", "", "", "", "", "")
         else:
-            pos_table.add_row("[dim]No open positions[/]", "", "", "", "", "", "")
+            pos_table.add_row("[dim]No open positions[/]", "", "", "", "", "", "", "")
         
         self.layout["positions"].update(
             Panel(pos_table, title=f"[bold]Positions ({len(active_positions)})[/]", border_style="yellow")

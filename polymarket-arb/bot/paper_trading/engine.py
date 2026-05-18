@@ -99,18 +99,16 @@ class PaperExecutor(ExecutorProtocol):
                     size=leg_size
                 )
                 leg_start = current_timestamp_ms()
-                ack = await self.place_order(order, opp=opportunity, check_portfolio=False)
+                # DRY RUN: commit=False
+                ack = await self.place_order(order, opp=opportunity, check_portfolio=False, commit=False)
                 leg_end = current_timestamp_ms()
                 acks.append(ack)
 
                 if ack.status == "FILLED":
-                    # Use the actual fill size returned by place_order,
-                    # NOT the cumulative position size.
                     actual_fill_size = ack.filled_size
                     if matched_size is None:
                         matched_size = actual_fill_size
 
-                    # Capture fill details for forensic log
                     fee_rate = self.fee_rates.get(leg.market_id, self.settings.trading.polymarket_fee)
                     from bot.utils.math import polymarket_taker_fee
                     fee = polymarket_taker_fee(ack.fill_price, actual_fill_size, fee_rate, side=str(leg.side))
@@ -123,36 +121,35 @@ class PaperExecutor(ExecutorProtocol):
                     leg_fill_times.append(leg_end)
                     filled_legs.append(i)
                 else:
-                    fill_details.append({
-                        "fill_price": 0.0, "filled_size": 0.0, "fee": 0.0,
-                        "latency_ms": leg_end - leg_start,
-                    })
-                    if filled_legs:
-                        logger.warning(
-                            "leg_imbalance",
-                            opp_id=opportunity.opportunity_id[:8],
-                            filled=filled_legs, failed=i,
-                        )
-                        self.stats.record_leg_imbalance()
-                        
-                        # Unwind previously filled legs
-                        for filled_idx in filled_legs:
-                            filled_leg = opportunity.legs[filled_idx]
-                            filled_detail = fill_details[filled_idx]
-                            actual_filled_size = filled_detail["filled_size"]
-                            if actual_filled_size > 0:
-                                unwind_side = "SELL" if filled_leg.side == "BUY" else "BUY"
-                                unwind_price = 0.001 if unwind_side == "SELL" else 0.999
-                                unwind_order = OrderRequest(
-                                    market_id=filled_leg.market_id,
-                                    side=unwind_side,
-                                    price=unwind_price,
-                                    size=actual_filled_size
-                                )
-                                logger.critical("unwinding_leg", market_id=filled_leg.market_id, side=unwind_side, size=actual_filled_size)
-                                asyncio.create_task(self.place_order(unwind_order, check_portfolio=False, ignore_kill_switch=True))
-                                
-                        logger.error("leg_imbalance_unwinding", opp_id=opportunity.opportunity_id[:8], failed_leg=i, filled_legs=filled_legs)
+                    # Leg failed to fill. Under atomic FOK, the entire opportunity fails.
+                    logger.warning("atomic_leg_failure", opp_id=opportunity.opportunity_id[:8], failed_leg=i)
+                    self.stats.record_leg_imbalance() # Re-using this metric to track failed atomic executions
+                    return []
+
+            # If we reach here, ALL legs filled successfully in the dry run.
+            # Now we commit all of them to the position manager and stats.
+            for i, leg in enumerate(opportunity.legs):
+                ack = acks[i]
+                detail = fill_details[i]
+                
+                self.position_manager.add_fill(
+                    market_id=leg.market_id,
+                    side=leg.side,
+                    price=ack.fill_price,
+                    size=ack.filled_size,
+                    fee=detail["fee"]
+                )
+                
+                self.stats.record_fill(
+                    market_id=leg.market_id,
+                    side=leg.side,
+                    price=ack.fill_price,
+                    size=ack.filled_size,
+                    fee=detail["fee"],
+                    opp_type=opportunity.type.value,
+                    opp_edge=opportunity.edge,
+                    opp_id=opportunity.opportunity_id,
+                )
 
             # Forensic log
             if self.forensic:
@@ -170,8 +167,8 @@ class PaperExecutor(ExecutorProtocol):
         finally:
             self.risk_engine.release_exposure(total_notional)
 
-    async def place_order(self, order: OrderRequest, opp: ArbOpportunity | None = None, check_portfolio: bool = True, ignore_kill_switch: bool = False) -> OrderAck:
-        """Place a single order and simulate fill."""
+    async def place_order(self, order: OrderRequest, opp: ArbOpportunity | None = None, check_portfolio: bool = True, ignore_kill_switch: bool = False, commit: bool = True) -> OrderAck:
+        """Place a single order and simulate fill. If commit=False, performs a dry run."""
         try:
             if not self.risk_engine.validate_order(
                 order.market_id, order.size, price=order.price, orderbooks=self.orderbooks, check_portfolio=check_portfolio, side=order.side, ignore_kill_switch=ignore_kill_switch
@@ -209,27 +206,29 @@ class PaperExecutor(ExecutorProtocol):
                 fee_rate = self.fee_rates.get(order.market_id, self.settings.trading.polymarket_fee)
                 from bot.utils.math import polymarket_taker_fee
                 total_fee = polymarket_taker_fee(vwap_price, filled_size, fee_rate, side=str(order.side))
-                self.position_manager.add_fill(
-                    market_id=order.market_id,
-                    side=order.side,
-                    price=vwap_price,
-                    size=filled_size,
-                    fee=total_fee
-                )
+                
+                if commit:
+                    self.position_manager.add_fill(
+                        market_id=order.market_id,
+                        side=order.side,
+                        price=vwap_price,
+                        size=filled_size,
+                        fee=total_fee
+                    )
 
-                opp_type = opp.type.value if opp else ""
-                opp_edge = opp.edge if opp else 0.0
-                opp_id = opp.opportunity_id if opp else ""
-                self.stats.record_fill(
-                    market_id=order.market_id,
-                    side=order.side,
-                    price=vwap_price,
-                    size=filled_size,
-                    fee=total_fee,
-                    opp_type=opp_type,
-                    opp_edge=opp_edge,
-                    opp_id=opp_id,
-                )
+                    opp_type = opp.type.value if opp else ""
+                    opp_edge = opp.edge if opp else 0.0
+                    opp_id = opp.opportunity_id if opp else ""
+                    self.stats.record_fill(
+                        market_id=order.market_id,
+                        side=order.side,
+                        price=vwap_price,
+                        size=filled_size,
+                        fee=total_fee,
+                        opp_type=opp_type,
+                        opp_edge=opp_edge,
+                        opp_id=opp_id,
+                    )
 
                 return OrderAck(
                     order_id=order_id,

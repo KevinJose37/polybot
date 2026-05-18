@@ -343,6 +343,15 @@ class PositionManager:
         pos.realized_pnl += pnl
         self.total_realized_pnl += pnl
         
+        if hasattr(self, 'forensic') and self.forensic:
+            self.forensic.log_position_settlement(
+                market_id=market_id,
+                size=pos.size,
+                avg_price=pos.avg_price,
+                settle_price=settle_price,
+                realized_pnl=pnl,
+            )
+            
         self.resolved_positions.append({
             "market_id": market_id,
             "size": pos.size,

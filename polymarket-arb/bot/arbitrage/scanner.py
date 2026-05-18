@@ -7,7 +7,6 @@ from bot.api.schemas import MarketSnapshot
 from bot.orderbook.local_book import LocalOrderBook
 from bot.market_discovery.market_relationships import MarketTopology
 from bot.arbitrage.opportunity import ArbOpportunity
-from bot.arbitrage.monotonicity import detect_monotonicity
 from bot.arbitrage.exhaustive_sets import detect_exhaustive_parity
 from bot.settings import Settings
 from bot.utils.clocks import current_timestamp_ms
@@ -128,71 +127,8 @@ class ArbitrageScanner:
                 exhaustive_opp.timestamp_ms = current_timestamp_ms()
                 opportunities.append(exhaustive_opp)
 
-        # 2. Type B (Monotonicity) — iterate paired 5m and 15m markets (same asset, same timestamp)
-        for market_5m_id, market_15m_id in self.topology.monotonicity_pairs:
-            market_5m = self.topology.markets.get(market_5m_id)
-            market_15m = self.topology.markets.get(market_15m_id)
-            
-            if not market_5m or not market_15m:
-                continue
-            if len(market_5m.tokens) < 2 or len(market_15m.tokens) < 1:
-                continue
-
-            no_5m = market_5m.tokens[1].token_id
-            yes_15m = market_15m.tokens[0].token_id
-            
-            book_5m_no = orderbooks.get(no_5m)
-            book_15m_yes = orderbooks.get(yes_15m)
-                    
-            if not book_5m_no or not book_15m_yes:
-                skipped_no_data += 1
-                continue
-
-            if book_5m_no.is_stale() or book_15m_yes.is_stale():
-                skipped_stale += 1
-                continue
-
-            ask_5m_no = book_5m_no.best_ask()
-            ask_15m_yes = book_15m_yes.best_ask()
-            
-            if ask_5m_no is None or ask_15m_yes is None:
-                skipped_no_data += 1
-                continue
-
-            depth_5m_no = book_5m_no.ask_depth(levels=1)
-            depth_15m_yes = book_15m_yes.ask_depth(levels=1)
-
-            if not depth_5m_no or not depth_15m_yes:
-                skipped_no_data += 1
-                continue
-
-            _, vol_5m_no = depth_5m_no[0]
-            _, vol_15m_yes = depth_15m_yes[0]
-
-            fee_5m = self.fee_rates.get(no_5m, default_fee)
-            fee_15m = self.fee_rates.get(yes_15m, default_fee)
-
-            mono_opp = detect_monotonicity(
-                market_5m_id=market_5m_id,
-                market_15m_id=market_15m_id,
-                token_no_5m=no_5m,
-                token_yes_15m=yes_15m,
-                ask_5m_no=ask_5m_no,
-                ask_15m_yes=ask_15m_yes,
-                vol_5m_no=vol_5m_no,
-                vol_15m_yes=vol_15m_yes,
-                fee_rate_5m=fee_5m,
-                fee_rate_15m=fee_15m,
-                slippage=slippage,
-                min_edge=min_edge,
-                min_notional=min_notional,
-                capital=capital,
-                multiplier=self.settings.trading.kelly_fraction_multiplier,
-                gas_fee_est=self.settings.trading.gas_fee_per_leg * 2
-            )
-            if mono_opp:
-                mono_opp.timestamp_ms = current_timestamp_ms()
-                opportunities.append(mono_opp)
+        # Type B (Monotonicity) has been removed due to structural flaws
+        # with differing strike prices across Polymarket timeframes.
         
         # Heartbeat log every 200 scans (keeps logs clean)
         self._scan_count += 1

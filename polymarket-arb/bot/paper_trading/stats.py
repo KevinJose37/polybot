@@ -165,7 +165,7 @@ class TradingStats:
                     wins_by_type[opp_type] += leg_count
                 
         result = {}
-        for t in ["TYPE-B", "TYPE-C"]:
+        for t in ["TYPE-C"]:
             if totals_by_type[t] > 0:
                 wins = wins_by_type[t]
                 losses = totals_by_type[t] - wins
@@ -291,7 +291,7 @@ class TradingStats:
                 pnl_by[opp_type] += pnl
 
         # Ensure active types are present
-        for t in ["TYPE-B", "TYPE-C"]:
+        for t in ["TYPE-C"]:
             if t not in pnl_by:
                 pnl_by[t] = 0.0
 

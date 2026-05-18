@@ -200,8 +200,8 @@ class PolymarketRESTClient(PolymarketAdapter):
                     logger.warning("get_fee_rate_failed", status=response.status, token_id=token_id)
                     return None
                 data = await response.json()
-                # Response typically contains: {"fee_rate": "0.03", ...}
-                fee_rate_str = data.get("fee_rate") or data.get("feeRate") or data.get("taker_fee_rate")
+                # Response typically contains: {"fee_rate": "0.03", ...} or {"base_fee": ...}
+                fee_rate_str = data.get("fee_rate") or data.get("feeRate") or data.get("taker_fee_rate") or data.get("base_fee")
                 if fee_rate_str is not None:
                     return float(fee_rate_str)
                 logger.warning("get_fee_rate_no_value", token_id=token_id, response_keys=list(data.keys()))

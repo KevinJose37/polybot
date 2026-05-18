@@ -49,35 +49,64 @@ def detect_monotonicity(
     buy_fee_15m = fee_per_share(ask_15m_yes, fee_rate_15m, side="BUY")
     
     cost = ask_5m_no + buy_fee_5m + slippage + ask_15m_yes + buy_fee_15m + slippage + gas_fee_est
-    edge = 1.0 - cost
+    
+    # Proper 3-outcome Kelly modeling for Inverted-V paths
+    # We blend theoretical assumptions with market realities to avoid overconfidence.
+    # Theoretical: 5m NO should be 1.0 - 15m YES
+    confidence = 0.5
+    p_A_theo = 1.0 - ask_15m_yes
+    p_A_market = ask_5m_no
+    p_A = confidence * p_A_theo + (1.0 - confidence) * p_A_market
+    p_B = ask_15m_yes
+    
+    expected_payout = p_A + p_B
+    edge = expected_payout - cost
 
     if edge > min_edge:
         max_size = min(vol_5m_no, vol_15m_yes)
         if max_size <= 0:
             return None
         
-        # Unlike parity arb (guaranteed $1.00 payout), monotonicity trades
-        # depend on actual settlement outcomes across different timeframes.
-        # Using p=0.80 as a conservative discount for settlement uncertainty.
-        p = 0.80
-        b = edge / cost if cost > 0 else 0.0
+        # Maximize extreme outcomes (Inverted-V) to calculate a conservative variance
+        p_0 = min(1.0 - p_A, 1.0 - p_B)
+        p_2 = p_0 + p_A + p_B - 1.0
+        p_1 = p_A + p_B - 2.0 * p_2
         
+        # Ensure floating point stability
+        p_0 = max(0.0, p_0)
+        p_2 = max(0.0, p_2)
+        p_1 = max(0.0, p_1)
+        
+        mu = edge / cost if cost > 0 else 0.0
+        if mu <= 0:
+            return None
+            
+        R_2 = (2.0 - cost) / cost
+        R_1 = (1.0 - cost) / cost
+        R_0 = -1.0
+        
+        expected_r2 = p_2 * (R_2 ** 2) + p_1 * (R_1 ** 2) + p_0 * (R_0 ** 2)
+        variance = expected_r2 - (mu ** 2)
+        
+        if variance <= 0:
+            return None
+            
+        # Continuous Kelly fraction
+        kelly_fraction = mu / variance
+        fractional_kelly = kelly_fraction * multiplier
+        
+        kelly_size = fractional_kelly * capital
         avg_price = (ask_5m_no + ask_15m_yes) / 2.0
-        order_size = calculate_order_size(
-            p=p,
-            b=b,
-            capital=capital,
-            max_size=max_size,
-            multiplier=multiplier,
-            avg_price=avg_price
-        )
+        max_notional = max_size * avg_price
+        
+        order_size = min(max_notional, kelly_size)
         
         if order_size < min_notional:
             return None
             
         opp_id = hashlib.sha256(f"B_{market_5m_id}_{market_15m_id}_{ask_5m_no:.6f}_{ask_15m_yes:.6f}".encode()).hexdigest()[:16]
         
-        return ArbOpportunity(
+        opp = ArbOpportunity(
             opportunity_id=opp_id,
             type=ArbType.MONOTONICITY,
             edge=edge,
@@ -88,8 +117,17 @@ def detect_monotonicity(
                 # Buy 15m YES
                 ArbLeg(market_id=token_yes_15m, side="BUY", price=ask_15m_yes, size=order_size)
             ],
-            timestamp_ms=0
+            timestamp_ms=0,
+            metadata={
+                "p_A": p_A,
+                "p_B": p_B,
+                "p_0": p_0,
+                "expected_payout": expected_payout,
+                "variance": variance,
+                "kelly_fraction": kelly_fraction
+            }
         )
+        return opp
         
     return None
 

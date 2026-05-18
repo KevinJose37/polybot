@@ -64,6 +64,7 @@ async def run_live_trading() -> None:
     fee_rates: dict[str, float] = {}
     stats = TradingStats()
     forensic = ForensicLogger()
+    position_manager.forensic = forensic
     
     dashboard = TerminalDashboard(mode="live", capital=settings.starting_capital)
     

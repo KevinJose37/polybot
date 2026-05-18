@@ -135,6 +135,7 @@ class ForensicLogger:
                 "slippage_est_used": slippage_est,
                 "kelly_multiplier": kelly_multiplier,
                 "target_notional_usd": round(opp.size, 2),
+                **opp.metadata
             },
             "legs": legs_data,
             "execution_metrics": {
@@ -150,22 +151,25 @@ class ForensicLogger:
         }
         self._write(record)
 
-    def log_settlement(
+    def log_position_settlement(
         self,
-        opp_id: str,
+        market_id: str,
+        size: float,
+        avg_price: float,
+        settle_price: float,
         realized_pnl: float,
-        duration_held_s: float,
     ) -> None:
-        """Log settlement of a previously executed opportunity."""
+        """Log settlement of a position."""
         record = {
-            "opp_id": opp_id,
-            "type": "SETTLEMENT",
+            "type": "POSITION_SETTLED",
             "log_time_ms": current_timestamp_ms(),
+            "market_id": market_id,
             "outcome": {
                 "status": "SETTLED",
+                "size": round(size, 4),
+                "avg_price": round(avg_price, 4),
+                "settle_price": round(settle_price, 4),
                 "realized_pnl_usd": round(realized_pnl, 4),
-                "duration_held_s": round(duration_held_s, 2),
-                "settlement_time_ms": current_timestamp_ms(),
             },
         }
         self._write(record)

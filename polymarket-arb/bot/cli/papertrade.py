@@ -60,6 +60,7 @@ async def run_paper_trading(capital: float, reset: bool) -> None:
     fee_rates: dict[str, float] = {}
     stats = TradingStats()
     forensic = ForensicLogger()
+    position_manager.forensic = forensic
     
     dashboard = TerminalDashboard(mode="paper", capital=capital)
     
