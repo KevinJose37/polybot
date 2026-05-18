@@ -1,10 +1,23 @@
 from pydantic import BaseModel, Field, model_validator
 
 
+class LatencyConfig(BaseModel):
+    place_mean_ms: float = Field(default=50.0, ge=0.0)
+    place_std_ms: float = Field(default=15.0, ge=0.0)
+    cancel_mean_ms: float = Field(default=30.0, ge=0.0)
+    cancel_std_ms: float = Field(default=10.0, ge=0.0)
+    market_data_mean_ms: float = Field(default=20.0, ge=0.0)
+    market_data_std_ms: float = Field(default=5.0, ge=0.0)
+    p_fat_tail: float = Field(default=0.01, ge=0.0, le=1.0)
+    fat_tail_mult: float = Field(default=5.0, ge=1.0)
+
 class Config(BaseModel):
     """
     Configuration for the Adaptive Maker-Side Market Making strategy.
     """
+
+    paper_trading: bool = Field(False, description="Enable paper trading and latency simulation")
+    latency: LatencyConfig = Field(default_factory=LatencyConfig)
 
     spread: float = Field(0.008, description="Target spread to capture")
     skew_factor: float = Field(0.5, description="Factor for inventory skewing")

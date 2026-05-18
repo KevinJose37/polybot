@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 import structlog
 import websockets
 
-from .base import OrderBook, OrderBookAdapter
+from .base import OrderBook, OrderBookAdapter, TradeEvent
 
 logger = structlog.get_logger(__name__)
 
@@ -24,6 +24,7 @@ class PolymarketWSAdapter(OrderBookAdapter):
         self._running = False
         self._subs: set[str] = set()
         self._callback: Callable[[OrderBook], Awaitable[None]] | None = None
+        self._trade_callback: Callable[[TradeEvent], Awaitable[None]] | None = None
 
         # Internal state: market_id -> (bids_dict, asks_dict)
         # dicts are price(float) -> size(float)
@@ -41,6 +42,9 @@ class PolymarketWSAdapter(OrderBookAdapter):
 
     def set_callback(self, callback: Callable[[OrderBook], Awaitable[None]]) -> None:
         self._callback = callback
+
+    def set_trade_callback(self, callback: Callable[[TradeEvent], Awaitable[None]]) -> None:
+        self._trade_callback = callback
 
     async def _send_subscriptions(self) -> None:
         if self._ws and self._subs:
@@ -116,6 +120,21 @@ class PolymarketWSAdapter(OrderBookAdapter):
 
                             for event in events:
                                 self._process_message(event)
+
+                                # Dispatch trade event if present
+                                if self._trade_callback and event.get("event_type") == "trade":
+                                    import time
+                                    try:
+                                        te = TradeEvent(
+                                            market_id=event.get("asset_id", ""),
+                                            price=float(event["price"]),
+                                            size=float(event["size"]),
+                                            timestamp=time.time()
+                                        )
+                                        await self._trade_callback(te)
+                                    except Exception:
+                                        pass
+
                                 if self._callback and event.get("asset_id") in self._books:
                                     book = self._get_orderbook(event["asset_id"])
                                     await self._callback(book)

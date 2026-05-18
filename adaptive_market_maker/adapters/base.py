@@ -6,6 +6,13 @@ from typing import Protocol
 
 
 @dataclass
+class TradeEvent:
+    market_id: str
+    price: float
+    size: float
+    timestamp: float
+
+@dataclass
 class OrderBook:
     market_id: str
     bids: list[tuple[float, float]]  # [(price, size), ...] sorted desc
@@ -24,6 +31,14 @@ class OrderBook:
             return ask
         return None
 
+    def depth_at(self, price: float, side: str) -> float:
+        """Get the total size resting at exactly this price level."""
+        levels = self.bids if side == "BID" else self.asks
+        for p, s in levels:
+            if p == price:
+                return s
+        return 0.0
+
 
 class OrderBookAdapter(Protocol):
     """Interface for subscribing to L2 order books."""
@@ -31,6 +46,7 @@ class OrderBookAdapter(Protocol):
     async def connect_and_run(self) -> None: ...
     async def close(self) -> None: ...
     def set_callback(self, callback: Callable[[OrderBook], Awaitable[None]]) -> None: ...
+    def set_trade_callback(self, callback: Callable[[TradeEvent], Awaitable[None]]) -> None: ...
     def subscribe(self, market_ids: list[str]) -> None: ...
 
 
