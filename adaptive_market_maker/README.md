@@ -26,7 +26,7 @@ To add new markets or modify timeframes:
 2. Update the target lists:
    ```python
    # Target configurations for dynamic discovery
-   TARGET_ASSETS = ["btc", "eth", "xrp", "sol", "doge"]  # Added doge
+   TARGET_ASSETS = ["BTC", "ETH", "XRP", "SOL", "DOGE"]  # Added DOGE
    TARGET_WINDOWS = ["5m", "15m", "30m"]                 # Added 30m
    ```
 3. Update the divisor calculation in `market_discovery/discovery.py` to support new timeframes:

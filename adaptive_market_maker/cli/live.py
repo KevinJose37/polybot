@@ -27,6 +27,22 @@ class DummyLiveClient(PolymarketClientProtocol):
     def get_inventory(self, market_id: str) -> float: return 0.0
     async def place_order(self, market_id: str, side: str, price: float, size: float) -> str: return "stub"
     async def cancel_order(self, order_id: str, market_id: str) -> bool: return True
+    async def get_market(self, condition_id: str):
+        class MockMarket:
+            def __init__(self):
+                self.question = f"Will ETH be above $3000? {condition_id}"
+                self.end_date_iso = "2026-12-31T23:59:59Z"
+        return MockMarket()
+    async def get_clob_market_info(self, condition_id: str):
+        class MockToken:
+            def __init__(self, t_val):
+                self.t = t_val
+        class MockInfo:
+            def __init__(self):
+                self.mts = "0.001"
+                self.mos = "5.0"
+                self.t = [MockToken("0xyes"), MockToken("0xno")]
+        return MockInfo()
 
 @app.command()
 def main(

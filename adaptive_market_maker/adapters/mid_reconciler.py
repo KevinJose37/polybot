@@ -1,82 +1,92 @@
 """Reconciler to flag divergence between Polymarket and external references."""
 
-from dataclasses import dataclass
-
+import re
+import math
+import time
+import scipy.stats
 import structlog
+from dataclasses import dataclass
 
 logger = structlog.get_logger(__name__)
 
+@dataclass
+class ReconcilerResult:
+    diverged: bool
+    reason: str = ""
+    magnitude: float = 0.0
+
+def reconcile(
+    poly_mid: float,
+    binance_spot: float,
+    strike: float | None,
+    sigma: float,           # from your EWMA vol engine, tick-level (NOT annualized)
+    time_to_expiry_years: float,
+    divergence_threshold: float = 0.06   # 6 probability points
+) -> ReconcilerResult:
+    if strike is None:
+        return ReconcilerResult(diverged=False)
+    # Layer 1: directional sanity check (cheap, catches gross errors)
+    spot_above_strike = binance_spot > strike
+    if spot_above_strike and poly_mid < 0.40:
+        return ReconcilerResult(diverged=True, reason="spot_above_strike_but_poly_bearish")
+    if not spot_above_strike and poly_mid > 0.60:
+        return ReconcilerResult(diverged=True, reason="spot_below_strike_but_poly_bullish")
+
+    # Layer 2: quantitative check near the strike (when it matters)
+    # F-15: Annualize sigma — EWMA vol is tick-level (~1 tick/second).
+    # seconds_per_year ≈ 365.25 * 24 * 3600 = 31,557,600
+    # annualized_sigma = sigma * sqrt(seconds_per_year)
+    SECONDS_PER_YEAR = 365.25 * 24 * 3600
+    sigma_annual = sigma * math.sqrt(SECONDS_PER_YEAR)
+    sigma_t = sigma_annual * math.sqrt(time_to_expiry_years)
+    if sigma_t > 1e-6:      # avoid division by zero at expiry
+        d = math.log(binance_spot / strike) / sigma_t
+        theoretical_prob = scipy.stats.norm.cdf(d)
+        divergence = abs(poly_mid - theoretical_prob)
+        if divergence > divergence_threshold:
+            return ReconcilerResult(diverged=True, reason="prob_divergence", magnitude=divergence)
+
+    return ReconcilerResult(diverged=False)
+
+def parse_strike_from_question(question: str) -> float | None:
+    # "Will ETH be above $3,200 at..." or "Will BTC exceed $95,000..."
+    match = re.search(r'\$([0-9,]+(?:\.[0-9]+)?)', question)
+    if not match:
+        return None
+    return float(match.group(1).replace(',', ''))
 
 @dataclass
 class ReconcilerConfig:
-    divergence_threshold: float = 0.05  # 5% divergence threshold
-
+    divergence_threshold: float = 0.06
 
 class MidReconciler:
-    """
-    Compares Polymarket mid-prices against external references (like Binance spot)
-    and flags significant divergences.
-    """
-
     def __init__(self, config: ReconcilerConfig):
         self.config = config
+        self.spot_mids: dict[str, float] = {}
+        self.spot_timestamps: dict[str, float] = {}
 
-        # We store the last known values for comparison
-        self._poly_mids: dict[str, float] = {}
-        self._spot_mids: dict[str, float] = {}
+    def update_spot_mid(self, asset: str, mid: float, timestamp: float | None = None) -> None:
+        self.spot_mids[asset] = mid
+        self.spot_timestamps[asset] = timestamp if timestamp is not None else time.time()
 
-        # Storing the baseline (initial) prices to calculate relative divergence
-        self._poly_baselines: dict[str, float] = {}
-        self._spot_baselines: dict[str, float] = {}
-
-    def update_polymarket_mid(self, market_id: str, mid_price: float) -> bool:
-        """
-        Update the Polymarket mid-price.
-        Returns True if a divergence flag was raised.
-        """
-        self._poly_mids[market_id] = mid_price
-        if market_id not in self._poly_baselines:
-            self._poly_baselines[market_id] = mid_price
-
-        return self._check_divergence(market_id)
-
-    def update_spot_mid(self, asset: str, mid_price: float) -> None:
-        """
-        Update the external spot mid-price.
-        """
-        self._spot_mids[asset] = mid_price
-        if asset not in self._spot_baselines:
-            self._spot_baselines[asset] = mid_price
-
-    def _check_divergence(self, market_id: str) -> bool:
-        """
-        Check if the relative move in Polymarket diverges significantly
-        from the relative move in the underlying spot market.
-
-        Note: The actual mapping from market_id to asset requires a mapping dictionary
-        in a full implementation. For MVP smoke testing, this serves as the structural check.
-        """
-        # In a real scenario, we would map market_id to the specific asset (e.g., 'ETH')
-        # and compare the implied probability vs spot price using a pricing model.
-        # For this skeleton, we assume we just flag if poly_mid deviates from its own baseline
-        # by a huge margin rapidly, representing oracle/feed desync.
-
-        poly_mid = self._poly_mids.get(market_id)
-        baseline = self._poly_baselines.get(market_id)
-
-        if poly_mid is None or baseline is None or baseline == 0:
+    def update_polymarket_mid(
+        self,
+        market_id: str,
+        pm_mid: float,
+        asset: str,
+        strike: float | None,
+        sigma: float,
+        time_to_expiry_years: float
+    ) -> bool:
+        if asset not in self.spot_mids:
             return False
-
-        divergence = abs(poly_mid - baseline) / baseline
-        if divergence > self.config.divergence_threshold:
-            logger.warning(
-                "price_divergence_flagged",
-                market_id=market_id,
-                divergence=divergence,
-                threshold=self.config.divergence_threshold,
-                poly_mid=poly_mid,
-                baseline=baseline,
-            )
-            return True
-
-        return False
+            
+        result = reconcile(
+            poly_mid=pm_mid,
+            binance_spot=self.spot_mids[asset],
+            strike=strike,
+            sigma=sigma,
+            time_to_expiry_years=time_to_expiry_years,
+            divergence_threshold=self.config.divergence_threshold
+        )
+        return result.diverged

@@ -131,43 +131,83 @@ def test_quoting_engine_orchestration_emergency_stop() -> None:
     engine = QuotingEngine(
         min_spread=0.006,
         vol_mult=2.0,
-        max_inventory=5.0,
+        max_position_usdc=2.5,  # with mid=0.50, max_inv = 5.0 shares
         skew_factor=0.5,
-        emergency_factor=1.3,
-        tick_size=0.001
+        emergency_factor=1.3
     )
     
     # 1. Normal inventory
-    q1 = engine.get_quotes(mid=0.50, vol=0.003, inventory=3.0)
+    q1 = engine.get_quotes(mid=0.50, vol=0.003, inventory=3.0, tick_size=0.001)
     assert q1.bid is not None
     assert q1.ask is not None
     
     # 2. Extreme long inventory (>= 5.0 * 1.3 = 6.5)
-    q2 = engine.get_quotes(mid=0.50, vol=0.003, inventory=6.5)
+    q2 = engine.get_quotes(mid=0.50, vol=0.003, inventory=6.5, tick_size=0.001)
     assert q2.bid is None  # Halt buying
     assert q2.ask is not None
     
     # 3. Extreme short inventory (<= -6.5)
-    q3 = engine.get_quotes(mid=0.50, vol=0.003, inventory=-6.6)
+    q3 = engine.get_quotes(mid=0.50, vol=0.003, inventory=-6.6, tick_size=0.001)
     assert q3.bid is not None
     assert q3.ask is None  # Halt selling
 
 
 def test_quoting_engine_mid_clamp() -> None:
-    """Test that the orchestrator clamps garbage mid values at ingestion."""
+    """Test that garbage mid values still produce valid quotes when pre-clamped by caller."""
     engine = QuotingEngine(
         min_spread=0.006,
         vol_mult=2.0,
-        max_inventory=5.0,
+        max_position_usdc=2.5,  # dummy value
         skew_factor=0.0,
-        emergency_factor=1.3,
-        tick_size=0.001
+        emergency_factor=1.3
     )
     
-    # Send a garbage mid < 0.001
-    quotes = engine.get_quotes(mid=-0.50, vol=0.0, inventory=0.0)
-    # mid should be clamped to 0.001, half_spread = 0.003
+    # Caller (bot.py) clamps mid to [tick_size, 1.0 - tick_size] before calling get_quotes.
+    # So the QuotingEngine receives 0.001, not -0.50.
+    clamped_mid = max(0.001, min(0.999, -0.50))  # = 0.001
+    quotes = engine.get_quotes(mid=clamped_mid, vol=0.0, inventory=0.0, tick_size=0.001)
+    # mid = 0.001, half_spread = 0.003
     # bid_raw = 0.001 - 0.003 = -0.002 -> floor = -0.002 -> clamp to 0.001
     # ask_raw = 0.001 + 0.003 = 0.004 -> ceil = 0.004 -> bound check OK -> 0.004
     assert quotes.bid == 0.001
     assert quotes.ask == 0.004
+
+
+def test_quoting_engine_soft_disable_at_max_inventory() -> None:
+    """F-13: Test that inventory at max_inventory WIDENS the accumulating side
+    (not nulls it). Only at emergency_factor × max_inventory is the side nulled."""
+    engine = QuotingEngine(
+        min_spread=0.006,
+        vol_mult=2.0,
+        max_position_usdc=2.5,  # mid=0.50 -> 5.0 shares max
+        skew_factor=0.5,
+        emergency_factor=1.3
+    )
+    
+    # Get normal quotes for comparison (inventory below max)
+    q_normal = engine.get_quotes(mid=0.50, vol=0.003, inventory=4.9, tick_size=0.001)
+    assert q_normal.bid is not None
+    assert q_normal.ask is not None
+    
+    # Inventory exactly at max (5.0): soft-disable widens bid, does NOT null it
+    q_long = engine.get_quotes(mid=0.50, vol=0.003, inventory=5.0, tick_size=0.001)
+    assert q_long.bid is not None   # NOT None — widened instead
+    assert q_long.ask is not None
+    # Widened bid must be further from mid than the normal bid
+    assert q_long.bid < q_normal.bid
+    
+    q_short = engine.get_quotes(mid=0.50, vol=0.003, inventory=-5.0, tick_size=0.001)
+    assert q_short.bid is not None
+    assert q_short.ask is not None  # NOT None — widened instead
+    # Widened ask must be further from mid than the normal ask
+    assert q_short.ask > q_normal.ask
+    
+    # At emergency_factor × max_inventory (6.5+): hard disable nulls the side
+    q_emergency_long = engine.get_quotes(mid=0.50, vol=0.003, inventory=6.5, tick_size=0.001)
+    assert q_emergency_long.bid is None   # Hard null at emergency threshold
+    assert q_emergency_long.ask is not None
+    
+    q_emergency_short = engine.get_quotes(mid=0.50, vol=0.003, inventory=-6.5, tick_size=0.001)
+    assert q_emergency_short.bid is not None
+    assert q_emergency_short.ask is None  # Hard null at emergency threshold
+

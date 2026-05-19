@@ -7,26 +7,32 @@ from engine.execution_manager import (
     LiveOrder,
     PlaceOrder,
     CancelOrder,
-    should_requote
+    is_adverse_requote,
+    exceeds_threshold
 )
 
 
-def test_should_requote_asymmetric() -> None:
+def test_is_adverse_requote() -> None:
     # BID side
     # Target < Live -> worse quote (overbidding), urgent cancel
-    assert should_requote(live=0.510, target=0.505, side="BID", threshold=0.010) is True
-    # Target > Live -> better quote, apply threshold
-    # Target = 0.515, Live = 0.510, Diff = 0.005. Threshold = 0.010 -> False
-    assert should_requote(live=0.510, target=0.515, side="BID", threshold=0.010) is False
-    # Target = 0.525, Live = 0.510, Diff = 0.015. Threshold = 0.010 -> True
-    assert should_requote(live=0.510, target=0.525, side="BID", threshold=0.010) is True
-
+    assert is_adverse_requote(live=0.510, target=0.505, side="BID") is True
+    # Target >= Live -> better quote, not adverse
+    assert is_adverse_requote(live=0.510, target=0.515, side="BID") is False
+    
     # ASK side
     # Target > Live -> worse quote (underasking), urgent cancel
-    assert should_requote(live=0.510, target=0.515, side="ASK", threshold=0.010) is True
-    # Target < Live -> better quote, apply threshold
-    assert should_requote(live=0.510, target=0.505, side="ASK", threshold=0.010) is False
-    assert should_requote(live=0.510, target=0.495, side="ASK", threshold=0.010) is True
+    assert is_adverse_requote(live=0.510, target=0.515, side="ASK") is True
+    # Target <= Live -> better quote, not adverse
+    assert is_adverse_requote(live=0.510, target=0.505, side="ASK") is False
+
+def test_exceeds_threshold() -> None:
+    # BID side
+    assert exceeds_threshold(live=0.510, target=0.515, side="BID", threshold=0.010) is False
+    assert exceeds_threshold(live=0.510, target=0.525, side="BID", threshold=0.010) is True
+    
+    # ASK side
+    assert exceeds_threshold(live=0.510, target=0.505, side="ASK", threshold=0.010) is False
+    assert exceeds_threshold(live=0.510, target=0.495, side="ASK", threshold=0.010) is True
 
 
 def test_execution_manager_empty_book() -> None:
@@ -64,8 +70,9 @@ def test_execution_manager_dwell_block() -> None:
     em.add_live_order(LiveOrder("o1", "m1", "BID", 0.50, 20.0, 100.0, "live"))
     
     # Time 101.0 (1s elapsed, dwell block active)
-    # Even if quote is radically different, dwell blocks replacement (unless emergency)
-    quotes = QuoteResult(bid=0.10, ask=None, half_spread=0.01, skew=0.0)
+    # Target=0.60 is a better quote (target > live), so is_adverse_requote is False.
+    # Therefore it hits the standard path, which blocks it due to dwell.
+    quotes = QuoteResult(bid=0.60, ask=None, half_spread=0.01, skew=0.0)
     actions = em.process_quotes("m1", quotes, 101.0)
     assert len(actions) == 0
 

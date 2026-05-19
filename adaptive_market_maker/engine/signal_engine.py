@@ -26,6 +26,12 @@ def update_ewma(state: EWMAState, mid: float, now: float, tau: float) -> EWMASta
     delta_price = mid - state.last_mid
 
     lambda_eff = math.exp(-delta_t / tau)
+    
+    # NOTE: The variance contribution (delta_price ** 2) is intentionally NOT 
+    # normalized by delta_t. The time-weighted lambda_eff = exp(-delta_t / tau) 
+    # formulation implicitly accounts for irregular time steps. A larger delta_t 
+    # produces a much smaller lambda_eff, heavily weighting the new observation.
+    # Dividing by delta_t would incorrectly double-count the time correction.
     variance = lambda_eff * state.variance + (1 - lambda_eff) * (delta_price ** 2)
 
     return EWMAState(variance=variance, last_mid=mid, last_timestamp=now)
@@ -35,14 +41,6 @@ def get_volatility(state: EWMAState) -> float:
     """Return volatility (standard deviation) from EWMA variance."""
     # Guard against precision errors resulting in very small negative numbers
     return math.sqrt(max(state.variance, 0.0))
-
-
-def get_implied_probability(bid: float, ask: float) -> float:
-    """
-    Calculate mid-price and strictly clamp to [0.001, 0.999] bounds.
-    """
-    mid = (bid + ask) / 2.0
-    return max(0.001, min(0.999, mid))
 
 
 class SignalEngine:
@@ -116,6 +114,12 @@ class SignalEngine:
             and state.variance > 0
         )
         return is_ready
+
+    def reset_warmup(self, market_id: str, current_time: float) -> None:
+        """[H-1] Reset warm-up trackers for a market due to data staleness."""
+        if market_id in self._warm_up_trackers:
+            self._warm_up_trackers[market_id]["start_time"] = current_time
+            self._warm_up_trackers[market_id]["observation_count"] = 0
 
     def get_market_volatility(self, market_id: str, current_time: float) -> Optional[float]:
         """

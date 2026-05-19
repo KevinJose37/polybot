@@ -5,17 +5,9 @@ from engine.signal_engine import (
     EWMAState,
     update_ewma,
     get_volatility,
-    get_implied_probability,
     SignalEngine
 )
 
-
-def test_implied_probability() -> None:
-    # Standard mid
-    assert get_implied_probability(0.50, 0.52) == 0.51
-    # Clamping tests
-    assert get_implied_probability(-0.1, 0.0) == 0.001
-    assert get_implied_probability(0.99, 1.01) == 0.999
 
 
 def test_update_ewma_manual_math() -> None:

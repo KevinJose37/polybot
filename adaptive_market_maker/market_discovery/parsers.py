@@ -4,7 +4,7 @@ Slug parsing utilities.
 from dataclasses import dataclass
 
 # Target configurations for dynamic discovery
-TARGET_ASSETS = ["btc", "eth", "xrp", "sol"]
+TARGET_ASSETS = ["BTC", "ETH", "XRP", "SOL"]
 TARGET_WINDOWS = ["5m", "15m"]
 
 @dataclass
@@ -28,7 +28,7 @@ def parse_market_slug(slug: str) -> ParsedSlug:
         asset = parts[0].upper()
         timeframe = parts[2]
         
-        if asset.lower() not in TARGET_ASSETS:
+        if asset.upper() not in TARGET_ASSETS:
             return ParsedSlug(asset="", timeframe="", timestamp=0, is_valid=False)
             
         if timeframe not in TARGET_WINDOWS:

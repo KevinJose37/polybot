@@ -61,8 +61,8 @@ def calculate_quotes(
         
     # 7. Bound check constraints
     # Final sanity guard for Polymarket valid prices
-    bid = max(0.001, min(0.999, bid))
-    ask = max(0.001, min(0.999, ask))
+    bid = max(tick_size, min(1.0 - tick_size, bid))
+    ask = max(tick_size, min(1.0 - tick_size, ask))
     
     return QuoteResult(
         bid=bid,
@@ -80,44 +80,70 @@ class QuotingEngine:
         self,
         min_spread: float,
         vol_mult: float,
-        max_inventory: float,
+        max_position_usdc: float,
         skew_factor: float,
-        emergency_factor: float,
-        tick_size: float = 0.001
+        emergency_factor: float
     ):
         self.min_spread = min_spread
         self.vol_mult = vol_mult
-        self.max_inventory = max_inventory
+        self.max_position_usdc = max_position_usdc
         self.skew_factor = skew_factor
         self.emergency_factor = emergency_factor
-        self.tick_size = tick_size
 
-    def get_quotes(self, mid: float, vol: float, inventory: float) -> QuoteResult:
+    def get_quotes(self, mid: float, vol: float, inventory: float, tick_size: float) -> QuoteResult:
         """
         Generate active quotes for the current market state.
-        """
-        # Clamp mid at ingestion to prevent garbage input propagation
-        clamped_mid = max(0.001, min(0.999, mid))
         
+        INVARIANT: `mid` is expected to be pre-clamped to [tick_size, 1.0 - tick_size]
+        by the caller (bot.on_pm_book). No redundant clamping is performed here.
+        """
+        # [M-5] Dynamically calculate max_inventory (shares) from USDC limit
+        # This ensures our position limits scale correctly with market price.
+        dynamic_max_inv = self.max_position_usdc / mid
+
         quotes = calculate_quotes(
-            mid=clamped_mid,
+            mid=mid,
             vol=vol,
             inventory=inventory,
             min_spread=self.min_spread,
             vol_mult=self.vol_mult,
-            max_inventory=self.max_inventory,
+            max_inventory=dynamic_max_inv,
             skew_factor=self.skew_factor,
-            tick_size=self.tick_size
+            tick_size=tick_size
         )
         
         # 8. Emergency stop
         # Lives in the caller/orchestration layer to keep calculate_quotes pure.
-        if abs(inventory) >= self.max_inventory * self.emergency_factor:
+        abs_inv = abs(inventory)
+        
+        # F-13: Two-tier inventory protection:
+        # - Hard cut at emergency_factor × dynamic_max_inv: null the accumulating side.
+        # - Soft-disable at 1.0× dynamic_max_inv: widen the accumulating side by 2×
+        #   half_spread, making it much harder (but not impossible) to accumulate.
+        if abs_inv >= dynamic_max_inv * self.emergency_factor:
             if inventory > 0:
-                logger.warning("quoting_engine_emergency_long", inventory=inventory)
+                logger.warning("quoting_engine_emergency_long", inventory=inventory, max_inv=dynamic_max_inv)
                 quotes.bid = None
             elif inventory < 0:
-                logger.warning("quoting_engine_emergency_short", inventory=inventory)
+                logger.warning("quoting_engine_emergency_short", inventory=inventory, max_inv=dynamic_max_inv)
                 quotes.ask = None
+        elif abs_inv >= dynamic_max_inv:
+            # Soft-disable: widen the offending side by doubling half_spread
+            if inventory > 0 and quotes.bid is not None:
+                widened_bid = mid - 2.0 * quotes.half_spread - quotes.skew
+                widened_bid = math.floor((widened_bid / tick_size) + 1e-9) * tick_size
+                widened_bid = max(tick_size, min(1.0 - tick_size, widened_bid))
+                if widened_bid >= mid:
+                    widened_bid = math.floor(((mid - tick_size) / tick_size) + 1e-9) * tick_size
+                quotes.bid = widened_bid
+                logger.info("quoting_engine_soft_disable_long", inventory=inventory, widened_bid=widened_bid)
+            elif inventory < 0 and quotes.ask is not None:
+                widened_ask = mid + 2.0 * quotes.half_spread - quotes.skew
+                widened_ask = math.ceil((widened_ask / tick_size) - 1e-9) * tick_size
+                widened_ask = max(tick_size, min(1.0 - tick_size, widened_ask))
+                if widened_ask <= mid:
+                    widened_ask = math.ceil(((mid + tick_size) / tick_size) - 1e-9) * tick_size
+                quotes.ask = widened_ask
+                logger.info("quoting_engine_soft_disable_short", inventory=inventory, widened_ask=widened_ask)
                 
         return quotes

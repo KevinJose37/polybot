@@ -27,11 +27,31 @@ class LifecycleManager:
             await asyncio.sleep(30)
             try:
                 await self._sweep()
+                await self._check_settlements()
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error("lifecycle_discovery_error", error=str(e))
                 
+    async def _check_settlements(self):
+        """Poll Gamma API for expired markets with paper inventory to simulate realistic settlement."""
+        if not hasattr(self.bot.api_client, "synthetic_inventory") or not hasattr(self.bot.api_client, "get_market_resolution"):
+            return
+            
+        current_tokens = set(self.settings.active_token_ids)
+        
+        for token_id in list(self.bot.api_client.synthetic_inventory.keys()):
+            if token_id not in current_tokens:
+                shares = self.bot.api_client.synthetic_inventory[token_id]
+                if abs(shares) > 1e-6:
+                    try:
+                        payout = await self.bot.api_client.get_market_resolution(token_id)
+                        if payout is not None and hasattr(self.bot.api_client, "settle_market"):
+                            self.bot.api_client.settle_market(token_id, payout)
+                            logger.info("lifecycle_settled_market", market_id=token_id, payout=payout)
+                    except Exception as e:
+                        logger.error("lifecycle_settlement_error", market_id=token_id, error=str(e))
+
     async def _sweep(self):
         snapshots = await self.discovery.discover_markets()
         new_token_ids = []
@@ -48,14 +68,21 @@ class LifecycleManager:
                     self.bot.market_to_asset[token.token_id] = parsed.asset
                     new_token_ids.append(token.token_id)
         
-        # Determine if we have genuinely new markets
-        current_markets = set(self.settings.markets)
-        discovered_markets = set(new_token_ids)
+        # [H-1] Use active_token_ids for runtime token list — do NOT overwrite
+        # settings.markets which is validated for ASSET-WINDOW format.
+        current_tokens = set(self.settings.active_token_ids)
+        discovered_tokens = set(new_token_ids)
         
-        if discovered_markets != current_markets:
-            logger.info("lifecycle_updating_markets", current=len(current_markets), discovered=len(discovered_markets))
-            self.settings.markets = list(discovered_markets)
+        if discovered_tokens != current_tokens:
+            logger.info("lifecycle_updating_markets", current=len(current_tokens), discovered=len(discovered_tokens))
+            
+            # [H-4] Cleanup expired/removed tokens from bot state
+            removed_tokens = current_tokens - discovered_tokens
+            for token_id in removed_tokens:
+                await self.bot.remove_market(token_id)
+
+            self.settings.active_token_ids = list(discovered_tokens)
             
             # Instruct bot WebSocket to subscribe to the new complete list
             if hasattr(self.bot.pm_ws, "subscribe"):
-                self.bot.pm_ws.subscribe(self.settings.markets)
+                self.bot.pm_ws.subscribe(self.settings.active_token_ids)
