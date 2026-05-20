@@ -26,13 +26,13 @@ class Config(BaseModel):
     paper_trading: bool = Field(False, description="Enable paper trading and latency simulation")
     latency: LatencyConfig = Field(default_factory=LatencyConfig)
 
-    spread: float = Field(0.008, description="Target spread to capture")
-    skew_factor: float = Field(0.5, description="Factor for inventory skewing")
+    spread: float = Field(0.01, description="Target spread to capture")
+    skew_factor: float = Field(0.6, description="Factor for inventory skewing")
     vol_mult: float = Field(2.0, description="Multiplier for EWMA volatility when calculating half-spread")
     vol_lambda: float = Field(0.94, description="Decay factor for EWMA calculation")
-    min_spread: float = Field(0.006, description="Minimum allowable spread")
+    min_spread: float = Field(0.008, description="Minimum allowable spread")
     requote_threshold: float = Field(0.003, description="Threshold price difference required to cancel-and-replace")
-    max_position_usdc: float = Field(50.0, description="Maximum absolute position in USDC per market")
+    max_position_usdc: float = Field(5.0, description="Maximum absolute position in USDC per market")
     emergency_factor: float = Field(1.3, description="Multiplier applied to max_inventory to stop quoting that side")
     dwell_min_seconds: float = Field(3.6, description="Minimum dwell time in seconds before cancelling an order (rebate rule)")
     cancel_cooldown_seconds: float = Field(0.5, description="Minimum seconds between cancel requests per side (rate limiter)")
@@ -61,7 +61,7 @@ class Config(BaseModel):
         default_factory=lambda: {
             "ETH": "0xF9680D99D6C9589e2a93a78A04A279e509205945",
             "BTC": "0xc907E116054Ad103354f2D350FD2455D0EB91572",
-            "SOL": "0x108D63925EE2EAA14F5e076CDE0F46a489c93df5",
+            "SOL": "0x10C8311d953d61184d008E10129033eF105656dC",
             "XRP": "0x785ba89291f676b5386652eB12b30cF361020694"
         },
         description="Mapping of underlying to Chainlink feed addresses on Polygon."

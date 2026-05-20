@@ -50,6 +50,7 @@ class AdaptiveMarketMakerBot:
         )
         self.market_contexts: dict[str, MarketContext] = {}
         self.price_cache: dict[str, float] = {}
+        self.yes_tokens: set[str] = set()
         
         self.oracle_monitors: dict[str, OracleMonitor] = {}
         for underlying in ["ETH", "BTC", "SOL"]:
@@ -85,6 +86,7 @@ class AdaptiveMarketMakerBot:
         self._reconciling_markets: set[str] = set()
         # F-06: Markets that have successfully completed context initialization
         self._initialized_markets: set[str] = set()
+        self._initializing_markets: set[str] = set()
         self._failed_markets: set[str] = set()
 
     async def _safe_cancel(self, action: CancelOrder) -> None:
@@ -99,12 +101,43 @@ class AdaptiveMarketMakerBot:
             self.execution_manager.update_order_status(action.order_id, action.market_id, "live")
 
     async def _safe_place(self, action: PlaceOrder) -> None:
-        """Safely execute a place action and track live state."""
+        """Safely execute a place action and track live state with YES/NO mapping."""
         try:
+            ctx = self.market_contexts.get(action.market_id)
+            if not ctx:
+                logger.error("place_failed_missing_context", market_id=action.market_id)
+                return
+
+            if action.market_id == ctx.token_id_yes:
+                # Query actual YES and NO inventories from api_client
+                inv_yes = getattr(self.api_client, "inventory_yes", {}).get(action.market_id, 0.0)
+                inv_no = getattr(self.api_client, "inventory_no", {}).get(action.market_id, 0.0)
+
+                target_token_id = ctx.token_id_yes
+                target_side = action.side
+                target_price = action.price
+
+                if action.side == "BID":
+                    if inv_no > 0:
+                        # Sell NO instead of buying YES to cover the short
+                        target_token_id = ctx.token_id_no
+                        target_side = "ASK"
+                        target_price = round(1.0 - action.price, 4)
+                else:  # ASK
+                    if inv_yes <= 0:
+                        # Buy NO instead of selling YES to go short
+                        target_token_id = ctx.token_id_no
+                        target_side = "BID"
+                        target_price = round(1.0 - action.price, 4)
+            else:
+                target_token_id = action.market_id
+                target_side = action.side
+                target_price = action.price
+
             order_id = await self.api_client.place_order(
-                market_id=action.market_id,
-                side=action.side,
-                price=action.price,
+                market_id=target_token_id,
+                side=target_side,
+                price=target_price,
                 size=action.size
             )
             # Add latency buffer to local send time
@@ -113,14 +146,14 @@ class AdaptiveMarketMakerBot:
             
             self.execution_manager.add_live_order(LiveOrder(
                 id=order_id,
-                market_id=action.market_id,
+                market_id=action.market_id,  # Track under YES token ID so ExecutionManager associates it correctly
                 side=action.side,
                 price=action.price,
                 size=action.size,
                 created_at=now,
                 status="live"
             ))
-            logger.info("place_success", market_id=action.market_id, side=action.side, price=action.price, size=action.size)
+            logger.info("place_success", market_id=action.market_id, side=action.side, price=action.price, size=action.size, routed_to=target_token_id)
         except Exception as e:
             logger.error("place_failed", market_id=action.market_id, side=action.side, error=str(e))
 
@@ -144,6 +177,7 @@ class AdaptiveMarketMakerBot:
         self.price_cache.pop(market_id, None)
         self._initialized_markets.discard(market_id)
         self._reconciling_markets.discard(market_id)
+        self.yes_tokens.discard(market_id)
         
         if market_id in self.execution_manager.live_orders:
             del self.execution_manager.live_orders[market_id]
@@ -166,6 +200,14 @@ class AdaptiveMarketMakerBot:
         """Main event loop tick. Driven by Polymarket L2 updates."""
         now = time.time()
         market_id = book.market_id
+        
+        # Only run quoting on YES books. NO books are handled symmetrically.
+        if market_id not in self.yes_tokens and len(self.yes_tokens) > 0:
+            if hasattr(self.api_client, "update_book"):
+                self.api_client.update_book(book)
+            self.price_cache[market_id] = book.mid_price or 0.50
+            return
+
         asset = self.market_to_asset.get(market_id)
         
         pm_mid = book.mid_price
@@ -185,7 +227,13 @@ class AdaptiveMarketMakerBot:
             return
 
         if market_id not in self.market_contexts:
-            await self.initialize_market_context(market_id)
+            if market_id in self._initializing_markets:
+                return
+            self._initializing_markets.add(market_id)
+            try:
+                await self.initialize_market_context(market_id)
+            finally:
+                self._initializing_markets.discard(market_id)
             asset = self.market_to_asset.get(market_id)
             
         ctx = self.market_contexts.get(market_id)
@@ -320,6 +368,21 @@ class AdaptiveMarketMakerBot:
             asset = self.market_to_asset.get(condition_id, "ETH")
             
             binance_spot = self.reconciler.spot_mids.get(asset)
+            if binance_spot is None and asset:
+                # [ADV-02] Fetch initial spot price via REST to run strike validation
+                try:
+                    import aiohttp
+                    url = f"https://api.binance.com/api/v3/ticker/price?symbol={asset}USDT"
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url, timeout=5.0) as resp:
+                            if resp.status == 200:
+                                data = await resp.json()
+                                binance_spot = float(data["price"])
+                                self.reconciler.update_spot_mid(asset, binance_spot)
+                                logger.info("bot_fetched_initial_spot_rest", asset=asset, spot=binance_spot)
+                except Exception as rest_err:
+                    logger.warning("bot_fetch_initial_spot_rest_failed", asset=asset, error=str(rest_err))
+
             if strike is not None and binance_spot and binance_spot > 0:
                 if abs(strike - binance_spot) / binance_spot > 0.5:
                     raise ValueError(f"Strike {strike} is > 50% away from spot {binance_spot} for {condition_id}")
@@ -398,12 +461,23 @@ class AdaptiveMarketMakerBot:
         self._reconciling_markets.add(market_id)
         logger.info("bot_reconciling_inventory", market_id=market_id)
         try:
-            await self.initialize_market_context(market_id)
+            if market_id not in self.market_contexts and market_id not in self._initializing_markets:
+                self._initializing_markets.add(market_id)
+                try:
+                    await self.initialize_market_context(market_id)
+                finally:
+                    self._initializing_markets.discard(market_id)
+            elif market_id not in self.market_contexts:
+                # Wait for in-flight initialization to complete
+                while market_id in self._initializing_markets:
+                    await asyncio.sleep(0.01)
         except Exception as e:
             logger.error("bot_market_context_init_failed", market_id=market_id, error=str(e))
             
         try:
             inv = await self.api_client.fetch_inventory(market_id)
+            if hasattr(self.api_client, "update_inventory_cache"):
+                self.api_client.update_inventory_cache(market_id, inv)
             logger.info("bot_inventory_reconciled", market_id=market_id, inventory=inv)
         except Exception as e:
             logger.error("bot_inventory_sync_failed", market_id=market_id, error=str(e))

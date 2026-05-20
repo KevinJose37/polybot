@@ -339,3 +339,133 @@ async def test_paper_client_adverse_selection_penalty() -> None:
     # Expected price: 0.52 - 0.002 = 0.518
     # Realized P&L: 10.0 * (0.518 - 0.50) = 0.18
     assert client.realized_pnl["m1"] == pytest.approx(0.18)
+
+
+@pytest.mark.asyncio
+async def test_bot_startup_rest_fallback() -> None:
+    """Test that initialize_market_context fetches spot price from REST on startup if missing."""
+    settings = Config(
+        markets=["ETH-updown-15m-1234567890"],
+        min_spread=0.006,
+        vol_mult=2.0,
+        vol_lambda=0.94,
+        skew_factor=0.5,
+        requote_threshold=0.003,
+        max_open_orders=2,
+        max_position_usdc=50.0,
+        order_size_usdc=10.0
+    )
+
+    client = MockPolymarketClient()
+    pm_ws = PolymarketWSAdapter()
+    binance_ws = BinanceWSAdapter()
+
+    bot = AdaptiveMarketMakerBot(settings, client, pm_ws, binance_ws)
+    
+    # Ensure reconciler does not have spot mid for ETH
+    assert "ETH" not in bot.reconciler.spot_mids
+
+    # Mock aiohttp client session to return a successful ticker price
+    class MockResponse:
+        def __init__(self):
+            self.status = 200
+        async def json(self):
+            return {"price": "3150.0"}
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    class MockSession:
+        def get(self, url, timeout=None):
+            return MockResponse()
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    with patch("aiohttp.ClientSession", return_value=MockSession()):
+        await bot.initialize_market_context("ETH-updown-15m-1234567890")
+
+    # Assert that spot price was retrieved and updated in the reconciler!
+    assert bot.reconciler.spot_mids.get("ETH") == 3150.0
+
+
+@pytest.mark.asyncio
+async def test_bot_symmetrical_token_routing_and_inventory() -> None:
+    """Test that symmetrical YES/NO routing and inventories function correctly."""
+    from core.paper_client import PaperPolymarketClient
+    from config.settings import LatencyConfig
+    from core.interfaces import MarketContext
+    from datetime import datetime, timezone
+    from engine.execution_manager import PlaceOrder
+
+    settings = Config(
+        markets=["ETH-15m"],
+        min_spread=0.006,
+        vol_mult=2.0,
+        vol_lambda=0.94,
+        skew_factor=0.5,
+        requote_threshold=0.003,
+        max_open_orders=2,
+        max_position_usdc=50.0,
+        order_size_usdc=10.0
+    )
+
+    client = PaperPolymarketClient(LatencyConfig(place_mean_ms=0, place_std_ms=0,
+                                                 cancel_mean_ms=0, cancel_std_ms=0))
+    pm_ws = PolymarketWSAdapter()
+    binance_ws = BinanceWSAdapter()
+
+    bot = AdaptiveMarketMakerBot(settings, client, pm_ws, binance_ws)
+    bot.yes_tokens.add("ETH-15m")
+
+    # Inject mock token mapping into client
+    client.market_to_tokens["ETH-15m"] = ("ETH-15m", "ETH-15m-NO")
+    client.market_to_tokens["ETH-15m-NO"] = ("ETH-15m", "ETH-15m-NO")
+
+    # Set up market context
+    bot.market_contexts["ETH-15m"] = MarketContext(
+        condition_id="ETH-15m",
+        tick_size=0.001,
+        min_order_size=1.0,
+        expiry_utc=datetime.now(timezone.utc),
+        chainlink_feed="0xfeed",
+        strike_price=3000.0,
+        token_id_yes="ETH-15m",
+        token_id_no="ETH-15m-NO"
+    )
+
+    # 1. Place a BID order (should go to YES book as BID)
+    bid_action = PlaceOrder(market_id="ETH-15m", side="BID", price=0.50, size=10.0)
+    await bot._safe_place(bid_action)
+    
+    # 2. Place an ASK order (since inv_yes is 0, should go to NO book as BID)
+    ask_action = PlaceOrder(market_id="ETH-15m", side="ASK", price=0.52, size=10.0)
+    await bot._safe_place(ask_action)
+
+    assert len(client.live_orders) == 2
+    
+    # Get the bid order (placed on YES token)
+    bid_live = next(o for o in client.live_orders.values() if o.market_id == "ETH-15m")
+    # Get the ask order (routed to NO token as BID at 1.0 - 0.52 = 0.48)
+    ask_live = next(o for o in client.live_orders.values() if o.market_id == "ETH-15m-NO")
+
+    assert bid_live.side == "BID"
+    assert bid_live.price == 0.50
+    assert ask_live.side == "BID"
+    assert ask_live.price == 0.48 # round(1.0 - 0.52, 4)
+
+    # Simulate fills
+    client.process_fill(bid_live, 10.0, time.time())
+    client.process_fill(ask_live, 10.0, time.time())
+
+    # Verify inventories
+    assert client.inventory_yes["ETH-15m"] == 10.0
+    assert client.inventory_no["ETH-15m"] == 10.0
+
+    # Net inventory of YES token should be yes - no = 10 - 10 = 0
+    assert client.get_inventory("ETH-15m") == 0.0
+
+    # Net inventory of NO token should be no - yes = 10 - 10 = 0
+    assert client.get_inventory("ETH-15m-NO") == 0.0

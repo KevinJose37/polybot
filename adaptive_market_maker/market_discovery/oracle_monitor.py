@@ -9,13 +9,6 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
-def oracle_update_imminent(binance_spot: float, chainlink_last: float, threshold: float) -> bool:
-    """Reactive divergence check: Binance spot vs last Chainlink reported price."""
-    if chainlink_last == 0:
-        return False
-    deviation = abs(binance_spot - chainlink_last) / chainlink_last
-    return deviation > (threshold * 0.7)
-
 
 @dataclass  
 class OracleMonitor:
@@ -38,13 +31,28 @@ class OracleMonitor:
 
     async def start_polling(self) -> None:
         if not self.feed_address: return
+        if self._running:
+            logger.warning("oracle_monitor_already_running", underlying=self.underlying)
+            return
         self._running = True
-        self._tasks.add(asyncio.create_task(self._poll_loop(), name=f"oracle_poll_{self.underlying}"))
-        self._tasks.add(asyncio.create_task(self._monitor_loop(), name=f"oracle_monitor_{self.underlying}"))
+        
+        poll_task = asyncio.create_task(self._poll_loop(), name=f"oracle_poll_{self.underlying}")
+        monitor_task = asyncio.create_task(self._monitor_loop(), name=f"oracle_monitor_{self.underlying}")
+        
+        self._tasks.add(poll_task)
+        self._tasks.add(monitor_task)
+        
+        def _on_done(t: asyncio.Task) -> None:
+            self._tasks.discard(t)
+            if not t.cancelled() and t.exception():
+                logger.error("oracle_task_failed", task=t.get_name(), error=str(t.exception()))
+                
+        poll_task.add_done_callback(_on_done)
+        monitor_task.add_done_callback(_on_done)
         
     async def stop_polling(self) -> None:
         self._running = False
-        for task in self._tasks:
+        for task in list(self._tasks):
             if not task.done():
                 task.cancel()
         if self._tasks:
@@ -140,3 +148,17 @@ class OracleMonitor:
     def on_binance_tick(self, binance_spot: float) -> None:
         """Called whenever the Binance spot price updates."""
         self._last_binance_spot = binance_spot
+        # [ADV-01] Fast-path hot-path deviation evaluation
+        if self.last_chainlink_price > 0:
+            deviation = abs(binance_spot - self.last_chainlink_price) / self.last_chainlink_price
+            if deviation > self.deviation_threshold * 0.7:
+                if not self.pause_event.is_set():
+                    logger.warning(
+                        "oracle_pause_set_fast_path",
+                        underlying=self.underlying,
+                        deviation=deviation,
+                        chainlink=self.last_chainlink_price,
+                        spot=binance_spot
+                    )
+                self.pause_event.set()
+                self._pause_triggered_at = time.time()

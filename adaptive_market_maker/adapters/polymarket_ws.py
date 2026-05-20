@@ -170,7 +170,7 @@ class PolymarketWSAdapter(OrderBookAdapter):
                         self._books[mid] = ({}, {})
                         self._sequences.pop(mid, None)
                         if self._reconnect_callback:
-                            asyncio.create_task(self._reconnect_callback(mid))
+                            self._dispatch_task(self._reconnect_callback(mid), f"pm_reconnect_{mid}")
                     
                     await self._send_subscriptions()
 

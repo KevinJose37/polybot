@@ -178,3 +178,77 @@ async def test_fetch_market_data_caches_result():
     # Should return cached data without hitting the network
     result = await client._fetch_market_data("0xcached")
     assert result["question"] == "Will ETH be above $3,200 at 10:00 AM UTC?"
+
+
+@pytest.mark.asyncio
+async def test_oracle_monitor_task_cleanup() -> None:
+    """Test that OracleMonitor cleans up background tasks on stop or completion."""
+    import asyncio
+    from market_discovery.oracle_monitor import OracleMonitor
+    
+    monitor = OracleMonitor(
+        underlying="ETH",
+        feed_address="0x123",
+        deviation_threshold=0.01,
+        oracle_pause_seconds=60,
+        rpc_url="http://dummy"
+    )
+    
+    # Mock loop methods so start_polling doesn't run blocking infinite loops
+    async def dummy_loop():
+        await asyncio.sleep(0.01)
+        
+    monitor._poll_loop = dummy_loop
+    monitor._monitor_loop = dummy_loop
+    
+    assert len(monitor._tasks) == 0
+    
+    await monitor.start_polling()
+    # Wait briefly for tasks to complete (since we mocked them to sleep 0.01s)
+    await asyncio.sleep(0.05)
+    
+    # Tasks should have finished and been discarded via done_callback
+    assert len(monitor._tasks) == 0
+    
+    # Reset loop methods to infinite wait
+    async def infinite_loop():
+        try:
+            while True:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            pass
+            
+    monitor._poll_loop = infinite_loop
+    monitor._monitor_loop = infinite_loop
+    monitor._running = False # Reset flag since mocked loops completed and left it True
+    
+    await monitor.start_polling()
+    assert len(monitor._tasks) == 2
+    
+    await monitor.stop_polling()
+    assert len(monitor._tasks) == 0
+    assert not monitor._running
+
+
+def test_oracle_monitor_fast_path_pause() -> None:
+    """Test that OracleMonitor pause is triggered immediately via fast-path tick evaluation."""
+    from market_discovery.oracle_monitor import OracleMonitor
+    
+    monitor = OracleMonitor(
+        underlying="ETH",
+        feed_address="0x123",
+        deviation_threshold=0.01, # 1%
+        oracle_pause_seconds=60,
+        rpc_url="http://dummy"
+    )
+    
+    monitor.last_chainlink_price = 3000.0
+    
+    # 0.5% deviation -> no pause (threshold is 0.7 * 1% = 0.7%)
+    monitor.on_binance_tick(3015.0)
+    assert not monitor.pause_event.is_set()
+    
+    # 0.8% deviation -> triggers fast path pause (> 0.7%)
+    monitor.on_binance_tick(3025.0)
+    assert monitor.pause_event.is_set()
+    assert monitor._pause_triggered_at is not None

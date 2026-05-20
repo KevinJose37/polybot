@@ -101,6 +101,13 @@ class PaperPolymarketClient(PolymarketClientProtocol):
         self.win_count = 0
         self.loss_count = 0
 
+        # Symmetrical YES/NO outcome maps
+        self.inventory_yes: dict[str, float] = {}
+        self.inventory_no: dict[str, float] = {}
+        self.cost_basis_yes: dict[str, float] = {}
+        self.cost_basis_no: dict[str, float] = {}
+        self.market_to_tokens: dict[str, tuple[str, str]] = {}
+
         # [H-4] Drawdown kill-switch
         self.initial_capital = initial_capital
         self.max_drawdown_pct = max_drawdown_pct
@@ -126,17 +133,26 @@ class PaperPolymarketClient(PolymarketClientProtocol):
     async def get_clob_market_info(self, condition_id: str):
         """[H-3] Delegate to real REST API if available, otherwise return mock."""
         if self.rest_client and hasattr(self.rest_client, 'get_clob_market_info'):
-            return await self.rest_client.get_clob_market_info(condition_id)
-        # Fallback mock for testing
-        class MockToken:
-            def __init__(self, token_id):
-                self.t = token_id
-        class MockInfo:
-            def __init__(self):
-                self.mts = "0.001"
-                self.mos = "10.0"
-                self.t = [MockToken("yes_token"), MockToken("no_token")]
-        return MockInfo()
+            info = await self.rest_client.get_clob_market_info(condition_id)
+        else:
+            # Fallback mock for testing
+            class MockToken:
+                def __init__(self, token_id):
+                    self.t = token_id
+            class MockInfo:
+                def __init__(self):
+                    self.mts = "0.001"
+                    self.mos = "10.0"
+                    self.t = [MockToken("yes_token"), MockToken("no_token")]
+            info = MockInfo()
+
+        if info and hasattr(info, 't') and len(info.t) >= 2:
+            yes_token = info.t[0].t
+            no_token = info.t[1].t
+            self.market_to_tokens[yes_token] = (yes_token, no_token)
+            self.market_to_tokens[no_token] = (yes_token, no_token)
+
+        return info
 
     async def get_market(self, condition_id: str):
         """[H-3] Delegate to real REST API if available, otherwise return mock."""
@@ -162,10 +178,74 @@ class PaperPolymarketClient(PolymarketClientProtocol):
             self.latency_config.p_fat_tail,
             self.latency_config.fat_tail_mult
         ))
-        return self.synthetic_inventory.get(market_id, 0.0)
+        return self.get_inventory(market_id)
 
     def get_inventory(self, market_id: str) -> float:
-        return self.synthetic_inventory.get(market_id, 0.0)
+        tokens = self.market_to_tokens.get(market_id)
+        yes_token = tokens[0] if tokens else market_id
+        
+        yes_shares = self.inventory_yes.get(yes_token, 0.0)
+        no_shares = self.inventory_no.get(yes_token, 0.0)
+        
+        if market_id == yes_token:
+            return yes_shares - no_shares
+        else:
+            return no_shares - yes_shares
+
+    def update_inventory_cache(self, market_id: str, inventory: float):
+        tokens = self.market_to_tokens.get(market_id)
+        yes_token = tokens[0] if tokens else market_id
+        
+        # Determine average price for YES/NO tokens or legacy
+        book = self.latest_books.get(market_id) or self.latest_books.get(yes_token)
+        mid_price = book.mid_price if book else None
+        if mid_price is None:
+            mid_price = 0.50
+
+        if tokens:
+            # Symmetrical YES/NO
+            if inventory >= 0:
+                old_yes_inv = self.inventory_yes.get(yes_token, 0.0)
+                old_cost_yes = self.cost_basis_yes.get(yes_token, 0.0)
+                if old_yes_inv > 1e-9:
+                    avg_price = old_cost_yes / old_yes_inv
+                else:
+                    avg_price = mid_price
+                
+                self.inventory_yes[yes_token] = inventory
+                self.inventory_no[yes_token] = 0.0
+                self.cost_basis_yes[yes_token] = inventory * avg_price
+                self.cost_basis_no[yes_token] = 0.0
+            else:
+                old_no_inv = self.inventory_no.get(yes_token, 0.0)
+                old_cost_no = self.cost_basis_no.get(yes_token, 0.0)
+                if old_no_inv > 1e-9:
+                    avg_price = old_cost_no / old_no_inv
+                else:
+                    avg_price = 1.0 - mid_price
+                
+                self.inventory_yes[yes_token] = 0.0
+                self.inventory_no[yes_token] = -inventory
+                self.cost_basis_yes[yes_token] = 0.0
+                self.cost_basis_no[yes_token] = (-inventory) * avg_price
+        
+        # Update legacy/synthetic tracking anyway to maintain full compatibility
+        old_synth_inv = self.synthetic_inventory.get(yes_token, 0.0)
+        old_synth_cost = self.cost_basis.get(yes_token, 0.0)
+        if inventory >= 0:
+            if old_synth_inv > 1e-9:
+                avg_price = old_synth_cost / old_synth_inv
+            else:
+                avg_price = mid_price
+            self.cost_basis[yes_token] = inventory * avg_price
+        else:
+            if old_synth_inv < -1e-9:
+                avg_price = abs(old_synth_cost) / abs(old_synth_inv)
+            else:
+                avg_price = mid_price
+            self.cost_basis[yes_token] = inventory * avg_price
+            
+        self.synthetic_inventory[yes_token] = inventory
 
     # [H-4] Drawdown kill-switch
     @property
@@ -181,6 +261,24 @@ class PaperPolymarketClient(PolymarketClientProtocol):
     def get_total_unrealized_pnl(self, current_prices: dict[str, float]) -> float:
         """[C-1] Calculate unrealized P&L across all positions."""
         total = 0.0
+        all_keys = set(self.inventory_yes.keys()) | set(self.inventory_no.keys())
+        if all_keys:
+            for yes_token in all_keys:
+                yes_shares = self.inventory_yes.get(yes_token, 0.0)
+                no_shares = self.inventory_no.get(yes_token, 0.0)
+                
+                yes_price = current_prices.get(yes_token, 0.50)
+                tokens = self.market_to_tokens.get(yes_token)
+                no_token = tokens[1] if tokens else ""
+                no_price = current_prices.get(no_token, 1.0 - yes_price)
+                
+                cost_yes = self.cost_basis_yes.get(yes_token, 0.0)
+                cost_no = self.cost_basis_no.get(yes_token, 0.0)
+                
+                total += (yes_shares * yes_price - cost_yes) + (no_shares * no_price - cost_no)
+            return total
+
+        # Fallback for legacy tests
         for market_id, shares in self.synthetic_inventory.items():
             if abs(shares) < 1e-9:
                 continue
@@ -221,31 +319,70 @@ class PaperPolymarketClient(PolymarketClientProtocol):
 
     def settle_market(self, market_id: str, payout: float) -> None:
         """[H-4] Realistically simulate settlement of an expired market at $1 or $0."""
-        shares = self.synthetic_inventory.get(market_id, 0.0)
-        if abs(shares) < 1e-9:
-            return
+        tokens = self.market_to_tokens.get(market_id)
+        if tokens:
+            yes_token, no_token = tokens
+            yes_shares = self.inventory_yes.get(yes_token, 0.0)
+            no_shares = self.inventory_no.get(yes_token, 0.0)
             
-        cost = self.cost_basis.get(market_id, 0.0)
-        mark_value = shares * payout
-        pnl = mark_value - cost
-        
-        self.realized_pnl[market_id] = self.realized_pnl.get(market_id, 0.0) + pnl
-        
-        if pnl > 1e-6:
-            self.win_count += 1
-        elif pnl < -1e-6:
-            self.loss_count += 1
+            if yes_shares <= 1e-9 and no_shares <= 1e-9:
+                return
+                
+            cost_yes = self.cost_basis_yes.get(yes_token, 0.0)
+            cost_no = self.cost_basis_no.get(yes_token, 0.0)
             
-        self.synthetic_inventory[market_id] = 0.0
-        self.cost_basis[market_id] = 0.0
-        
-        self.forensic.log_event("market_settled", {
-            "market_id": market_id,
-            "payout": payout,
-            "shares": shares,
-            "pnl_realized": pnl
-        })
-        logger.info("market_settled", market_id=market_id, payout=payout, shares=shares, pnl=pnl)
+            pnl_yes = yes_shares * payout - cost_yes
+            pnl_no = no_shares * (1.0 - payout) - cost_no
+            pnl = pnl_yes + pnl_no
+            
+            self.realized_pnl[yes_token] = self.realized_pnl.get(yes_token, 0.0) + pnl
+            
+            if pnl > 1e-6:
+                self.win_count += 1
+            elif pnl < -1e-6:
+                self.loss_count += 1
+                
+            self.inventory_yes[yes_token] = 0.0
+            self.inventory_no[yes_token] = 0.0
+            self.cost_basis_yes[yes_token] = 0.0
+            self.cost_basis_no[yes_token] = 0.0
+            self.synthetic_inventory[yes_token] = 0.0
+            self.cost_basis[yes_token] = 0.0
+            
+            self.forensic.log_event("market_settled", {
+                "market_id": yes_token,
+                "payout": payout,
+                "shares_yes": yes_shares,
+                "shares_no": no_shares,
+                "pnl_realized": pnl
+            })
+            logger.info("market_settled_symmetrical", market_id=yes_token, payout=payout, yes_shares=yes_shares, no_shares=no_shares, pnl=pnl)
+        else:
+            shares = self.synthetic_inventory.get(market_id, 0.0)
+            if abs(shares) < 1e-9:
+                return
+                
+            cost = self.cost_basis.get(market_id, 0.0)
+            mark_value = shares * payout
+            pnl = mark_value - cost
+            
+            self.realized_pnl[market_id] = self.realized_pnl.get(market_id, 0.0) + pnl
+            
+            if pnl > 1e-6:
+                self.win_count += 1
+            elif pnl < -1e-6:
+                self.loss_count += 1
+                
+            self.synthetic_inventory[market_id] = 0.0
+            self.cost_basis[market_id] = 0.0
+            
+            self.forensic.log_event("market_settled", {
+                "market_id": market_id,
+                "payout": payout,
+                "shares": shares,
+                "pnl_realized": pnl
+            })
+            logger.info("market_settled", market_id=market_id, payout=payout, shares=shares, pnl=pnl)
 
     async def place_order(self, market_id: str, side: str, price: float, size: float) -> str:
         latency = sample_latency(
@@ -308,61 +445,123 @@ class PaperPolymarketClient(PolymarketClientProtocol):
 
     def process_fill(self, order: PaperLiveOrder, fill_size: float, trade_ts: float):
         """[C-1] Process a fill with cost-basis and P&L tracking."""
-        old_inv = self.synthetic_inventory.get(order.market_id, 0.0)
         order.remaining_size -= fill_size
-
         pnl = 0.0
 
-        if order.side == "BID":
-            # Buying
-            if old_inv < -1e-9:
-                # Covering a short
-                total_cost = self.cost_basis.get(order.market_id, 0.0)
-                avg_short_price = abs(total_cost) / abs(old_inv)
-                
-                cover_size = min(fill_size, abs(old_inv))
-                # For shorts, PnL is (Entry Price - Exit Price) * Size
-                pnl += cover_size * (avg_short_price - order.price)
-                
-                # Reduce the negative cost basis
-                self.cost_basis[order.market_id] = total_cost + (cover_size * avg_short_price)
-                
-                # If we bought more than our short, remainder opens a long
-                remainder = fill_size - cover_size
-                if remainder > 1e-9:
-                    self.cost_basis[order.market_id] = self.cost_basis.get(order.market_id, 0.0) + remainder * order.price
+        tokens = self.market_to_tokens.get(order.market_id)
+        if tokens:
+            # Symmetrical YES/NO token-level tracking
+            yes_token, no_token = tokens
+            
+            if order.market_id == yes_token:
+                # YES Token
+                if order.side == "BID":
+                    # Buying YES
+                    old_inv = self.inventory_yes.get(yes_token, 0.0)
+                    self.inventory_yes[yes_token] = old_inv + fill_size
+                    self.cost_basis_yes[yes_token] = self.cost_basis_yes.get(yes_token, 0.0) + fill_size * order.price
+                else:
+                    # Selling YES
+                    old_inv = self.inventory_yes.get(yes_token, 0.0)
+                    sell_size = min(fill_size, old_inv)
+                    if sell_size > 0:
+                        old_cost = self.cost_basis_yes.get(yes_token, 0.0)
+                        avg_price = old_cost / old_inv
+                        pnl += sell_size * (order.price - avg_price)
+                        self.inventory_yes[yes_token] = old_inv - sell_size
+                        self.cost_basis_yes[yes_token] = old_cost - sell_size * avg_price
+                    
+                    remainder = fill_size - sell_size
+                    if remainder > 1e-9:
+                        # Selling YES beyond inventory is equivalent to buying NO at price (1.0 - price)
+                        self.inventory_no[yes_token] = self.inventory_no.get(yes_token, 0.0) + remainder
+                        self.cost_basis_no[yes_token] = self.cost_basis_no.get(yes_token, 0.0) + remainder * (1.0 - order.price)
             else:
-                # Opening or adding to a long
-                self.cost_basis[order.market_id] = self.cost_basis.get(order.market_id, 0.0) + fill_size * order.price
-                
-            self.synthetic_inventory[order.market_id] = old_inv + fill_size
-
+                # NO Token
+                if order.side == "BID":
+                    # Buying NO
+                    old_inv = self.inventory_no.get(yes_token, 0.0)
+                    self.inventory_no[yes_token] = old_inv + fill_size
+                    self.cost_basis_no[yes_token] = self.cost_basis_no.get(yes_token, 0.0) + fill_size * order.price
+                else:
+                    # Selling NO
+                    old_inv = self.inventory_no.get(yes_token, 0.0)
+                    sell_size = min(fill_size, old_inv)
+                    if sell_size > 0:
+                        old_cost = self.cost_basis_no.get(yes_token, 0.0)
+                        avg_price = old_cost / old_inv
+                        pnl += sell_size * (order.price - avg_price)
+                        self.inventory_no[yes_token] = old_inv - sell_size
+                        self.cost_basis_no[yes_token] = old_cost - sell_size * avg_price
+                    
+                    remainder = fill_size - sell_size
+                    if remainder > 1e-9:
+                        # Selling NO beyond inventory is equivalent to buying YES at price (1.0 - price)
+                        self.inventory_yes[yes_token] = self.inventory_yes.get(yes_token, 0.0) + remainder
+                        self.cost_basis_yes[yes_token] = self.cost_basis_yes.get(yes_token, 0.0) + remainder * (1.0 - order.price)
+                        
+            # Sync synthetic inventory and cost basis for compatibility
+            yes_shares = self.inventory_yes.get(yes_token, 0.0)
+            no_shares = self.inventory_no.get(yes_token, 0.0)
+            self.synthetic_inventory[yes_token] = yes_shares - no_shares
+            # Symmetrical realized P&L key is stored under the yes_token ID
+            target_pnl_key = yes_token
+            
         else:
-            # Selling (ASK)
-            if old_inv > 1e-9:
-                # Closing a long
-                total_cost = self.cost_basis.get(order.market_id, 0.0)
-                avg_long_price = total_cost / old_inv
-                
-                sell_size = min(fill_size, old_inv)
-                # For longs, PnL is (Exit Price - Entry Price) * Size
-                pnl += sell_size * (order.price - avg_long_price)
-                
-                # Reduce the positive cost basis
-                self.cost_basis[order.market_id] = total_cost - (sell_size * avg_long_price)
-                
-                # If we sold more than our long, remainder opens a short
-                remainder = fill_size - sell_size
-                if remainder > 1e-9:
-                    self.cost_basis[order.market_id] = self.cost_basis.get(order.market_id, 0.0) - remainder * order.price
+            # Legacy single-asset tracking
+            old_inv = self.synthetic_inventory.get(order.market_id, 0.0)
+            target_pnl_key = order.market_id
+
+            if order.side == "BID":
+                # Buying
+                if old_inv < -1e-9:
+                    # Covering a short
+                    total_cost = self.cost_basis.get(order.market_id, 0.0)
+                    avg_short_price = abs(total_cost) / abs(old_inv)
+                    
+                    cover_size = min(fill_size, abs(old_inv))
+                    # For shorts, PnL is (Entry Price - Exit Price) * Size
+                    pnl += cover_size * (avg_short_price - order.price)
+                    
+                    # Reduce the negative cost basis
+                    self.cost_basis[order.market_id] = total_cost + (cover_size * avg_short_price)
+                    
+                    # If we bought more than our short, remainder opens a long
+                    remainder = fill_size - cover_size
+                    if remainder > 1e-9:
+                        self.cost_basis[order.market_id] = self.cost_basis.get(order.market_id, 0.0) + remainder * order.price
+                else:
+                    # Opening or adding to a long
+                    self.cost_basis[order.market_id] = self.cost_basis.get(order.market_id, 0.0) + fill_size * order.price
+                    
+                self.synthetic_inventory[order.market_id] = old_inv + fill_size
+
             else:
-                # Opening or adding to a short
-                self.cost_basis[order.market_id] = self.cost_basis.get(order.market_id, 0.0) - fill_size * order.price
-                
-            self.synthetic_inventory[order.market_id] = old_inv - fill_size
+                # Selling (ASK)
+                if old_inv > 1e-9:
+                    # Closing a long
+                    total_cost = self.cost_basis.get(order.market_id, 0.0)
+                    avg_long_price = total_cost / old_inv
+                    
+                    sell_size = min(fill_size, old_inv)
+                    # For longs, PnL is (Exit Price - Entry Price) * Size
+                    pnl += sell_size * (order.price - avg_long_price)
+                    
+                    # Reduce the positive cost basis
+                    self.cost_basis[order.market_id] = total_cost - (sell_size * avg_long_price)
+                    
+                    # If we sold more than our long, remainder opens a short
+                    remainder = fill_size - sell_size
+                    if remainder > 1e-9:
+                        self.cost_basis[order.market_id] = self.cost_basis.get(order.market_id, 0.0) - remainder * order.price
+                else:
+                    # Opening or adding to a short
+                    self.cost_basis[order.market_id] = self.cost_basis.get(order.market_id, 0.0) - fill_size * order.price
+                    
+                self.synthetic_inventory[order.market_id] = old_inv - fill_size
 
         if abs(pnl) > 1e-9:
-            self.realized_pnl[order.market_id] = self.realized_pnl.get(order.market_id, 0.0) + pnl
+            self.realized_pnl[target_pnl_key] = self.realized_pnl.get(target_pnl_key, 0.0) + pnl
             if pnl > 1e-6:
                 self.win_count += 1
             elif pnl < -1e-6:
@@ -378,9 +577,9 @@ class PaperPolymarketClient(PolymarketClientProtocol):
             "fill_size": fill_size,
             "remaining_size": order.remaining_size,
             "trade_timestamp": trade_ts,
-            "inventory_after": self.synthetic_inventory.get(order.market_id, 0.0),
-            "cost_basis_after": self.cost_basis.get(order.market_id, 0.0),
-            "realized_pnl": self.realized_pnl.get(order.market_id, 0.0),
+            "inventory_after": self.get_inventory(order.market_id),
+            "cost_basis_after": self.cost_basis_yes.get(order.market_id, 0.0) if tokens else self.cost_basis.get(order.market_id, 0.0),
+            "realized_pnl": self.realized_pnl.get(target_pnl_key, 0.0),
             "binance_spot_mid": self.spot_mid_fetcher(order.market_id) if self.spot_mid_fetcher else None,
         })
 
@@ -396,7 +595,14 @@ class PaperPolymarketClient(PolymarketClientProtocol):
         # We need a list so we can iterate and modify
         active_orders = [o for o in self.live_orders.values() if o.market_id == trade.market_id]
 
+        book = self.latest_books.get(trade.market_id)
+
         for order in active_orders:
+            # Clamp queue ahead using L2 depth cancellation heuristic
+            if book:
+                real_depth = book.depth_at(order.price, order.side)
+                if order.queue_ahead > real_depth:
+                    order.queue_ahead = real_depth
             # [C-3] Adverse selection penalty simulation
             # In live markets, passive limit orders are systematically adversely selected.
             # When a trade fills us, the actual price action immediately following the fill

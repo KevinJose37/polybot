@@ -67,6 +67,8 @@ class LifecycleManager:
                     self.token_to_name[token.token_id] = name
                     self.bot.market_to_asset[token.token_id] = parsed.asset
                     new_token_ids.append(token.token_id)
+                    if token.outcome.upper() == "YES":
+                        self.bot.yes_tokens.add(token.token_id)
         
         # [H-1] Use active_token_ids for runtime token list — do NOT overwrite
         # settings.markets which is validated for ASSET-WINDOW format.
